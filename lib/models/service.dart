@@ -1,21 +1,47 @@
-// lib/models/service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Service {
   final String id;
   final String name;
-  final int price;
-  final int defaultDuration; // Durasi standar (menit)
+  final String description;
+  final double price;
+  final int defaultDuration;
+  final bool isActive;
 
-  Service({required this.id, required this.name, required this.price, required this.defaultDuration});
+  Service({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.defaultDuration,
+    required this.isActive,
+  });
 
-  factory Service.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>;
+  factory Service.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    final duration = (data['default_duration'] as num?)?.toInt() ??
+                     (data['defaultDuration'] as num?)?.toInt() ??
+                     30;
+    final price = (data['price'] as num?)?.toDouble() ?? 0.0;
+    final isActive = data['isActive'] as bool? ?? true;
+
     return Service(
       id: doc.id,
-      name: data['name'] ?? 'Layanan',
-      price: (data['price'] as num?)?.toInt() ?? 0,
-      defaultDuration: (data['default_duration'] as num?)?.toInt() ?? 30,
+      name: data['name'] as String? ?? 'Service Unknown',
+      description: data['description'] as String? ?? '',
+      price: price,
+      defaultDuration: duration,
+      isActive: isActive,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'description': description,
+      'price': price,
+      'default_duration': defaultDuration,
+      'isActive': isActive,
+    };
   }
 }

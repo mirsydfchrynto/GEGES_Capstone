@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; 
-
-// Import LoginScreen yang sudah Anda buat di Fase 2
-import 'package:geges_smartbarber/screens/login_screen.dart'; 
+import 'package:intl/date_symbol_data_local.dart';
+import 'firebase_options.dart';
+// Import halaman Onboarding (sesuai langkah terakhir kita)
+import 'package:geges_smartbarber/screens/onboarding_screen.dart'; 
 
 void main() async {
-  // Wajib dipanggil sebelum inisialisasi Firebase
+  // Pastikan semua binding siap
   WidgetsFlutterBinding.ensureInitialized();
   
-  // KONEKSI UTAMA KE FIREBASE
+  
+  // Inisialisasi format tanggal/waktu Indonesia (untuk AppointmentScreen nanti)
+  await initializeDateFormatting('id_ID', null); 
+  
+  // Inisialisasi Firebase
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print("--- Firebase connected successfully! ---"); // Pesan konfirmasi
+    print("--- Firebase connected successfully! ---"); 
   } catch (e) {
-    // Jika gagal, tampilkan error di console
     print("!!! Error initializing Firebase: $e !!!");
   }
   
@@ -26,19 +29,77 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  // Definisikan warna tema Coklat Anda di sini (sesuai Figma)
+  static const Color kBrownAccent = Color(0xFFC3A47B);
+  static const Color kBlackBackground = Colors.black;
+  static const Color kDarkGrey = Color(0xFF1E1E1E);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'GEGES SmartBarber',
-      // Atur Tema Gelap Sesuai Desain
+      debugShowCheckedModeBanner: false, // Matikan banner debug
+
+      // --- TEMA APLIKASI (DISESUAIKAN DENGAN FIGMA) ---
       theme: ThemeData.dark().copyWith(
-        primaryColor: Colors.deepPurple,
-        scaffoldBackgroundColor: Colors.black,
-        colorScheme: ColorScheme.dark(primary: Colors.deepPurple), // Tema gelap
-        // Tambahkan konfigurasi tema lain sesuai desain 52027.jpg
+        primaryColor: kBrownAccent, // Warna utama
+        scaffoldBackgroundColor: kBlackBackground, // Latar belakang hitam pekat
+        
+        // Atur ColorScheme
+        colorScheme: const ColorScheme.dark(
+          primary: kBrownAccent, 
+          secondary: kBrownAccent,
+          surface: kDarkGrey, // Warna latar 'cards' atau 'input fields'
+          onPrimary: Colors.black, // Teks di atas tombol coklat
+          onSurface: Colors.white, // Teks utama
+        ),
+        
+        // Tema Tombol (Agar semua ElevatedButton otomatis Coklat)
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: kBrownAccent, // Tombol Coklat
+            foregroundColor: Colors.black, // Teks Hitam (kontras)
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            textStyle: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            )
+          ),
+        ),
+        
+        // Tema Input Field (agar sesuai desain Login/Register)
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: kDarkGrey,
+          hintStyle: TextStyle(color: Colors.grey.shade600),
+          prefixIconColor: Colors.grey.shade600,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: kBrownAccent, width: 1.5), // Highlight coklat
+          ),
+        ),
+
+        // Tema AppBar (jika digunakan)
+        appBarTheme: const AppBarTheme(
+          backgroundColor: kBlackBackground,
+          elevation: 0, // Tanpa bayangan
+        ),
       ),
-      // Ganti HOME ke LoginScreen
-      home: const LoginScreen(), 
+      // --- AKHIR TEMA ---
+
+      // Mulai dari OnboardingScreen (sesuai langkah terakhir Anda)
+      home: const OnboardingScreen(), 
     );
   }
 }

@@ -12,7 +12,20 @@
           "package_name": "com.example.geges_smartbarber"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "51527807075-5pnfogv0vqouf833qc3h59f114l40ic5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.geges_smartbarber",
+            "certificate_hash": "7e2692ef82de61587b1a1ab57005c074192eb1bf"
+          }
+        },
+        {
+          "client_id": "51527807075-2jpi3mhgcg8nrcu9snhh1fjhbn747u4r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDtqlNucmw3zjqL1RE-uz6_UcD4Kv1hPoo"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "51527807075-2jpi3mhgcg8nrcu9snhh1fjhbn747u4r.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "51527807075-n9bjtr1e0aep2vkk60ft7pe8bg9cgkgi.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.gegesSmartbarber"
+              }
+            }
+          ]
         }
       }
     }

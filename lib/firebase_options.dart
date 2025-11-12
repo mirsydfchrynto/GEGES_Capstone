@@ -70,6 +70,9 @@ class DefaultFirebaseOptions {
     messagingSenderId: '51527807075',
     projectId: 'geges-smartbarber-project',
     storageBucket: 'geges-smartbarber-project.firebasestorage.app',
+    androidClientId: '51527807075-5pnfogv0vqouf833qc3h59f114l40ic5.apps.googleusercontent.com',
+    iosClientId: '51527807075-n9bjtr1e0aep2vkk60ft7pe8bg9cgkgi.apps.googleusercontent.com',
     iosBundleId: 'com.example.gegesSmartbarber',
   );
+
 }

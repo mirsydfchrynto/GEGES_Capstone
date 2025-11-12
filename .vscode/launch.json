@@ -13,6 +13,14 @@
             "program": "web",
             "request": "launch",
             "type": "dart"
+        },
+        {
+            "name": "geges_smartbarber (Flutter)",
+            "program": "lib/main.dart",
+            "request": "launch",
+            "type": "dart"
         }
+
+        
     ]
 }
