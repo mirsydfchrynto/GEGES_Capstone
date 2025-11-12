@@ -220,7 +220,7 @@ void _signInWithGoogle() async {
               children: [
                 // Logo
                 Image.asset(
-                  'assets/images/geges.png',
+                  'assets/images/ivon.png',
                   height: 120,
                   errorBuilder: (context, error, stackTrace) =>
                       const Icon(Icons.cut, color: kBrownAccent, size: 120),

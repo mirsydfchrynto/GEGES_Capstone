@@ -47,5 +47,5 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/ivon.jpeg"
+  image_path: "assets/images/ivon.png"
   min_sdk_android: 21

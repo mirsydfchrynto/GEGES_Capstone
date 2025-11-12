@@ -139,7 +139,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Image.asset(
-                'assets/images/geges.png',
+                'assets/images/ivon.png',
                 height: 120,
                 errorBuilder: (_, __, ___) =>
                     const Icon(Icons.cut, color: kBrownAccent, size: 120),

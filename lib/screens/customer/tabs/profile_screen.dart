@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:geges_smartbarber/screens/customer/tabs/favorite_barbershops_screen.dart';
 
 // --- IMPORT DARI ITERASI SEBELUMNYA ---
 import '../../../models/user_data.dart'; // Model UserData yang sudah kita buat
@@ -128,11 +129,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.favorite_border,
               onTap: () {
                  // Ganti dengan FavoriteBarbersScreen (jika Anda menggunakan nama itu)
-                 // Navigasi ke halaman favorit
-                 // Navigator.push(
-                 //  context,
-                 //  MaterialPageRoute(builder: (context) => const FavoriteBarbersScreen()),
-                 // );
+              
+                 Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const FavoriteBarbershopsScreen()),
+                 );
               },
             ),
 
