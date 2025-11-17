@@ -428,7 +428,7 @@ class _PromoCarouselState extends State<PromoCarousel> with AutomaticKeepAliveCl
                       fit: StackFit.expand,
                       children: [
                         CachedNetworkImage(
-                          imageUrl: promo.imageUrl ?? '',
+                          imageUrl: promo.imageUrl,
                           fit: BoxFit.cover,
                           placeholder: (context, url) => Container(color: kDarkGrey),
                           errorWidget: (context, url, error) => Container(color: kDarkGrey, child: const Center(child: Icon(Icons.broken_image, color: Colors.white54))),
@@ -436,7 +436,7 @@ class _PromoCarouselState extends State<PromoCarousel> with AutomaticKeepAliveCl
                           fadeOutDuration: Duration.zero,
                           useOldImageOnUrlChange: true,
                         ),
-                        Container(color: Colors.black.withOpacity(0.28)),
+                        Container(color: Colors.black.withValues(alpha: 0.28)),
                         Padding(
                           padding: const EdgeInsets.all(20),
                           child: Column(

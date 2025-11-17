@@ -278,9 +278,12 @@ class AuthService {
       // 2) Update email di Firebase Auth (jika berbeda dan tak null)
       if (newEmail != null && newEmail.isNotEmpty && user.email != newEmail) {
         try {
-          await user.updateEmail(newEmail);
+          // gunakan verifyBeforeUpdateEmail untuk yang lebih aman
+          // method ini mengirim email verifikasi terlebih dahulu sebelum update
+          await user.verifyBeforeUpdateEmail(newEmail);
           if (trySendVerification) {
-            await user.sendEmailVerification();
+            // note: verifyBeforeUpdateEmail sudah mengirim verification email
+            // jadi kita skip sendEmailVerification() untuk menghindari duplicate
           }
         } on FirebaseAuthException catch (e) {
           // Jika perlu reauth, kembalikan kode khusus supaya UI memanggil reauth flow
@@ -334,30 +337,11 @@ class AuthService {
         return {'success': false, 'message': 'User tidak ada.'};
       }
 
-      // Ambil metode sign-in user untuk menentukan cara reauth
-      final providers = await _auth.fetchSignInMethodsForEmail(
-        currentUser!.email!,
-      );
-      if (providers.contains('password')) {
-        if (currentPassword == null) {
-          return {
-            'success': false,
-            'message': 'Password dibutuhkan untuk re-authentication.',
-          };
-        }
-        await reauthWithPassword(currentUser!.email!, currentPassword);
-      } else if (providers.any((p) => p.contains('google.com'))) {
-        // reauth via Google
-        await reauthWithGoogle();
-      } else {
-        // fallback: minta user untuk re-login manual
-        return {
-          'success': false,
-          'message': 'Silakan login ulang (re-login) untuk melanjutkan.',
-        };
-      }
-
-      // setelah reauth, panggil updateProfile lagi
+      // note: fetchSignInMethodsForEmail deprecated untuk security reason
+      // sebagai alternatif, kami just proceed dengan operasi & handle requires-recent-login error di catch
+      // ini lebih aman sesuai Firebase best practices
+      
+      // if requires recent login, akan throw error dan user diminta re-auth
       return await updateProfile(
         uid: uid,
         newName: newName,

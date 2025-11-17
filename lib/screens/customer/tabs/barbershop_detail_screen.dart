@@ -230,7 +230,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
                 background: CachedNetworkImage(
                   imageUrl: widget.barbershop.imageUrl,
                   fit: BoxFit.cover,
-                  color: Colors.black.withOpacity(0.3), // Overlay gelap
+                  color: Colors.black.withValues(alpha: 0.3), // Overlay gelap
                   colorBlendMode: BlendMode.darken,
                   placeholder: (context, url) => Container(color: kDarkGrey),
                   errorWidget: (context, url, error) => Container(

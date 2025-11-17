@@ -227,7 +227,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
               padding: const EdgeInsets.only(right: 8.0, bottom: 0),
               child: CircleAvatar(
                 radius: 16,
-                backgroundColor: kBrownAccent.withOpacity(0.2),
+                backgroundColor: kBrownAccent.withValues(alpha: 0.2),
                 child: const Icon(Icons.psychology_outlined, color: kBrownAccent, size: 20), 
               ),
             ),
@@ -245,7 +245,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
                 // Tambah sedikit shadow untuk efek elegan
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -280,7 +280,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
             padding: const EdgeInsets.only(right: 8.0),
             child: CircleAvatar(
               radius: 16,
-              backgroundColor: kBrownAccent.withOpacity(0.2),
+              backgroundColor: kBrownAccent.withValues(alpha: 0.2),
               child: const Icon(Icons.psychology_outlined, color: kBrownAccent, size: 20), 
             ),
           ),
@@ -348,7 +348,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
         decoration: BoxDecoration(
           color: kCardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: kBrownAccent.withOpacity(0.3), width: 0.5)
+          border: Border.all(color: kBrownAccent.withValues(alpha: 0.3), width: 0.5)
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,7 +423,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.white,
-        backgroundColor: kCardColor.withOpacity(0.5), // Agar terlihat berbeda dari input
+        backgroundColor: kCardColor.withValues(alpha: 0.5), // Agar terlihat berbeda dari input
         side: const BorderSide(color: kBrownAccent, width: 1.0),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30),

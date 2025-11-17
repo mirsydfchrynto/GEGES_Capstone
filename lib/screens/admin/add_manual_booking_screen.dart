@@ -6,10 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/models/barberman.dart';
 import 'package:geges_smartbarber/models/service.dart';
-import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
-import 'package:geges_smartbarber/services/barberman_service.dart';
-import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/models/user_data.dart';
 
 /// Add Manual Booking Screen
@@ -29,13 +26,9 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
   // Theme tokens (sesuaikan dengan tema utama)
   static const Color kBrownAccent = Color(0xFFC3A47B);
   static const Color kDarkSurface = Color(0xFF121212);
-  static const Color kLightText = Color(0xFFEFECEC);
 
   final _formKey = GlobalKey<FormState>();
-  final QueueService _queueService = QueueService();
   final BarbershopService _barbershopService = BarbershopService();
-  final BarbermanService _barbermanService = BarbermanService();
-  final AuthService _authService = AuthService();
 
   // input fields
   final TextEditingController _nameCtrl = TextEditingController();
@@ -156,6 +149,7 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
     if (pickedDate == null) return;
 
     final pickedTime = await showTimePicker(
+      // ignore: use_build_context_synchronously
       context: context,
       initialTime: TimeOfDay.fromDateTime(now.add(const Duration(minutes: 15))),
       builder: (context, child) => Theme(
@@ -165,6 +159,7 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
         child: child!,
       ),
     );
+    if (!mounted) return;
     if (pickedTime == null) return;
 
     final dt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);

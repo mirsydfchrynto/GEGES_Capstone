@@ -268,12 +268,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           decoration: BoxDecoration(
             color: kDarkGrey,
             borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: Color.fromRGBO(
-              getStatusColor().red,
-              getStatusColor().green,
-              getStatusColor().blue,
-              0.5,
-            ), width: 1),
+            border: Border.all(color: getStatusColor().withValues(alpha: 0.5), width: 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -67,11 +67,11 @@ class _QueueCardState extends State<QueueCard> {
 
   void _initFutures() {
     _customerFuture = _authService.getUserById(widget.queue.customerId);
-    _barbermanFuture = _barbershop_service_getBarbermanSafe(widget.queue.barbermanId);
+    _barbermanFuture = _getBarbermanSafe(widget.queue.barbermanId);
   }
 
   // wrapper to avoid throwing if barbermanId empty
-  Future<Barberman?> _barbershop_service_getBarbermanSafe(String id) {
+  Future<Barberman?> _getBarbermanSafe(String id) {
     if (id.isEmpty) return Future.value(null);
     return _barbershopService.getBarbermanById(id);
   }
@@ -277,20 +277,16 @@ class _QueueCardState extends State<QueueCard> {
     final QueueStatus status = queue.status;
     final bool isWaitingOrBooked = status == QueueStatus.waiting || status == QueueStatus.booked;
     final bool isOngoing = status == QueueStatus.ongoing;
-    final bool isServed = status == QueueStatus.served;
     final Color borderColor = _statusToColor(status);
 
     final paymentWidget = _buildPaymentProof();
-
-    // helper to create RGBA color from borderColor without withOpacity()
-    Color rgba(Color c, double alpha) => Color.fromRGBO(c.red, c.green, c.blue, alpha);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: kDarkSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: rgba(borderColor, 0.8)),
+        border: Border.all(color: borderColor.withValues(alpha: 0.8)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14.0),

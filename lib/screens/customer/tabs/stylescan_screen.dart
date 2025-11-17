@@ -84,7 +84,7 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(15),
               border: Border.all(color: color, width: 1.5),
             ),

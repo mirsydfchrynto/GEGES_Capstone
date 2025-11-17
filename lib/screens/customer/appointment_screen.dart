@@ -101,7 +101,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
         _selectedDate.day, _selectedTime.hour, _selectedTime.minute);
 
     try {
-      final ok = await _queueServiceIsSlotAvailable(
+      final ok = await _checkSlotAvailable(
         barbershopId: widget.barbershop.id,
         barbermanId: _selectedBarberman!.id,
         bookingTime: booking,
@@ -122,21 +122,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     }
   }
 
-  // Renamed helper to lowerCamelCase
-  Future<bool> _queueServiceIsSlotAvailable({
-    required String barbershopId,
-    required String barbermanId,
-    required DateTime bookingTime,
-    required List<String> serviceIds,
-  }) =>
-      _queue_service_isSlotAvailable_impl(
-        barbershopId: barbershopId,
-        barbermanId: barbermanId,
-        bookingTime: bookingTime,
-        serviceIds: serviceIds,
-      );
-
-  Future<bool> _queue_service_isSlotAvailable_impl({
+  // helper untuk check slot availability
+  Future<bool> _checkSlotAvailable({
     required String barbershopId,
     required String barbermanId,
     required DateTime bookingTime,

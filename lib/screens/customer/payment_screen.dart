@@ -250,7 +250,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           'customer_id': user.uid,
           'created_at': FieldValue.serverTimestamp(),
         };
-        await _queue_service_createQueue(queueData);
+        await _createQueue(queueData);
         _showSnack('Booking berhasil dibuat — menunggu konfirmasi admin.', success: true);
       }
 
@@ -262,7 +262,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  Future<DocumentReference> _queue_service_createQueue(Map<String, dynamic> data) {
+  Future<DocumentReference> _createQueue(Map<String, dynamic> data) {
     return _queueService.createQueue(data);
   }
 
@@ -495,7 +495,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     if (_isSubmitting)
                       Positioned.fill(
                         child: Container(
-                          color: Colors.black.withOpacity(0.45),
+                          color: Colors.black.withValues(alpha: 0.45),
                           child: const Center(child: CircularProgressIndicator()),
                         ),
                       ),
@@ -562,8 +562,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => !_isSubmitting,
+    return PopScope(
+      canPop: !_isSubmitting,
       child: Scaffold(
         backgroundColor: kSurface,
         appBar: AppBar(

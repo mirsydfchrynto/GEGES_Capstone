@@ -7,7 +7,6 @@ import 'dart:async';
 
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
-import 'package:geges_smartbarber/models/user_data.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
@@ -31,11 +30,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // Services
   final QueueService _queueService = QueueService();
   final BarbershopService _barbershopService = BarbershopService();
-  final AuthService _auth_service = AuthService();
+  final AuthService _authService = AuthService();
 
   // State Data
   final String? _adminUid = FirebaseAuth.instance.currentUser?.uid;
-  UserData? _currentAdminData;
   String? _adminBarbershopId;
   String _barbershopName = "Loading...";
   String _loadingError = '';
@@ -60,7 +58,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     try {
-      final adminData = await _auth_service.getUserById(_adminUid);
+      final adminData = await _authService.getUserById(_adminUid);
 
       if (adminData == null) {
         if (mounted) {
@@ -92,11 +90,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return;
       }
 
-      final barbershop = await _barbershop_service_getBarbershopSafe(barbershopId);
+      final barbershop = await _getBarbershopSafe(barbershopId);
 
       if (mounted) {
         setState(() {
-          _currentAdminData = adminData;
           _adminBarbershopId = barbershopId;
           _barbershopName = barbershop?.name ?? 'Barbershop Unknown';
           _isShopOpen = barbershop?.isOpen ?? false;
@@ -114,19 +111,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  Future<Barbershop?> _barbershop_service_getBarbershopSafe(String id) {
+  Future<Barbershop?> _getBarbershopSafe(String id) {
     if (id.isEmpty) return Future.value(null);
     return _barbershopService.getBarbershopById(id);
   }
 
   void _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (Route<dynamic> route) => false,
-      );
-    }
+    if (!mounted) return;
+    // ignore: use_build_context_synchronously
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (Route<dynamic> route) => false,
+    );
   }
 
   Future<void> _toggleShopStatus() async {
@@ -215,7 +212,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     // use explicit RGBA for brown accent tints (avoid withOpacity deprecated)
     final brown70 = const Color.fromRGBO(195, 164, 123, 0.7);
-    final brown10 = const Color.fromRGBO(195, 164, 123, 0.1);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,7 +300,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final border = BoxDecoration(
       color: kDarkSurface,
       borderRadius: BorderRadius.circular(12),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 10, offset: const Offset(0, 5))],
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 5))],
     );
 
     return Expanded(
@@ -363,14 +359,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final barbershop = Barbershop.fromFirestore(barbershopDoc);
 
     // 🔹 Pindah ke halaman tambah booking manual
-    if (context.mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => AddManualBookingScreen(barbershop: barbershop),
-        ),
-      );
-    }
+    if (!mounted) return;
+    // ignore: use_build_context_synchronously
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddManualBookingScreen(barbershop: barbershop),
+      ),
+    );
   },
 ),
 

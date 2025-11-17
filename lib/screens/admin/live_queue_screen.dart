@@ -216,7 +216,7 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final stream = _queue_service_stream();
+    final stream = _getQueueStream();
 
     return Scaffold(
       backgroundColor: kBlack,
@@ -351,7 +351,7 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
   }
 
   // Helper to build the stream using the current status filter
-  Stream<List<Queue>> _queue_service_stream() {
+  Stream<List<Queue>> _getQueueStream() {
     // ensure we don't pass 'pending' anywhere and use the dynamic filter.
     return _queueService.streamQueuesForBarbershop(
       widget.barbershopId,

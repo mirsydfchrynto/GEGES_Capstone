@@ -197,7 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           CircleAvatar(
             radius: 30,
-            backgroundColor: kBrownAccent.withOpacity(0.2),
+            backgroundColor: kBrownAccent.withValues(alpha: 0.2),
             // Menggunakan CachedNetworkImage untuk foto profil dari URL (jika ada)
             backgroundImage: _userPhotoUrl != null && _userPhotoUrl!.startsWith('http')
                 ? CachedNetworkImageProvider(_userPhotoUrl!)
