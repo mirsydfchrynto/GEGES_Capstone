@@ -1,15 +1,73 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// ============================================================================
+/// FILE: queue.dart (MODEL QUEUE - BOOKING & REQUEST BOOKING)
+/// ============================================================================
+/// 
+/// ALUR BOOKING FLOW BARU (PHASE 3):
+/// 
+/// 1. CUSTOMER REQUEST BOOKING
+///    - Customer memilih barbershop, service, tanggal & jam
+///    - Status: 'waiting' (menunggu approval dari admin)
+///    - Belum ada pembayaran, no uang yang masuk
+///
+/// 2. ADMIN CONFIRMATION
+///    - Admin melihat request booking di dashboard
+///    - Admin cek ketersediaan barberman & slot di jam tersebut
+///    - Admin approve/reject request
+///    - Jika approve: status berubah 'booked' → customer dapat notif untuk bayar
+///    - Jika reject: status berubah 'cancelled' → customer tidak perlu bayar
+///
+/// 3. PAYMENT WINDOW (dalam kurung waktu tertentu, misal: 1 jam)
+///    - Customer wajib upload bukti pembayaran dalam waktu window ini
+///    - Field 'paymentDeadline' tracking kapan window tutup
+///    - Jika timeout: request auto-cancelled (payment_timeout_cancelled)
+///    - Jika bayar: status 'payment_pending' → menunggu admin verifikasi
+///
+/// 4. ADMIN PAYMENT VERIFICATION
+///    - Admin cek bukti pembayaran (sama seperti current flow)
+///    - Admin approve payment: status 'ongoing' → siap dilayani
+///    - Admin reject payment: status 'cancelled', customer bisa request ulang
+///
+/// 5. SELESAI
+///    - Barber mulai: status 'ongoing'
+///    - Barber selesai: status 'served'
+///
+/// STATUS VALUES EXPLANATION:
+/// - 'waiting': Menunggu approval dari admin (request booking baru)
+/// - 'booked': Admin sudah approve, customer bisa bayar sekarang
+/// - 'payment_pending': Customer sudah upload bukti pembayaran, tunggu admin cek
+/// - 'ongoing': Admin approve pembayaran, barber sedang melayani
+/// - 'served': Selesai dilayani
+/// - 'cancelled': Dibatalkan (reject admin, atau payment timeout, atau tolak payment)
+///
+/// PERUBAHAN DATABASE FIELD:
+/// - Add: 'request_status' ('pending', 'approved', 'rejected') - tracking approval admin
+/// - Add: 'payment_deadline' (Timestamp) - kapan window pembayaran tutup
+/// - Add: 'payment_method' (String: 'manual', 'digital') - untuk future digital payment
+/// - Add: 'rejection_reason' (String) - alasan jika admin reject
+/// - Add: 'verified_by' (String: userId admin) - admin yang verify
+/// - Modify: 'status' enum tetap sama, tapi interpretasi berubah
+///
+/// ============================================================================
+
 // penjelasan enum queuestatus:
 // - enum adalah tipe data yang memiliki beberapa pilihan nilai tetap
 // - queuestatus hanya bisa bernilai: waiting, booked, ongoing, served, atau cancelled
 // - ini memastikan status booking hanya bisa salah satu dari pilihan tersebut
-// - waiting = menunggu konfirmasi
-// - booked = sudah dikonfirmasi
-// - ongoing = sedang diproses (barber sedang potong)
+// - waiting = menunggu konfirmasi admin
+// - booked = sudah dikonfirmasi, customer bisa bayar
+// - ongoing = pembayaran approve, sedang diproses (barber sedang potong)
 // - served = selesai
-// - cancelled = dibatalkan
+// - cancelled = dibatalkan (reject admin / payment timeout / payment tolak)
 enum QueueStatus { waiting, booked, ongoing, served, cancelled }
+
+// penjelasan enum requeststatus:
+// - tracking approval dari admin untuk request booking
+// - pending = menunggu admin lihat & approve/reject
+// - approved = admin approve, customer wajib bayar
+// - rejected = admin reject, request hangus, tidak ada pembayaran
+enum RequestStatus { pending, approved, rejected }
 
 // penjelasan extension:
 // - extension adalah cara untuk menambah method ke tipe data yang sudah ada
@@ -53,6 +111,35 @@ extension QueueStatusExtension on QueueStatus {
   }
 }
 
+/// Extension untuk RequestStatus (tracking admin approval)
+/// Method ini membantu convert enum ke string & sebaliknya
+extension RequestStatusExtension on RequestStatus {
+  // method value: mengubah enum menjadi string
+  // contoh: RequestStatus.pending.value akan menghasilkan 'pending'
+  String get value {
+    switch (this) {
+      case RequestStatus.pending:
+        return 'pending';
+      case RequestStatus.approved:
+        return 'approved';
+      case RequestStatus.rejected:
+        return 'rejected';
+    }
+  }
+
+  // method fromstring: mengubah string menjadi enum
+  static RequestStatus fromString(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return RequestStatus.approved;
+      case 'rejected':
+        return RequestStatus.rejected;
+      default:
+        return RequestStatus.pending;
+    }
+  }
+}
+
 // penjelasan class queue:
 // - class adalah blueprint untuk membuat object (data)
 // - queue mewakili satu entry dalam antrian booking
@@ -77,6 +164,15 @@ class Queue {
   final int? totalPrice;                    // total harga semua layanan
 
   final QueueStatus status;                 // status booking (waiting/booked/ongoing/served/cancelled)
+  
+  // ============ NEW FIELDS FOR BOOKING FLOW ============
+  final RequestStatus requestStatus;        // status approval dari admin (pending/approved/rejected)
+  final Timestamp? paymentDeadline;         // kapan window pembayaran harus selesai (1 jam dari approve)
+  final String? paymentMethod;              // 'manual' atau 'digital' (future use)
+  final String? rejectionReason;            // alasan jika admin reject request atau payment
+  final String? verifiedBy;                 // userId admin yang verify payment
+  // ====================================================
+
   final Timestamp? createdAt;               // waktu record dibuat
   final String? paymentProofBase64;         // bukti pembayaran dalam bentuk base64
 
@@ -98,6 +194,11 @@ class Queue {
     this.serviceId,
     this.totalPrice,
     required this.status,
+    required this.requestStatus,
+    this.paymentDeadline,
+    this.paymentMethod,
+    this.rejectionReason,
+    this.verifiedBy,
     this.createdAt,
     this.paymentProofBase64,
   });
@@ -159,6 +260,19 @@ class Queue {
           (data['totalPrice'] as num?)?.toInt(),
       // konversi string status menjadi enum menggunakan .fromString()
       status: QueueStatusExtension.fromString(readString(data['status'])),
+      // NEW: request status tracking (default: pending jika tidak ada)
+      requestStatus: RequestStatusExtension.fromString(
+        readString(data['request_status'] ?? data['requestStatus'] ?? 'pending'),
+      ),
+      // NEW: payment deadline tracking
+      paymentDeadline: (data['payment_deadline'] as Timestamp?) ??
+          (data['paymentDeadline'] as Timestamp?),
+      // NEW: payment method tracking (manual/digital)
+      paymentMethod: readString(data['payment_method'] ?? data['paymentMethod']),
+      // NEW: rejection reason dari admin
+      rejectionReason: readString(data['rejection_reason'] ?? data['rejectionReason']),
+      // NEW: admin yang verify payment
+      verifiedBy: readString(data['verified_by'] ?? data['verifiedBy']),
       createdAt: (data['created_at'] as Timestamp?) ??
           (data['createdAt'] as Timestamp?),
       paymentProofBase64:
@@ -186,6 +300,12 @@ class Queue {
       'service_id': serviceId,
       'total_price': totalPrice,
       'status': status.value,  // ubah enum jadi string
+      // NEW: request status tracking
+      'request_status': requestStatus.value,
+      'payment_deadline': paymentDeadline,
+      'payment_method': paymentMethod,
+      'rejection_reason': rejectionReason,
+      'verified_by': verifiedBy,
       'created_at': createdAt ?? FieldValue.serverTimestamp(),
       'payment_proof_base64': paymentProofBase64,
     };
@@ -212,6 +332,11 @@ class Queue {
     String? serviceId,
     int? totalPrice,
     QueueStatus? status,
+    RequestStatus? requestStatus,
+    Timestamp? paymentDeadline,
+    String? paymentMethod,
+    String? rejectionReason,
+    String? verifiedBy,
     Timestamp? createdAt,
     String? paymentProofBase64,
   }) {
@@ -229,6 +354,11 @@ class Queue {
       serviceId: serviceId ?? this.serviceId,
       totalPrice: totalPrice ?? this.totalPrice,
       status: status ?? this.status,
+      requestStatus: requestStatus ?? this.requestStatus,
+      paymentDeadline: paymentDeadline ?? this.paymentDeadline,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      verifiedBy: verifiedBy ?? this.verifiedBy,
       createdAt: createdAt ?? this.createdAt,
       paymentProofBase64: paymentProofBase64 ?? this.paymentProofBase64,
     );
