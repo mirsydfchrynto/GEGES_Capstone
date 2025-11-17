@@ -197,7 +197,7 @@
         final finishTs = Timestamp.now();
 
         int actualDuration = 0;
-        if (start != null && start is Timestamp) {
+        if (start != null) {
           final now = Timestamp.now();
           actualDuration = ((now.seconds - start.seconds) ~/ 60).clamp(1, 10000).toInt();
         }

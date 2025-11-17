@@ -523,7 +523,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               style: const TextStyle(color: kBrownAccent, decoration: TextDecoration.underline),
               recognizer: TapGestureRecognizer()..onTap = () {
                 // TODO: buka halaman terms of services
-                print('terms of services tapped');
               }),
           const TextSpan(text: ' and '),
           TextSpan(
@@ -531,7 +530,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               style: const TextStyle(color: kBrownAccent, decoration: TextDecoration.underline),
               recognizer: TapGestureRecognizer()..onTap = () {
                 // TODO: buka halaman privacy policy
-                print('privacy policy tapped');
               }),
         ],
       ),

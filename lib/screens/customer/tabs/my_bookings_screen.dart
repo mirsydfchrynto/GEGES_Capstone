@@ -159,7 +159,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         : ['waiting', 'booked', 'ongoing']; // Active (waiting + confirmed booked + ongoing)
 
     final Stream<List<Queue>> queueStream =
-        _queueService.streamQueuesForCustomer(_customerId!, statusFilter: requiredStatus);
+        _queueService.streamQueuesForCustomer(_customerId, statusFilter: requiredStatus);
 
     return StreamBuilder<List<Queue>>(
       stream: queueStream,

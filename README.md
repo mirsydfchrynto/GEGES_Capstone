@@ -237,6 +237,35 @@ tips code style:
 - untuk panduan flutter: https://docs.flutter.dev/
 - untuk panduan firebase: https://firebase.google.com/docs
 
+## dokumentasi lengkap
+
+kami menyediakan dokumentasi komprehensif untuk berbagai tingkat kebutuhan:
+
+### untuk pemula (mulai dari sini):
+- **QUICK_REFERENCE.md** - quick setup & common commands
+- **DOKUMENTASI_SUMMARY.md** - ringkasan semua fitur
+- **DOKUMENTASI_ARCHITECTURE_LENGKAP.md** - big picture & alur
+
+### untuk development (detail docs):
+- **PROJECT_STATUS_TRACKER.md** - current project status & progress
+- **COMPREHENSIVE_FIX_PLAN.md** - roadmap development 6 phase
+- **PHASE_1_COMPLETION_REPORT.md** - hasil audit & fixes
+
+### untuk deep dive (technical docs):
+- **DOKUMENTASI_KODE.md** - code overview & patterns
+- **DOKUMENTASI_MODELS_LENGKAP.md** - model references
+- **DOKUMENTASI_SERVICES_WIDGETS.md** - services & widgets detail
+- **FINDINGS_FLUTTER_ANALYZE.md** - lint analysis & fixes
+
+### untuk specific features:
+- **DOKUMENTASI_AUTH_SCREENS.md** - authentication flow
+- **DOKUMENTASI_CUSTOMER_SCREENS.md** - customer booking flow
+- **DOKUMENTASI_TAB_ADMIN_SCREENS.md** - admin screens
+- **DOKUMENTASI_MY_BOOKINGS.md** - booking management
+- **DOKUMENTASI_PROMO_CAROUSEL.md** - promo carousel widget
+
+---
+
 ## lisensi
 
 project ini belum mengandung lisensi khusus di repo. jika Anda ingin
@@ -245,8 +274,10 @@ keperluan.
 
 ---
 
-butuh bantuan tambahan? beri tahu saya bagian mana yang ingin
-diperluas: setup firebase step-by-step dengan screenshot, contoh
-env template, atau petunjuk contribution lebih spesifik. saya bisa
-menambahkan bagian itu.
+## dukungan & bantuan
+
+butuh bantuan? cek dokumentasi di atas terlebih dahulu. jika masih ada
+pertanyaan, hubungi tim development atau buat issue di repository.
+
+**project status: dalam pengembangan aktif dengan dukungan penuh** ✅
 

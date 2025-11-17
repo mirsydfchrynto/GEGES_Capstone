@@ -2,7 +2,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert'; // Untuk konversi Base64
-import 'dart:typed_data'; // Untuk konversi bytes
+// Untuk konversi bytes
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';

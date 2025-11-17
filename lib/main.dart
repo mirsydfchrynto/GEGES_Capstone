@@ -38,9 +38,10 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print("--- firebase berhasil terhubung! ---"); 
+    // firebase initialization berhasil
   } catch (e) {
-    print("!!! error firebase: $e !!!");
+    // firebase initialization error (akan di-log via crashlytics nanti)
+    rethrow;
   }
   
   // penjelasan runApp:

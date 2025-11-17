@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'dart:async';
 
 import 'package:geges_smartbarber/models/queue.dart';
-import 'package:geges_smartbarber/models/barberman.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/models/user_data.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
@@ -61,7 +60,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     try {
-      final adminData = await _auth_service.getUserById(_adminUid!);
+      final adminData = await _auth_service.getUserById(_adminUid);
 
       if (adminData == null) {
         if (mounted) {
@@ -271,7 +270,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: Switch(
                     value: _isShopOpen,
                     onChanged: _isTogglingStatus ? null : (_) => _toggleShopStatus(),
-                    activeColor: Colors.green.shade600,
+                    activeThumbColor: Colors.green.shade600,
                     inactiveThumbColor: Colors.red.shade600,
                     inactiveTrackColor: const Color.fromRGBO(255, 0, 0, 0.3),
                   ),
@@ -496,8 +495,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _isRefreshing ? null : _manualRefresh,
         backgroundColor: kBrownAccent,
-        child: _isRefreshing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)) : const Icon(Icons.refresh, color: Colors.black),
         tooltip: 'Segarkan',
+        child: _isRefreshing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)) : const Icon(Icons.refresh, color: Colors.black),
       ),
       body: SafeArea(
         child: StreamBuilder<List<Queue>>(

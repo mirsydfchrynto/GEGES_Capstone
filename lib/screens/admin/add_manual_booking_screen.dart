@@ -1,6 +1,5 @@
 // lib/screens/admin/add_manual_booking_screen.dart
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -46,13 +45,13 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
   List<Service> _services = [];
   List<Barberman> _barbermen = [];
 
-  List<String> _selectedServiceIds = [];
+  final List<String> _selectedServiceIds = [];
   Barberman? _selectedBarberman;
 
   DateTime? _selectedDateTime;
 
   bool _loading = true;
-  bool _saving = false;
+  final bool _saving = false;
 
   // current admin user data (to auto-assign barber if available)
   UserData? _currentUserData;
@@ -258,8 +257,11 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
               value: selected,
               onChanged: (_) {
                 setState(() {
-                  if (selected) _selectedServiceIds.remove(s.id);
-                  else _selectedServiceIds.add(s.id);
+                  if (selected) {
+                    _selectedServiceIds.remove(s.id);
+                  } else {
+                    _selectedServiceIds.add(s.id);
+                  }
                 });
               },
               activeColor: kBrownAccent,
