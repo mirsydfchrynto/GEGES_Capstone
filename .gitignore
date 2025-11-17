@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+DOKUMENTASI_FINAL_OVERVIEW.md
+DOKUMENTASI_INLINE_AUTH_SCREENS.md
