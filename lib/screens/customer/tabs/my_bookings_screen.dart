@@ -48,13 +48,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   Future<BookingDetails> _fetchDetailsForQueue(Queue queue) async {
     const String defaultImage =
         'https://cdn-icons-png.flaticon.com/512/706/706830.png';
-
     try {
       String barbershopName = 'Barbershop Dihapus';
       String barbershopImage = defaultImage;
       String barbermanName = 'Barberman Dihapus';
       String serviceName = 'Layanan Dihapus';
-
+      String status = queue.status.value;
+      DateTime? paymentDeadline;
       // 1. Fetch Barbershop
       final bsDoc = await FirebaseFirestore.instance
           .collection('barbershops')
@@ -64,7 +64,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         barbershopName = bsDoc.data()?['name'] ?? barbershopName;
         barbershopImage = bsDoc.data()?['imageUrl'] ?? defaultImage;
       }
-
       // 2. Fetch Barberman
       final bmDoc = await FirebaseFirestore.instance
           .collection('barbermen')
@@ -73,7 +72,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       if (bmDoc.exists) {
         barbermanName = bmDoc.data()?['name'] ?? barbermanName;
       }
-
       // 3. Fetch Service
       final serviceId = queue.firstServiceId;
       if (serviceId != null) {
@@ -83,19 +81,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             .get();
         if (svDoc.exists) {
           serviceName = svDoc.data()?['name'] ?? serviceName;
-
           if (queue.serviceIds != null && queue.serviceIds!.length > 1) {
             serviceName += ' (+${queue.serviceIds!.length - 1} lainnya)';
           }
         }
       }
-
+      // 4. Payment deadline (if available)
+      if (queue.paymentDeadline != null) {
+        paymentDeadline = queue.paymentDeadline!.toDate();
+      }
       return BookingDetails(
         queue: queue,
         barbershopName: barbershopName,
         barbermanName: barbermanName,
         serviceName: serviceName,
         barbershopImage: barbershopImage,
+        status: status,
+        paymentDeadline: paymentDeadline,
       );
     } catch (e) {
       debugPrint("Error fetching details for queue ${queue.id}: $e");
@@ -105,6 +107,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         barbermanName: 'Error',
         serviceName: 'Error',
         barbershopImage: defaultImage,
+        status: 'error',
+        paymentDeadline: null,
       );
     }
   }
@@ -238,7 +242,20 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         final details = snapshot.data!;
         final QueueStatus status = details.queue.status;
 
-        final displayStatus = status.value.toUpperCase();
+        final displayStatus = () {
+          switch (status) {
+            case QueueStatus.waiting:
+              return 'Menunggu Konfirmasi';
+            case QueueStatus.booked:
+              return 'Menunggu Pembayaran';
+            case QueueStatus.ongoing:
+              return 'Sedang Dilayani';
+            case QueueStatus.served:
+              return 'Selesai';
+            case QueueStatus.cancelled:
+              return 'Dibatalkan';
+          }
+        }();
 
         final isServed = status == QueueStatus.served;
         final isPendingOrWaiting = status == QueueStatus.waiting || status == QueueStatus.booked;
@@ -250,11 +267,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             case QueueStatus.booked:
               return Colors.orangeAccent;
             case QueueStatus.ongoing:
-              return Colors.blueAccent;
+              return const Color(0xFF448AFF);
             case QueueStatus.served:
-              return Colors.green;
+              return const Color(0xFF4CAF50);
             case QueueStatus.cancelled:
-              return Colors.redAccent;
+              return const Color(0xFFD32F2F);
           }
         }
 
@@ -331,6 +348,27 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                   isAccent: true,
                 ),
 
+              // Status dan Deadline Pembayaran (jika ada)
+              if (details.paymentDeadline != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailRow(
+                      'Deadline Pembayaran',
+                      DateFormat('EEE, d MMM yyyy, HH:mm').format(details.paymentDeadline!),
+                      isAccent: true,
+                    ),
+                    if (details.paymentDeadline!.difference(DateTime.now()).inMinutes < 30 && status == QueueStatus.booked)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: Text(
+                          '⚠️ Segera lakukan pembayaran sebelum waktu habis!',
+                          style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                ),
+
               // Tombol Aksi
               if (isPendingOrWaiting)
                 Padding(
@@ -344,8 +382,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                           _showSnackbar(context, 'Membatalkan order...', Colors.redAccent);
                         },
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.redAccent,
-                          side: const BorderSide(color: Colors.redAccent),
+                          foregroundColor: const Color(0xFFD32F2F),
+                          side: const BorderSide(color: Color(0xFFD32F2F)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         child: const Text('Cancel'),
@@ -423,9 +461,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Gagal memuat detail: $queueId', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          Text('Gagal memuat detail: $queueId', style: const TextStyle(color: Color(0xFFD32F2F), fontWeight: FontWeight.bold)),
           const SizedBox(height: 5),
-          Text('Error: ${error?.toString().split(':').last.trim() ?? "Unknown error"}', style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+          Text('Error: ${error?.toString().split(':').last.trim() ?? "Unknown error"}', style: const TextStyle(color: Color(0xFFD32F2F), fontSize: 12)),
         ],
       ),
     );

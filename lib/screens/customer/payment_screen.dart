@@ -110,7 +110,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.redAccent : (success ? kBrownAccent : kCardColor),
+  backgroundColor: isError ? const Color(0xFFD32F2F) : (success ? kBrownAccent : kCardColor),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -351,7 +351,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       decoration: BoxDecoration(
         color: kCardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isExpired ? Colors.red : kBrownAccent, width: 1),
+  border: Border.all(color: isExpired ? const Color(0xFFD32F2F) : kBrownAccent, width: 1),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -360,7 +360,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               style: const TextStyle(color: Colors.white, fontSize: 15)),
           Text(isExpired ? '00:00:00' : _formatDuration(_timeRemaining),
               style: TextStyle(
-                  color: isExpired ? Colors.red : kBrownAccent,
+                  color: isExpired ? const Color(0xFFD32F2F) : kBrownAccent,
                   fontSize: 16,
                   fontWeight: FontWeight.bold)),
         ],

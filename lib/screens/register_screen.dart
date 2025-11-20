@@ -163,7 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('pendaftaran sukses! verifikasi email telah dikirim ke $email'),
-          backgroundColor: Colors.green,
+          backgroundColor: const Color(0xFF4CAF50),
         ),
       );
 
@@ -240,6 +240,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // Helper function to check password strength
+  String _getPasswordStrength(String password) {
+    if (password.length < 6) return 'Lemah';
+    final hasUpper = password.contains(RegExp(r'[A-Z]'));
+    final hasLower = password.contains(RegExp(r'[a-z]'));
+    final hasDigit = password.contains(RegExp(r'[0-9]'));
+    final hasSpecial = password.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
+    int score = [hasUpper, hasLower, hasDigit, hasSpecial].where((b) => b).length;
+    if (score <= 2) return 'Sedang';
+    if (score >= 3) return 'Kuat';
+    return 'Lemah';
+  }
+
   @override
   Widget build(BuildContext context) {
     // penjelasan build():
@@ -314,15 +327,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   isObscure: true),
               const SizedBox(height: 20),
 
+              // penjelasan password strength indicator:
+              // - ditampilkan di bawah password field
+              // - menunjukkan kekuatan password: lemah/sedang/kuat
+              // - warna hijau/orange/merah sesuai dengan tingkat kekuatan
+              Padding(
+                padding: const EdgeInsets.only(left: 8.0, top: 4.0),
+                child: Text(
+                  'Kekuatan Password: ${_getPasswordStrength(_passwordController.text)}',
+                  style: TextStyle(
+                    color: _getPasswordStrength(_passwordController.text) == 'Kuat'
+                        ? Colors.green
+                        : (_getPasswordStrength(_passwordController.text) == 'Sedang' ? Colors.orange : Colors.red),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+
               // penjelasan error message:
               // - hanya ditampilkan jika _errorMessage tidak kosong
               // - padding untuk spacing
               // - text style warna merah untuk error
               if (_errorMessage.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Text(_errorMessage,
-                      style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    _errorMessage,
+                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
 
               // penjelasan create account button:

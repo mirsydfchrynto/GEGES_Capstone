@@ -173,7 +173,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade700,
+                backgroundColor: const Color(0xFFD32F2F),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () {
@@ -208,7 +208,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required int completedCount,
   }) {
     final shopStatusText = _isShopOpen ? 'BUKA' : 'TUTUP';
-    final shopStatusColor = _isShopOpen ? Colors.greenAccent : Colors.redAccent;
+  final shopStatusColor = _isShopOpen ? const Color(0xFF4CAF50) : const Color(0xFFD32F2F);
 
     // use explicit RGBA for brown accent tints (avoid withOpacity deprecated)
     final brown70 = const Color.fromRGBO(195, 164, 123, 0.7);
@@ -266,8 +266,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: Switch(
                     value: _isShopOpen,
                     onChanged: _isTogglingStatus ? null : (_) => _toggleShopStatus(),
-                    activeThumbColor: Colors.green.shade600,
-                    inactiveThumbColor: Colors.red.shade600,
+                    activeThumbColor: const Color(0xFF388E3C),
+                    inactiveThumbColor: const Color(0xFFD32F2F),
                     inactiveTrackColor: const Color.fromRGBO(255, 0, 0, 0.3),
                   ),
                 ),
@@ -456,13 +456,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case QueueStatus.waiting:
         return Colors.orangeAccent;
       case QueueStatus.booked:
-        return Colors.blueAccent;
+  return const Color(0xFF448AFF);
       case QueueStatus.ongoing:
-        return Colors.greenAccent;
+  return const Color(0xFF4CAF50);
       case QueueStatus.served:
         return Colors.grey;
       case QueueStatus.cancelled:
-        return Colors.redAccent;
+  return const Color(0xFFD32F2F);
     }
   }
 

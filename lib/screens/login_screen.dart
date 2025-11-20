@@ -193,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (email.isEmpty) {
       final typed = await _askForEmailDialog();
       if (typed == null || typed.trim().isEmpty) {
-        _showSnackbar('masukkan email untuk menerima link reset.', Colors.redAccent);
+  _showSnackbar('masukkan email untuk menerima link reset.', const Color(0xFFD32F2F));
         return;
       }
       await _sendResetEmail(typed.trim());
@@ -217,12 +217,12 @@ class _LoginScreenState extends State<LoginScreen> {
       if (res['success'] == true) {
         _showSnackbar('link reset password telah dikirim ke $email.', kBrownAccent);
       } else {
-        _showSnackbar(res['message'] ?? 'gagal mengirim link reset password.', Colors.redAccent);
+  _showSnackbar(res['message'] ?? 'gagal mengirim link reset password.', const Color(0xFFD32F2F));
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      _showSnackbar('terjadi kesalahan: $e', Colors.redAccent);
+  _showSnackbar('terjadi kesalahan: $e', const Color(0xFFD32F2F));
     }
   }
 
@@ -251,7 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _navigateByRole(result['role']);
       } else {
         final message = result['message'] ?? 'google sign-in gagal.';
-        _showSnackbar(message, Colors.redAccent);
+  _showSnackbar(message, const Color(0xFFD32F2F));
         setState(() => _errorMessage = message);
       }
     } catch (e) {
@@ -260,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = false;
         _errorMessage = 'terjadi kesalahan: $e';
       });
-      _showSnackbar('terjadi kesalahan: $e', Colors.redAccent);
+  _showSnackbar('terjadi kesalahan: $e', const Color(0xFFD32F2F));
     }
   }
 
@@ -399,7 +399,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (_errorMessage.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Text(_errorMessage, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
+                    child: Text(_errorMessage, style: const TextStyle(color: Color(0xFFD32F2F)), textAlign: TextAlign.center),
                   ),
 
                 // Sign In Button

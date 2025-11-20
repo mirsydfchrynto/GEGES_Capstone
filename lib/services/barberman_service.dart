@@ -71,4 +71,52 @@ class BarbermanService {
       rethrow;
     }
   }
+
+  // -----------------------
+  // BOOKING MANAGEMENT
+  // -----------------------
+
+  /// Membuat permintaan booking baru.
+  Future<void> createBookingRequest(String barbermanId, Map<String, dynamic> bookingData) async {
+    try {
+      final bookingCollection = _firestore.collection('barbermen').doc(barbermanId).collection('bookings');
+      await bookingCollection.add({
+        ...bookingData,
+        'status': 'waiting',
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      // ignore: avoid_print
+      print("Error creating booking request: $e");
+      rethrow;
+    }
+  }
+
+  /// Mengupdate status booking berdasarkan ID booking.
+  Future<void> updateBookingStatus(String barbermanId, String bookingId, String status) async {
+    try {
+      final bookingDoc = _firestore.collection('barbermen').doc(barbermanId).collection('bookings').doc(bookingId);
+      await bookingDoc.update({'status': status});
+    } catch (e) {
+      // ignore: avoid_print
+      print("Error updating booking status: $e");
+      rethrow;
+    }
+  }
+
+  /// Membatalkan booking yang belum dibayar secara otomatis.
+  Future<void> cancelUnpaidBookings(String barbermanId) async {
+    try {
+      final bookingCollection = _firestore.collection('barbermen').doc(barbermanId).collection('bookings');
+      final unpaidBookings = await bookingCollection.where('status', isEqualTo: 'waiting').get();
+
+      for (final doc in unpaidBookings.docs) {
+        await doc.reference.update({'status': 'cancelled'});
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print("Error cancelling unpaid bookings: $e");
+      rethrow;
+    }
+  }
 }

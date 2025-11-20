@@ -3,6 +3,16 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// Enum hari dalam seminggu
+enum DayOfWeek { monday, tuesday, wednesday, thursday, friday, saturday, sunday }
+
+// Enum tipe cuti
+enum LeaveType { weeklyOff, annual, sick, personal, other }
+
+// Enum hari dalam seminggu
+
+// Enum tipe cuti
+
 // penjelasan class barberman:
 // - merepresentasikan satu barber (tukang potong rambut)
 // - menyimpan info: nama, barbershop, rating, durasi potong rata-rata, dll
@@ -17,7 +27,13 @@ class Barberman {
   final double avgDuration;         // rata-rata durasi potong (menit)
   final double rating;              // rating barber (0.0 - 5.0)
   final bool isActive;              // apakah barber sedang aktif/bisa dipesan
+  final List<DayOfWeek>? offDays;   // hari libur mingguan
+  final int annualLeaveDays;        // sisa cuti tahunan
+  final bool onLeave;               // sedang cuti atau tidak
 
+// Enum hari dalam seminggu
+
+// Enum tipe cuti
   // penjelasan constructor:
   // - imageurl nullable (boleh null)
   // - sisanya required (harus diberikan)
@@ -29,6 +45,9 @@ class Barberman {
     required this.avgDuration,
     required this.rating,
     required this.isActive,
+    this.offDays,
+    this.annualLeaveDays = 12,
+    this.onLeave = false,
   });
 
   // penjelasan factory barberman.fromfirestore:
@@ -37,23 +56,32 @@ class Barberman {
   factory Barberman.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
 
-    // penjelasan avgduration parsing:
-    // - penting untuk slot booking dan estimasi waktu
-    // - coba field 'avg_duration' dulu, jika tidak ada coba 'avgDuration'
-    // - jika keduanya tidak ada, default 30 menit
     final avgDur = (data['avg_duration'] as num?)?.toDouble() ??
         (data['avgDuration'] as num?)?.toDouble() ??
         30.0;
 
+    // Parse offDays jika ada
+    List<DayOfWeek>? offDays;
+    if (data['offDays'] != null && data['offDays'] is List) {
+      offDays = (data['offDays'] as List)
+          .map((e) => DayOfWeek.values.firstWhere(
+                (d) => d.name == e,
+                orElse: () => DayOfWeek.monday,
+              ))
+          .toList();
+    }
+
     return Barberman(
       id: doc.id,
       name: (data['name'] as String?)?.trim() ?? 'Barberman Tidak Dikenal',
-      // ambil barbershop_id (snake_case) atau barbershopId (camelCase)
       barbershopId: data['barbershop_id'] as String? ?? data['barbershopId'] as String? ?? '',
       imageUrl: data['imageUrl'] as String?,
       avgDuration: avgDur,
       rating: (data['rating'] as num?)?.toDouble() ?? 5.0,
       isActive: data['isActive'] as bool? ?? true,
+      offDays: offDays,
+      annualLeaveDays: data['annualLeaveDays'] as int? ?? 12,
+      onLeave: data['onLeave'] as bool? ?? false,
     );
   }
 

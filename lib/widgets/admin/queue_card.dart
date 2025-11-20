@@ -155,7 +155,7 @@ class _QueueCardState extends State<QueueCard> {
     final confirmed = await _showConfirmDialog(
       'Selesaikan Layanan',
       'Tandai antrean ini sebagai selesai?',
-      Colors.greenAccent,
+  const Color(0xFF4CAF50),
     );
     if (!confirmed) return;
 
@@ -174,7 +174,7 @@ class _QueueCardState extends State<QueueCard> {
     final confirmed = await _showConfirmDialog(
       'Batalkan Antrean',
       'Yakin ingin membatalkan antrean ini?',
-      Colors.redAccent,
+  const Color(0xFFD32F2F),
     );
     if (!confirmed) return;
 
@@ -213,7 +213,7 @@ class _QueueCardState extends State<QueueCard> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: isError ? Colors.redAccent : kBrownAccent,
+  backgroundColor: isError ? const Color(0xFFD32F2F) : kBrownAccent,
       duration: const Duration(seconds: 2),
     ));
   }
@@ -384,12 +384,12 @@ class _QueueCardState extends State<QueueCard> {
                 child: OutlinedButton(
                   onPressed: _processingCancel ? null : _handleCancel,
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.redAccent),
-                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Color(0xFFD32F2F)),
+                    foregroundColor: const Color(0xFFD32F2F),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   child: _processingCancel
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent))
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD32F2F)))
                       : const Text('Batal'),
                 ),
               ),

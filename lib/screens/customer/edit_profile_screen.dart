@@ -99,7 +99,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             name: newName,
             role: widget.currentUser.role,
           );
-          _showSnackbar(result['message'], Colors.green);
+          _showSnackbar(result['message'], const Color(0xFF4CAF50));
           if (mounted) Navigator.pop(context, updatedData);
         }
       } else {
@@ -123,21 +123,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   name: newName,
                   role: widget.currentUser.role,
                 );
-                _showSnackbar(retry['message'], Colors.green);
+                _showSnackbar(retry['message'], const Color(0xFF4CAF50));
                 if (mounted) Navigator.pop(context, updatedData);
               }
             } else {
-              _showSnackbar(retry['message'] ?? 'Re-auth gagal.', Colors.redAccent);
+              _showSnackbar(retry['message'] ?? 'Re-auth gagal.', const Color(0xFFD32F2F));
             }
           } else {
-            _showSnackbar('Password diperlukan untuk meng-update email.', Colors.redAccent);
+            _showSnackbar('Password diperlukan untuk meng-update email.', const Color(0xFFD32F2F));
           }
         } else {
-          _showSnackbar(result['message'] ?? 'Gagal memperbarui profil.', Colors.redAccent);
+          _showSnackbar(result['message'] ?? 'Gagal memperbarui profil.', const Color(0xFFD32F2F));
         }
       }
     } catch (e) {
-      _showSnackbar('Terjadi kesalahan: $e', Colors.redAccent);
+  _showSnackbar('Terjadi kesalahan: $e', const Color(0xFFD32F2F));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -175,16 +175,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _changePassword() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      _showSnackbar('Masukkan email Anda untuk reset password.', Colors.redAccent);
+  _showSnackbar('Masukkan email Anda untuk reset password.', const Color(0xFFD32F2F));
       return;
     }
 
     setState(() => _isLoading = true);
     try {
       final result = await _authService.sendPasswordResetEmail(email: email);
-      _showSnackbar(result['message'], result['success'] ? kBrownAccent : Colors.redAccent);
+  _showSnackbar(result['message'], result['success'] ? kBrownAccent : const Color(0xFFD32F2F));
     } catch (e) {
-      _showSnackbar('Gagal mengirim reset password: $e', Colors.redAccent);
+  _showSnackbar('Gagal mengirim reset password: $e', const Color(0xFFD32F2F));
     } finally {
       setState(() => _isLoading = false);
     }
