@@ -1,17 +1,13 @@
-// lib/screens/customer/tabs/my_bookings_screen.dart (UPDATED FOR QueueStatus enum)
-
+// lib/screens/customer/tabs/my_bookings_screen.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// Import Model yang Dibutuhkan
 import 'package:geges_smartbarber/models/queue.dart';
-import 'package:geges_smartbarber/models/booking_details.dart'; // Asumsi model ini ada
-import 'package:geges_smartbarber/services/queue_service.dart'; // Harus sudah di-update
+import 'package:geges_smartbarber/services/queue_service.dart';
 
-// --- THEME COLORS (Konsisten) ---
 const Color kBrownAccent = Color(0xFFC3A47B);
 const Color kDarkGrey = Color(0xFF1E1E1E);
 const Color kSurface = Colors.black;
@@ -27,9 +23,10 @@ class MyBookingsScreen extends StatefulWidget {
 class _MyBookingsScreenState extends State<MyBookingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
   final QueueService _queueService = QueueService();
   final String? _customerId = FirebaseAuth.instance.currentUser?.uid;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final Map<String, String> _nameCache = {};
 
   @override
   void initState() {
@@ -43,74 +40,111 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     super.dispose();
   }
 
-  /// Mengambil data Queue dan mengubahnya menjadi BookingDetails
-  /// dengan mengambil info dari koleksi lain (barbershops, barbermen, services).
-  Future<BookingDetails> _fetchDetailsForQueue(Queue queue) async {
-    const String defaultImage =
-        'https://cdn-icons-png.flaticon.com/512/706/706830.png';
-    try {
-      String barbershopName = 'Barbershop Dihapus';
-      String barbershopImage = defaultImage;
-      String barbermanName = 'Barberman Dihapus';
-      String serviceName = 'Layanan Dihapus';
-      String status = queue.status.value;
-      DateTime? paymentDeadline;
-      // 1. Fetch Barbershop
-      final bsDoc = await FirebaseFirestore.instance
-          .collection('barbershops')
-          .doc(queue.barbershopId)
-          .get();
-      if (bsDoc.exists) {
-        barbershopName = bsDoc.data()?['name'] ?? barbershopName;
-        barbershopImage = bsDoc.data()?['imageUrl'] ?? defaultImage;
-      }
-      // 2. Fetch Barberman
-      final bmDoc = await FirebaseFirestore.instance
-          .collection('barbermen')
-          .doc(queue.barbermanId)
-          .get();
-      if (bmDoc.exists) {
-        barbermanName = bmDoc.data()?['name'] ?? barbermanName;
-      }
-      // 3. Fetch Service
-      final serviceId = queue.firstServiceId;
-      if (serviceId != null) {
-        final svDoc = await FirebaseFirestore.instance
-            .collection('services')
-            .doc(serviceId)
-            .get();
-        if (svDoc.exists) {
-          serviceName = svDoc.data()?['name'] ?? serviceName;
-          if (queue.serviceIds != null && queue.serviceIds!.length > 1) {
-            serviceName += ' (+${queue.serviceIds!.length - 1} lainnya)';
-          }
-        }
-      }
-      // 4. Payment deadline (if available)
-      if (queue.paymentDeadline != null) {
-        paymentDeadline = queue.paymentDeadline!.toDate();
-      }
-      return BookingDetails(
-        queue: queue,
-        barbershopName: barbershopName,
-        barbermanName: barbermanName,
-        serviceName: serviceName,
-        barbershopImage: barbershopImage,
-        status: status,
-        paymentDeadline: paymentDeadline,
-      );
-    } catch (e) {
-      debugPrint("Error fetching details for queue ${queue.id}: $e");
-      return BookingDetails(
-        queue: queue,
-        barbershopName: 'Gagal Memuat',
-        barbermanName: 'Error',
-        serviceName: 'Error',
-        barbershopImage: defaultImage,
-        status: 'error',
-        paymentDeadline: null,
-      );
+  Future<String> _getBarbershopName(String barbershopId) async {
+    if (_nameCache.containsKey('bs_$barbershopId')) {
+      return _nameCache['bs_$barbershopId']!;
     }
+    try {
+      final doc = await _firestore.collection('barbershops').doc(barbershopId).get();
+      final name = doc.data()?['name'] ?? 'Barbershop Dihapus';
+      _nameCache['bs_$barbershopId'] = name;
+      return name;
+    } catch (_) {
+      return 'Barbershop Dihapus';
+    }
+  }
+
+  Future<String> _getBarbermanName(String barbermanId) async {
+    if (_nameCache.containsKey('bm_$barbermanId')) {
+      return _nameCache['bm_$barbermanId']!;
+    }
+    try {
+      final doc = await _firestore.collection('barbermen').doc(barbermanId).get();
+      final name = doc.data()?['name'] ?? 'Barberman Dihapus';
+      _nameCache['bm_$barbermanId'] = name;
+      return name;
+    } catch (_) {
+      return 'Barberman Dihapus';
+    }
+  }
+
+  Future<String> _getServiceNames(List<String> serviceIds) async {
+    if (serviceIds.isEmpty) return 'Layanan Tidak Tersedia';
+    try {
+      final docs = await Future.wait(
+        serviceIds.map((id) => _firestore.collection('services').doc(id).get()),
+      );
+      final names = docs
+          .where((doc) => doc.exists)
+          .map((doc) => doc.data()?['name'] as String? ?? 'Layanan')
+          .toList();
+      if (names.isEmpty) return 'Layanan Tidak Tersedia';
+      if (names.length == 1) return names[0];
+      return '${names[0]} (+${names.length - 1})';
+    } catch (_) {
+      return 'Layanan Tidak Tersedia';
+    }
+  }
+
+  Future<String> _getBarbershopImage(String barbershopId) async {
+    const String defaultImage = 'https://cdn-icons-png.flaticon.com/512/706/706830.png';
+    if (_nameCache.containsKey('img_$barbershopId')) {
+      return _nameCache['img_$barbershopId']!;
+    }
+    try {
+      final doc = await _firestore.collection('barbershops').doc(barbershopId).get();
+      final image = doc.data()?['imageUrl'] ?? defaultImage;
+      _nameCache['img_$barbershopId'] = image;
+      return image;
+    } catch (_) {
+      return defaultImage;
+    }
+  }
+
+  String _formatStatus(QueueStatus status) {
+    switch (status) {
+      case QueueStatus.waiting:
+        return 'Menunggu Konfirmasi';
+      case QueueStatus.booked:
+        return 'Booked';
+      case QueueStatus.ongoing:
+        return 'Sedang Berlangsung';
+      case QueueStatus.served:
+        return 'Selesai';
+      case QueueStatus.cancelled:
+        return 'Dibatalkan';
+    }
+  }
+
+  Color _getStatusColor(QueueStatus status) {
+    switch (status) {
+      case QueueStatus.waiting:
+        return Colors.orange;
+      case QueueStatus.booked:
+        return kBrownAccent;
+      case QueueStatus.ongoing:
+        return Colors.blue;
+      case QueueStatus.served:
+        return Colors.green;
+      case QueueStatus.cancelled:
+        return Colors.red;
+    }
+  }
+
+  Future<Map<String, dynamic>> _fetchQueueDetails(Queue queue) async {
+    final results = await Future.wait([
+      _getBarbershopName(queue.barbershopId),
+      _getBarbermanName(queue.barbermanId),
+      _getServiceNames(queue.serviceIds ?? []),
+      _getBarbershopImage(queue.barbershopId),
+    ]);
+
+    return {
+      'barbershopName': results[0],
+      'barbermanName': results[1],
+      'serviceName': results[2],
+      'image': results[3],
+    };
   }
 
   @override
@@ -121,10 +155,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         backgroundColor: kSurface,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'My Bookings',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
-        ),
+        title: const Text('My Bookings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: kBrownAccent,
@@ -140,8 +171,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildBookingList(isCompleted: false), // Active
-          _buildBookingList(isCompleted: true), // History
+          _buildBookingList(isCompleted: false),
+          _buildBookingList(isCompleted: true),
         ],
       ),
     );
@@ -149,18 +180,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
 
   Widget _buildBookingList({required bool isCompleted}) {
     if (_customerId == null) {
-      return const Center(
-        child: Text(
-          'Anda harus login untuk melihat booking.',
-          style: TextStyle(color: kTextGrey, fontSize: 16),
-        ),
-      );
+      return const Center(child: Text('Anda harus login', style: TextStyle(color: kTextGrey)));
     }
 
-    // --- LOGIC FILTER PINDAH KE BACKEND (menggunakan statusFilter) ---
     final List<String> requiredStatus = isCompleted
-        ? ['served', 'cancelled'] // History
-        : ['waiting', 'booked', 'ongoing']; // Active (waiting + confirmed booked + ongoing)
+        ? ['served', 'cancelled', 'refund_pending']
+        : ['waiting', 'booked', 'ongoing', 'cancellation_requested'];
 
     final Stream<List<Queue>> queueStream =
         _queueService.streamQueuesForCustomer(_customerId, statusFilter: requiredStatus);
@@ -173,47 +198,30 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         }
         if (snapshot.hasError) {
           return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Text(
-                // Pesan error diubah untuk mengingatkan indeks yang dibutuhkan
-                'Gagal memuat data. Error: ${snapshot.error}. PASTIKAN INDEKS KOMPOSIT (customer_id, status, booking_time) SUDAH DIBUAT.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 14),
-              ),
-            ),
+            child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
           );
         }
 
         final filteredList = snapshot.data ?? [];
-
         if (filteredList.isEmpty) {
           return _buildEmptyState(isCompleted);
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           itemCount: filteredList.length,
-          itemBuilder: (context, index) {
-            final queue = filteredList[index];
-            return _buildBookingCard(context, queue);
-          },
+          itemBuilder: (context, index) => _buildBookingCard(context, filteredList[index]),
         );
       },
     );
   }
 
-  // Helper untuk state kosong
   Widget _buildEmptyState(bool isCompleted) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            isCompleted ? Icons.history : Icons.calendar_month,
-            color: kTextGrey,
-            size: 60,
-          ),
+          Icon(isCompleted ? Icons.history : Icons.calendar_month, color: kTextGrey, size: 60),
           const SizedBox(height: 16),
           Text(
             isCompleted ? 'Tidak ada riwayat booking.' : 'Anda tidak memiliki booking aktif.',
@@ -224,278 +232,322 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     );
   }
 
-  // --- WIDGET CARD ---
   Widget _buildBookingCard(BuildContext context, Queue queue) {
-    return FutureBuilder<BookingDetails>(
-      future: _fetchDetailsForQueue(queue),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _fetchQueueDetails(queue),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildLoadingCard();
+          return Container(
+            height: 200,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(12)),
+            child: const Center(child: CircularProgressIndicator(color: kBrownAccent)),
+          );
         }
 
         if (snapshot.hasError || !snapshot.hasData) {
-          // Log error secara detail di console
-          debugPrint('Error loading detail for queue ${queue.id}: ${snapshot.error}');
-          return _buildErrorCard(queue.id, snapshot.error);
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: kDarkGrey,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.red),
+            ),
+            child: Text('Error loading: ${queue.id}', style: const TextStyle(color: Colors.red)),
+          );
         }
 
         final details = snapshot.data!;
-        final QueueStatus status = details.queue.status;
+        final statusColor = _getStatusColor(queue.status);
 
-        final displayStatus = () {
-          switch (status) {
-            case QueueStatus.waiting:
-              return 'Menunggu Konfirmasi';
-            case QueueStatus.booked:
-              return 'Menunggu Pembayaran';
-            case QueueStatus.ongoing:
-              return 'Sedang Dilayani';
-            case QueueStatus.served:
-              return 'Selesai';
-            case QueueStatus.cancelled:
-              return 'Dibatalkan';
-          }
-        }();
-
-        final isServed = status == QueueStatus.served;
-        final isPendingOrWaiting = status == QueueStatus.waiting || status == QueueStatus.booked;
-
-        Color getStatusColor() {
-          switch (status) {
-            case QueueStatus.waiting:
-              return Colors.grey.shade600;
-            case QueueStatus.booked:
-              return Colors.orangeAccent;
-            case QueueStatus.ongoing:
-              return const Color(0xFF448AFF);
-            case QueueStatus.served:
-              return const Color(0xFF4CAF50);
-            case QueueStatus.cancelled:
-              return const Color(0xFFD32F2F);
-          }
-        }
-
-        String formatTimestamp(Timestamp t) {
-          return DateFormat('EEE, d MMM yyyy, HH:mm').format(t.toDate());
-        }
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16.0),
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: kDarkGrey,
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: getStatusColor().withValues(alpha: 0.5), width: 1),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: Barbershop & Status
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: CachedNetworkImage(
-                            imageUrl: details.barbershopImage,
-                            height: 35,
-                            width: 35,
-                            fit: BoxFit.cover,
-                            errorWidget: (context, url, error) => const Icon(Icons.store, size: 35, color: kTextGrey),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Flexible(
-                          child: Text(
-                            details.barbershopName,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: getStatusColor(),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      displayStatus,
-                      style: const TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              const Divider(color: Colors.white12, height: 25),
-
-              // Detail Booking
-              _buildDetailRow('Layanan', details.serviceName),
-              _buildDetailRow('Barberman', details.barbermanName),
-              _buildDetailRow('Waktu Booking', formatTimestamp(details.queue.bookingTime)),
-
-              if (details.queue.totalPrice != null)
-                _buildDetailRow(
-                  'Total Biaya',
-                  NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0)
-                      .format(details.queue.totalPrice),
-                  isAccent: true,
-                ),
-
-              // Status dan Deadline Pembayaran (jika ada)
-              if (details.paymentDeadline != null)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        return GestureDetector(
+          onTap: () => _showBookingDetail(context, queue, details),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: kDarkGrey,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image header
+                Stack(
                   children: [
-                    _buildDetailRow(
-                      'Deadline Pembayaran',
-                      DateFormat('EEE, d MMM yyyy, HH:mm').format(details.paymentDeadline!),
-                      isAccent: true,
+                    Container(
+                      height: 160,
+                      width: double.infinity,
+                      color: Colors.grey[900],
+                      child: CachedNetworkImage(
+                        imageUrl: details['image'] ?? '',
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) =>
+                            const Icon(Icons.storefront, color: kTextGrey, size: 60),
+                      ),
                     ),
-                    if (details.paymentDeadline!.difference(DateTime.now()).inMinutes < 30 && status == QueueStatus.booked)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4.0),
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(20)),
                         child: Text(
-                          '⚠️ Segera lakukan pembayaran sebelum waktu habis!',
-                          style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                          _formatStatus(queue.status),
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ),
+                    ),
                   ],
                 ),
-
-              // Tombol Aksi
-              if (isPendingOrWaiting)
+                // Content
                 Padding(
-                  padding: const EdgeInsets.only(top: 15.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      OutlinedButton(
-                        onPressed: () {
-                          // TODO: Implement Cancel Logic using QueueService.updateQueueStatus / cancelQueue
-                          _showSnackbar(context, 'Membatalkan order...', Colors.redAccent);
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFD32F2F),
-                          side: const BorderSide(color: Color(0xFFD32F2F)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: const Text('Cancel'),
+                      Text(
+                        details['barbershopName'] ?? 'Loading',
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: () {
-                          // TODO: Navigate to Detail Screen (for confirmation/payment proof)
-                          _showSnackbar(context, 'Melihat detail order...', kBrownAccent);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: kBrownAccent,
-                          foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      const SizedBox(height: 8),
+                      _buildDetailRow('Layanan', details['serviceName'] ?? 'Loading'),
+                      const SizedBox(height: 6),
+                      _buildDetailRow('Barberman', details['barbermanName'] ?? 'Loading'),
+                      const SizedBox(height: 6),
+                      _buildDetailRow('Waktu', _formatTimestamp(queue.bookingTime)),
+                      if (queue.totalPrice != null) ...[
+                        const SizedBox(height: 6),
+                        _buildDetailRow(
+                          'Total',
+                          NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(queue.totalPrice),
                         ),
-                        child: const Text('View Details'),
-                      ),
+                      ],
                     ],
                   ),
-                )
-              else if (isServed)
-                Padding(
-                  padding: const EdgeInsets.only(top: 15.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      OutlinedButton(
-                        onPressed: () {
-                          // TODO: Implement Give Rating Logic
-                          _showSnackbar(context, 'Membuka form rating...', Colors.yellow);
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.amber,
-                          side: const BorderSide(color: Colors.amber),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: const Text('Give Rating'),
-                      ),
-                    ],
-                  ),
-                )
-            ],
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  // --- Helper Widgets (Disederhanakan) ---
+  Widget _buildDetailRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: kTextGrey, fontSize: 12)),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            textAlign: TextAlign.right,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
 
-  Widget _buildLoadingCard() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16.0),
-      padding: const EdgeInsets.all(16.0),
-      height: 220,
-      decoration: BoxDecoration(
-        color: kDarkGrey,
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: const Center(
-        child: CircularProgressIndicator(color: kBrownAccent),
+  void _showBookingDetail(BuildContext context, Queue queue, Map<String, dynamic> details) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: kDarkGrey,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Booking Details', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  GestureDetector(onTap: () => Navigator.pop(context), child: const Icon(Icons.close, color: Colors.white)),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _buildModalRow('Status', _formatStatus(queue.status), _getStatusColor(queue.status)),
+              _buildModalRow('Barbershop', details['barbershopName'] ?? '-'),
+              _buildModalRow('Barberman', details['barbermanName'] ?? '-'),
+              _buildModalRow('Layanan', details['serviceName'] ?? '-'),
+              _buildModalRow('Waktu Booking', _formatTimestamp(queue.bookingTime)),
+              if (queue.estimatedDuration != null)
+                _buildModalRow('Durasi', '${queue.estimatedDuration} menit'),
+              if (queue.totalPrice != null)
+                _buildModalRow(
+                  'Total',
+                  NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(queue.totalPrice),
+                ),
+              const SizedBox(height: 20),
+              if (queue.status == QueueStatus.booked)
+                ElevatedButton(
+                  onPressed: () => _showCancellationDialog(queue),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(double.infinity, 48)),
+                  child: const Text('Batalkan'),
+                ),
+              if (queue.status == QueueStatus.served)
+                ElevatedButton(
+                  onPressed: () => _showRatingDialog(queue),
+                  style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, minimumSize: const Size(double.infinity, 48)),
+                  child: const Text('Kasih Rating'),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildErrorCard(String queueId, Object? error) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16.0),
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: kDarkGrey,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Color.fromRGBO(255, 0, 0, 0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildModalRow(String label, String value, [Color? valueColor]) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('Gagal memuat detail: $queueId', style: const TextStyle(color: Color(0xFFD32F2F), fontWeight: FontWeight.bold)),
-          const SizedBox(height: 5),
-          Text('Error: ${error?.toString().split(':').last.trim() ?? "Unknown error"}', style: const TextStyle(color: Color(0xFFD32F2F), fontSize: 12)),
+          Text(label, style: const TextStyle(color: kTextGrey, fontSize: 14)),
+          Text(value, style: TextStyle(color: valueColor ?? Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {bool isAccent = false}) {
-    // Sama seperti sebelumnya...
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: kTextGrey, fontSize: 14)),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                color: isAccent ? kBrownAccent : Colors.white,
-                fontSize: 14,
-                fontWeight: isAccent ? FontWeight.bold : FontWeight.normal,
+  void _showCancellationDialog(Queue queue) {
+    final reasonController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: kDarkGrey,
+        title: const Text('Batalkan Pesanan', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Pembatalan akan memotong 10% dari total harga.', style: TextStyle(color: kTextGrey, fontSize: 13)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              style: const TextStyle(color: Colors.white),
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Alasan pembatalan...',
+                hintStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: Colors.black26,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
               ),
             ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal', style: TextStyle(color: kTextGrey))),
+          TextButton(
+            onPressed: () async {
+              final reason = reasonController.text.trim();
+              if (reason.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alasan wajib diisi')));
+                return;
+              }
+              try {
+                await _queueService.customerRequestCancellation(queue.id, reason: reason, customerId: _customerId);
+                if (mounted) {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Pembatalan berhasil diminta'), backgroundColor: Colors.green),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            },
+            child: const Text('Batalkan', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
   }
 
-  void _showSnackbar(BuildContext context, String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color, duration: const Duration(seconds: 1)),
+  void _showRatingDialog(Queue queue) {
+    double rating = 5;
+    final commentController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: kDarkGrey,
+        title: const Text('Kasih Rating', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            StatefulBuilder(
+              builder: (context, setState) => Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      5,
+                      (index) => GestureDetector(
+                        onTap: () => setState(() => rating = (index + 1).toDouble()),
+                        child: Icon(Icons.star, color: index < rating ? Colors.amber : Colors.grey, size: 32),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: commentController,
+                    style: const TextStyle(color: Colors.white),
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: 'Komentar (opsional)',
+                      hintStyle: const TextStyle(color: Colors.white54),
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal', style: TextStyle(color: kTextGrey))),
+          TextButton(
+            onPressed: () async {
+              try {
+                await _queueService.submitRating(
+                  queue.id,
+                  rating: rating,
+                  barbershopId: queue.barbershopId,
+                  comment: commentController.text.isNotEmpty ? commentController.text.trim() : null,
+                  customerId: _customerId,
+                );
+                if (mounted) {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Rating terkirim'), backgroundColor: Colors.green),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            },
+            child: const Text('Kirim', style: TextStyle(color: kBrownAccent)),
+          ),
+        ],
+      ),
     );
+  }
+
+  String _formatTimestamp(Timestamp ts) {
+    return DateFormat('EEE, d MMM HH:mm').format(ts.toDate());
   }
 }

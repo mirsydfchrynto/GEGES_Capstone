@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -----------------------------
+    // Helper functions
+    // -----------------------------
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isCustomer(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isBarberman(barbermanId) {
+      return request.auth != null && request.auth.uid == barbermanId;
+    }
+
+    function hasValidBookingData() {
+      return request.resource.data.barbershop_id is string &&
+             request.resource.data.customer_id is string &&
+             request.resource.data.barberman_id is string &&
+             request.resource.data.booking_time is timestamp &&
+             request.resource.data.service_ids is list &&
+             request.resource.data.service_ids.size() > 0 &&
+             (request.resource.data.total_price is number || request.resource.data.total_price == null) ;
+    }
+
+    // -----------------------------
+    // Public catalog collections
+    // -----------------------------
+    match /barbershops/{barbershopId} {
+      allow read: if true; // public listing
+      allow write: if isAdmin();
+    }
+
+    match /barbermen/{barbermanId} {
+      allow read: if true; // public listing
+      allow write: if isAdmin();
+    }
+
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /promo_banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // reservations: short-lived client-side holds
+    match /reservations/{resId} {
+      allow create: if isAuthenticated() && request.resource.data.reserved_by == request.auth.uid
+                    && request.resource.data.barbershop_id is string
+                    && request.resource.data.barberman_id is string
+                    && request.resource.data.booking_time is timestamp;
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.reserved_by == request.auth.uid);
+      allow delete: if isAdmin() || resource.data.reserved_by == request.auth.uid;
+      allow update: if false;
+    }
+
+    // -----------------------------
+    // Queues / Bookings
+    // -----------------------------
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // WARNING: permissive rules below grant full public read/write access.
+    // Use only if you accept the security and data exposure tradeoffs.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+      allow delete: if isAdmin();
+    }
+
+    // Catch-all deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

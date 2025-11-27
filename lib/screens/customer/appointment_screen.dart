@@ -195,6 +195,22 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
             SnackBar(content: Text('Pilih waktu antara $open:00 - $close:00')));
         return;
       }
+      // Cegah memilih waktu yang sudah lewat pada hari ini
+      final now = DateTime.now();
+      final isToday = _selectedDate.year == now.year &&
+          _selectedDate.month == now.month &&
+          _selectedDate.day == now.day;
+      if (isToday) {
+        final pickedDateTime = DateTime(_selectedDate.year, _selectedDate.month,
+            _selectedDate.day, picked.hour, picked.minute);
+        if (pickedDateTime.isBefore(now)) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text('Tidak bisa memilih waktu yang sudah lewat')));
+          return;
+        }
+      }
       setState(() => _selectedTime = picked);
       _updateEstimatedFinishTime();
     }
@@ -231,6 +247,17 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     final bookingDate = DateTime(_selectedDate.year, _selectedDate.month,
         _selectedDate.day, _selectedTime.hour, _selectedTime.minute);
     final customerId = _auth.currentUser!.uid;
+
+    // Validasi akhir: booking time tidak boleh masa lalu
+    if (bookingDate.isBefore(DateTime.now())) {
+      if (mounted) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text('Waktu booking sudah lewat, pilih waktu lain'),
+            backgroundColor: Colors.orangeAccent));
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
 
     final String newOrderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
 
