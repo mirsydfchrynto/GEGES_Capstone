@@ -15,6 +15,7 @@ import 'package:geges_smartbarber/screens/admin/live_queue_screen.dart';
 import 'package:geges_smartbarber/screens/admin/add_manual_booking_screen.dart'; // <-- import added
 import 'package:geges_smartbarber/screens/admin/payment_verification_screen.dart';
 import 'package:geges_smartbarber/screens/admin/send_notification_screen.dart';
+import 'package:geges_smartbarber/screens/admin/admin_migration_screen.dart';
 
 // --- THEME COLORS ---
 const Color kBrownAccent = Color(0xFFC3A47B);
@@ -382,6 +383,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _buildMenuCard(Icons.star_half, 'Lihat Ulasan', 'Customer Feedback', () => _showSnackBar('Navigasi ke Kelola Ulasan')),
         _buildMenuCard(Icons.notifications_active, 'Kirim Notifikasi', 'Via Firestore', () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const SendNotificationScreen()));
+        }),
+        _buildMenuCard(Icons.build, 'Migration & QA Tools', 'Duplikasi Fix', () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminMigrationScreen()));
         }),
       ],
     );
