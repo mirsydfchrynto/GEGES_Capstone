@@ -806,6 +806,31 @@ class QueueService {
     }
   }
 
+  /// Get queue by ID with customer ownership validation
+  /// Returns null if queue doesn't exist or doesn't belong to customer
+  Future<Queue?> getQueueByIdForCustomer(String queueId, String customerId) async {
+    try {
+      final snap = await _firestore.collection('queues').doc(queueId).get();
+      if (!snap.exists) {
+        debugPrint('Queue $queueId not found');
+        return null;
+      }
+      
+      final queue = Queue.fromFirestore(snap);
+      
+      // Validate ownership
+      if (queue.customerId != customerId) {
+        debugPrint('Unauthorized: Queue $queueId does not belong to customer $customerId');
+        return null;
+      }
+      
+      return queue;
+    } catch (e) {
+      debugPrint('Error getQueueByIdForCustomer($queueId): $e');
+      return null;
+    }
+  }
+
   /// Get all booking history for barbershop
   Future<List<Queue>> getBarbershopBookingHistory(
     String barbershopId, {

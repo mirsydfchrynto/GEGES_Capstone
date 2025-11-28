@@ -28,6 +28,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   final String? _customerId = FirebaseAuth.instance.currentUser?.uid;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Map<String, String> _nameCache = {};
+  final GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
 
   @override
   void initState() {
@@ -40,6 +41,21 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       _queueService.cancelExpiredWaitingQueuesForCustomer(_customerId).then((c) => debugPrint('cancelled waiting: $c')).catchError((e) => debugPrint('cancelWaiting err: $e'));
       _queueService.cancelExpiredAwaitingPaymentQueuesForCustomer(_customerId).then((c) => debugPrint('cancelled awaiting: $c')).catchError((e) => debugPrint('cancelAwaiting err: $e'));
     }
+  }
+
+  Future<void> _handleRefresh() async {
+    // Manual refresh: trigger expiry checks and rebuild stream
+    if (_customerId != null) {
+      try {
+        await Future.wait([
+          _queueService.cancelExpiredWaitingQueuesForCustomer(_customerId),
+          _queueService.cancelExpiredAwaitingPaymentQueuesForCustomer(_customerId),
+        ]);
+      } catch (e) {
+        debugPrint('Refresh error: $e');
+      }
+    }
+    // StreamBuilder will rebuild automatically
   }
 
   @override
@@ -109,8 +125,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     }
   }
 
-  String _formatStatus(QueueStatus status) {
-    switch (status) {
+  String _formatStatusForQueue(Queue queue) {
+    // If admin has approved request and payment deadline exists => awaiting payment
+    if ((queue.requestStatus == RequestStatus.approved) && queue.paymentDeadline != null) {
+      return 'Menunggu Pembayaran';
+    }
+
+    switch (queue.status) {
       case QueueStatus.waiting:
         return 'Menunggu Konfirmasi';
       case QueueStatus.booked:
@@ -176,12 +197,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildBookingList(isCompleted: false),
-          _buildBookingList(isCompleted: true),
-        ],
+      body: RefreshIndicator(
+        key: _refreshKey,
+        onRefresh: _handleRefresh,
+        color: kBrownAccent,
+        backgroundColor: kDarkGrey,
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildBookingList(isCompleted: false),
+            _buildBookingList(isCompleted: true),
+          ],
+        ),
       ),
     );
   }
@@ -219,23 +246,28 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           padding: const EdgeInsets.all(16),
           itemCount: filteredList.length,
           itemBuilder: (context, index) => _buildBookingCard(context, filteredList[index]),
+          physics: const AlwaysScrollableScrollPhysics(),
         );
       },
     );
   }
 
   Widget _buildEmptyState(bool isCompleted) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(isCompleted ? Icons.history : Icons.calendar_month, color: kTextGrey, size: 60),
-          const SizedBox(height: 16),
-          Text(
-            isCompleted ? 'Tidak ada riwayat booking.' : 'Anda tidak memiliki booking aktif.',
-            style: const TextStyle(color: kTextGrey, fontSize: 16),
-          ),
-        ],
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 100),
+            Icon(isCompleted ? Icons.history : Icons.calendar_month, color: kTextGrey, size: 60),
+            const SizedBox(height: 16),
+            Text(
+              isCompleted ? 'Tidak ada riwayat booking.' : 'Anda tidak memiliki booking aktif.',
+              style: const TextStyle(color: kTextGrey, fontSize: 16),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -278,7 +310,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white12),
             ),
-            child: Column(
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Image header
@@ -302,7 +334,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(20)),
                         child: Text(
-                          _formatStatus(queue.status),
+                          _formatStatusForQueue(queue),
                           style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ),

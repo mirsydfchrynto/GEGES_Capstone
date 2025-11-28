@@ -1,16 +1,12 @@
 // lib/screens/customer/booking_detail_screen.dart (enhanced with countdown timer)
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'payment_screen.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
@@ -28,10 +24,9 @@ class BookingDetailScreen extends StatefulWidget {
 
 class _BookingDetailScreenState extends State<BookingDetailScreen> {
   final QueueService _queueService = QueueService();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // BookingDetailScreen uses QueueService to load the queue; no direct firestore instance needed here.
   Queue? _queue;
   bool _loading = true;
-  bool _uploading = false;
   Timer? _countdownTimer;
   Duration _remainingTime = Duration.zero;
 
@@ -120,42 +115,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     return Colors.green;
   }
 
-  Future<void> _pickAndUploadProof() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda harus login')));
-      }
-      return;
-    }
-
-    final picker = ImagePicker();
-    final XFile? file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1200, maxHeight: 1200, imageQuality: 70);
-    if (file == null) return;
-
-    setState(() => _uploading = true);
-    try {
-      final bytes = await File(file.path).readAsBytes();
-      final base64Str = base64Encode(bytes);
-
-      await _firestore.collection('queues').doc(widget.queueId).update({
-        'payment_proof_base64': base64Str,
-        'payment_submitted_at': FieldValue.serverTimestamp(),
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bukti pembayaran berhasil diunggah'), backgroundColor: Colors.green));
-      }
-      await _load();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mengunggah: $e')));
-      }
-    } finally {
-      setState(() => _uploading = false);
-    }
-  }
+  // Upload of payment proof is handled exclusively in `PaymentScreen`.
+  // BookingDetailScreen will only navigate to PaymentScreen when customer needs to pay.
 
   @override
   Widget build(BuildContext context) {
@@ -195,14 +156,36 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                               const SizedBox(height: 4),
                               const Text('✓ Bukti pembayaran terunggah', style: TextStyle(color: Colors.green)),
                             ],
+                            // Show cancellation details
+                            if (_queue!.status == QueueStatus.cancelled) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.15),
+                                  border: Border.all(color: Colors.red, width: 1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('❌ Booking Dibatalkan', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14)),
+                                    if (_queue!.rejectionReason != null && _queue!.rejectionReason!.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Text('Alasan: ${_queue!.rejectionReason}', style: const TextStyle(color: kTextGrey, fontSize: 12)),
+                                    ],
+                                    if (_queue!.refundReason != null && _queue!.refundReason!.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Text('Refund: ${_queue!.refundReason}', style: const TextStyle(color: Colors.orange, fontSize: 12)),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
                             // Show refund information when cancelled & refunded
-                            if (_queue!.status.name == 'cancelled' && _queue!.isRefunded == true) ...[
-                              const SizedBox(height: 4),
+                            if (_queue!.status == QueueStatus.cancelled && _queue!.isRefunded == true) ...[
+                              const SizedBox(height: 8),
                               const Text('💰 Refund Diproses', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600)),
-                              if (_queue!.refundReason != null) ...[
-                                const SizedBox(height: 4),
-                                Text('Alasan: ${_queue!.refundReason}', style: const TextStyle(color: kTextGrey, fontSize: 12)),
-                              ],
                               if (_queue!.refundedAt != null) ...[
                                 const SizedBox(height: 4),
                                 Text('Tanggal refund: ${_formatTimestamp(_queue!.refundedAt!)}', style: const TextStyle(color: kTextGrey, fontSize: 12)),
@@ -240,59 +223,70 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                         ),
                       const SizedBox(height: 16),
 
-                      // Upload Button - Only show during awaiting_payment phase
-                      if (_isAwaitingPayment)
-                        ElevatedButton(
-                          onPressed: _uploading ? null : _pickAndUploadProof,
-                          style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, minimumSize: const Size.fromHeight(48)),
-                          child: _uploading
-                              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text('Unggah Bukti Pembayaran'),
-                        ),
-                      const SizedBox(height: 8),
-
-                      // Pay Button - Direct navigation to payment screen
-                      if (_isAwaitingPayment)
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (c) => PaymentScreen(
-                                  orderId: _queue!.id,
-                                  totalPrice: _queue!.totalPrice ?? 0,
-                                  barbershopId: _queue!.barbershopId,
-                                  barbermanId: _queue!.barbermanId,
-                                  bookingTime: _queue!.bookingTime.toDate(),
-                                  serviceIds: _queue!.serviceIds,
+                            // Pay Button - Direct navigation to payment screen
+                            if (_isAwaitingPayment)
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (c) => PaymentScreen(
+                                        orderId: _queue!.id,
+                                        totalPrice: _queue!.totalPrice ?? 0,
+                                        barbershopId: _queue!.barbershopId,
+                                        barbermanId: _queue!.barbermanId,
+                                        bookingTime: _queue!.bookingTime.toDate(),
+                                        serviceIds: _queue!.serviceIds,
+                                        paymentDeadline: _queue!.paymentDeadline?.toDate(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  minimumSize: const Size.fromHeight(48),
                                 ),
+                                child: const Text('Bayar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                               ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            minimumSize: const Size.fromHeight(48),
-                          ),
-                          child: const Text('Bayar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                      const SizedBox(height: 8),
+                            const SizedBox(height: 8),
 
-                      // View Proof Button - Only show during awaiting_payment with proof uploaded
-                      if (_isAwaitingPayment && _queue!.paymentProofBase64 != null)
-                        ElevatedButton(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (c) => AlertDialog(
-                                backgroundColor: kDarkGrey,
-                                content: SingleChildScrollView(child: Image.memory(base64Decode(_queue!.paymentProofBase64!))),
-                                actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('Tutup'))],
+                            // View Proof Button - opens PaymentScreen where proof (if any) is shown
+                            if (_isAwaitingPayment && _queue!.paymentProofBase64 != null)
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (c) => PaymentScreen(
+                                        orderId: _queue!.id,
+                                        totalPrice: _queue!.totalPrice ?? 0,
+                                        barbershopId: _queue!.barbershopId,
+                                        barbermanId: _queue!.barbermanId,
+                                        bookingTime: _queue!.bookingTime.toDate(),
+                                        serviceIds: _queue!.serviceIds,
+                                        paymentDeadline: _queue!.paymentDeadline?.toDate(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[800], minimumSize: const Size.fromHeight(44)),
+                                child: const Text('Lihat Bukti Pembayaran'),
                               ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[800], minimumSize: const Size.fromHeight(44)),
-                          child: const Text('Lihat Bukti Pembayaran'),
-                        ),
+                            
+                            // Action button for cancelled/rejected bookings
+                            if (_queue!.status == QueueStatus.cancelled)
+                              ElevatedButton(
+                                onPressed: () {
+                                  // Go back to booking screen to create new booking
+                                  Navigator.of(context).pop();
+                                  Navigator.of(context).pop(); // back to my_bookings or home
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blueAccent,
+                                  minimumSize: const Size.fromHeight(48),
+                                ),
+                                child: const Text('Buat Booking Baru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              ),
                     ],
                   ),
                 ),

@@ -22,6 +22,7 @@ class PaymentScreen extends StatefulWidget {
   final String? barbermanId;
   final DateTime? bookingTime;
   final List<String>? serviceIds;
+  final DateTime? paymentDeadline;
 
   const PaymentScreen({
     super.key,
@@ -31,6 +32,7 @@ class PaymentScreen extends StatefulWidget {
     this.barbermanId,
     this.bookingTime,
     this.serviceIds,
+    this.paymentDeadline,
   });
 
   @override
@@ -67,6 +69,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   void initState() {
     super.initState();
+    _initTimeRemaining();
     _startTimer();
   }
 
@@ -77,6 +80,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   // --- Timer logic ---
+  void _initTimeRemaining() {
+    if (widget.paymentDeadline != null) {
+      final rem = widget.paymentDeadline!.difference(DateTime.now());
+      _timeRemaining = rem.isNegative ? Duration.zero : rem;
+    } else {
+      // fallback to default 10 minutes window
+      _timeRemaining = const Duration(minutes: 9, seconds: 59);
+    }
+  }
+
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_timeRemaining.inSeconds <= 0) {
@@ -207,6 +220,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
 
     try {
+      // Validate ownership using QueueService method
+      final queue = await _queueService.getQueueByIdForCustomer(widget.orderId, user.uid);
+      if (queue == null) {
+        _showSnack('Pesanan tidak ditemukan atau tidak milik Anda', isError: true);
+        setState(() => _isSubmitting = false);
+        return;
+      }
+
+      // Check if payment already submitted
+      if (queue.paymentProofBase64 != null && queue.paymentProofBase64!.isNotEmpty) {
+        _showSnack('Bukti pembayaran sudah pernah diunggah', isError: true);
+        setState(() => _isSubmitting = false);
+        return;
+      }
+
+      // Validate payment deadline
+      if (queue.paymentDeadline != null && DateTime.now().isAfter(queue.paymentDeadline!.toDate())) {
+        _showSnack('Waktu pembayaran sudah habis. Pesanan dibatalkan otomatis.', isError: true);
+        setState(() => _isSubmitting = false);
+        return;
+      }
+
       // compute base64 only once
       _pickedBase64 ??= await _convertImageToBase64(_pickedImage!);
 
