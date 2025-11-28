@@ -13,6 +13,8 @@ import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/screens/admin/live_queue_screen.dart';
 import 'package:geges_smartbarber/screens/admin/add_manual_booking_screen.dart'; // <-- import added
+import 'package:geges_smartbarber/screens/admin/payment_verification_screen.dart';
+import 'package:geges_smartbarber/screens/admin/send_notification_screen.dart';
 
 // --- THEME COLORS ---
 const Color kBrownAccent = Color(0xFFC3A47B);
@@ -335,6 +337,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _buildMenuCard(Icons.playlist_add_check, 'Antrean Live', 'Booked & Ongoing', () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => LiveQueueScreen(barbershopId: _adminBarbershopId!, initialFilter: [QueueStatus.booked.value, QueueStatus.ongoing.value], title: 'Antrean Live')));
         }),
+        _buildMenuCard(Icons.payment, 'Verifikasi Pembayaran', 'Awaiting Payment', () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentVerificationScreen()));
+        }),
         _buildMenuCard(
   Icons.receipt_long,
   'Tambah Booking Manual',
@@ -375,6 +380,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _buildMenuCard(Icons.face_retouching_natural, 'Kelola Barberman', 'Jadwal & Role', () => _showSnackBar('Navigasi ke Kelola Barberman')),
         _buildMenuCard(Icons.photo_library, 'Kelola Galeri Toko', 'Update Photos', () => _showSnackBar('Navigasi ke Kelola Galeri')),
         _buildMenuCard(Icons.star_half, 'Lihat Ulasan', 'Customer Feedback', () => _showSnackBar('Navigasi ke Kelola Ulasan')),
+        _buildMenuCard(Icons.notifications_active, 'Kirim Notifikasi', 'Via Firestore', () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const SendNotificationScreen()));
+        }),
       ],
     );
   }

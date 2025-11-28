@@ -12,7 +12,7 @@ class BookingDetails {
   final int? estimatedDuration; // in minutes
   final Timestamp bookingTime;
   final String status; // waiting | booked | ongoing | served | cancelled
-  final Timestamp? paymentDueAt; // when payment must be completed
+  final Timestamp? paymentDueAt; // when payment must be completed (alias for payment_deadline)
   final Timestamp? paymentSubmittedAt;
   final String? paymentProofBase64;
   final String? paymentMethod;
@@ -57,7 +57,7 @@ class BookingDetails {
       estimatedDuration: (data['estimated_duration'] as num?)?.toInt(),
       bookingTime: data['booking_time'] is Timestamp ? data['booking_time'] as Timestamp : Timestamp.now(),
       status: data['status'] as String? ?? 'waiting',
-      paymentDueAt: data['payment_due_at'] as Timestamp?,
+      paymentDueAt: (data['payment_deadline'] as Timestamp?) ?? (data['payment_due_at'] as Timestamp?),
       paymentSubmittedAt: data['payment_submitted_at'] as Timestamp?,
       paymentProofBase64: data['payment_proof_base64'] as String?,
       paymentMethod: data['payment_method'] as String?,
@@ -80,7 +80,7 @@ class BookingDetails {
       'estimated_duration': estimatedDuration,
       'booking_time': bookingTime,
       'status': status,
-      'payment_due_at': paymentDueAt,
+      'payment_deadline': paymentDueAt,
       'payment_submitted_at': paymentSubmittedAt,
       'payment_proof_base64': paymentProofBase64,
       'payment_method': paymentMethod,

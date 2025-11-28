@@ -144,7 +144,7 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.orange.withOpacity(0.2), borderRadius: BorderRadius.circular(6)),
+                  decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Text('Refund Details', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
@@ -163,9 +163,41 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
             ),
             const SizedBox(height: 16),
             Row(children: [
-              Expanded(child: ElevatedButton(onPressed: () async { try { await _queueService.adminRejectCancellation(q.id); if (c.mounted) { Navigator.pop(c); ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content: Text('Cancelled request rejected'), backgroundColor: Colors.red)); } } catch (e) { ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text('Error: $e'))); } }, style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size.fromHeight(44)), child: const Text('Reject'))),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final navigator = Navigator.of(c);
+                    final messenger = ScaffoldMessenger.of(c);
+                    try {
+                      await _queueService.adminRejectCancellation(q.id);
+                      navigator.pop();
+                      messenger.showSnackBar(const SnackBar(content: Text('Cancelled request rejected'), backgroundColor: Colors.red));
+                    } catch (e) {
+                      messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size.fromHeight(44)),
+                  child: const Text('Reject'),
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: ElevatedButton(onPressed: () async { try { await _queueService.adminApproveCancellation(q.id); if (c.mounted) { Navigator.pop(c); ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content: Text('Refund approved'), backgroundColor: Colors.green)); } } catch (e) { ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text('Error: $e'))); } }, style: ElevatedButton.styleFrom(backgroundColor: Colors.green, minimumSize: const Size.fromHeight(44)), child: const Text('Approve'))),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final navigator = Navigator.of(c);
+                    final messenger = ScaffoldMessenger.of(c);
+                    try {
+                      await _queueService.adminApproveCancellation(q.id);
+                      navigator.pop();
+                      messenger.showSnackBar(const SnackBar(content: Text('Refund approved'), backgroundColor: Colors.green));
+                    } catch (e) {
+                      messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, minimumSize: const Size.fromHeight(44)),
+                  child: const Text('Approve'),
+                ),
+              ),
             ]),
           ]),
         ),

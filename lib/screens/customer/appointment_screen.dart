@@ -12,7 +12,7 @@ import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 
 // Import Halaman Pembayaran
-import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
+// payment screen import removed: customer no longer navigates directly to payment
 
 class AppointmentScreen extends StatefulWidget {
   final Barbershop barbershop;
@@ -68,6 +68,14 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     final nextQuarter = ((now.minute ~/ 15) + 1) * 15;
     int hour = now.hour + (nextQuarter >= 60 ? 1 : 0);
     int minute = nextQuarter % 60;
+    // handle day wrap when hour reaches 24
+    if (hour >= 24) {
+      hour = hour - 24;
+      _selectedDate = _selectedDate.add(const Duration(days: 1));
+    }
+    // clamp hour to valid range
+    if (hour < 0) hour = 0;
+    if (hour > 23) hour = 23;
     _selectedTime = TimeOfDay(hour: hour, minute: minute);
 
     _servicesFuture = _barbershopService.getAllServices();
@@ -84,6 +92,16 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       setState(() {
         _estimatedFinishTime = start.add(Duration(minutes: minutes));
       });
+      // validate estimated finish within shop hours
+      final close = widget.barbershop.closeHour;
+      final closeTime = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, close);
+      if (_estimatedFinishTime != null && _estimatedFinishTime!.isAfter(closeTime)) {
+        setState(() {
+          _isSlotAvailable = false;
+          _slotAvailabilityMessage = 'Waktu layanan melebihi jam kerja toko';
+        });
+        return;
+      }
       _checkSlotAvailability();
     } else {
       setState(() {
@@ -211,6 +229,19 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           return;
         }
       }
+      // Cegah waktu layanan melebihi jam kerja (cek estimasi durasi jika ada layanan terpilih)
+      if (_selectedServices.isNotEmpty) {
+        final pickedStart = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, picked.hour, picked.minute);
+        final finish = pickedStart.add(Duration(minutes: _totalDuration));
+        final closeTime = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, close);
+        if (finish.isAfter(closeTime)) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Layanan melebihi jam kerja toko ($open:00 - $close:00). Pilih waktu lebih awal.')),
+          );
+          return;
+        }
+      }
       setState(() => _selectedTime = picked);
       _updateEstimatedFinishTime();
     }
@@ -259,6 +290,23 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       return;
     }
 
+    // Validasi akhir: pastikan booking mulai & selesai berada dalam jam kerja barbershop
+    final openHour = widget.barbershop.openHour;
+    final closeHour = widget.barbershop.closeHour;
+    final startTime = bookingDate;
+    final finishTime = startTime.add(Duration(minutes: _totalDuration));
+    final dayClose = DateTime(startTime.year, startTime.month, startTime.day, closeHour);
+    final dayOpen = DateTime(startTime.year, startTime.month, startTime.day, openHour);
+    if (startTime.isBefore(dayOpen) || finishTime.isAfter(dayClose)) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(
+            content: Text('Pilih waktu antara $openHour:00 - $closeHour:00 agar layanan selesai sebelum jam tutup'),
+            backgroundColor: Colors.orangeAccent));
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
+
     final String newOrderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
 
     final payload = {
@@ -274,27 +322,19 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     };
 
     try {
-      // await createQueue without storing unused local variable
+      // create queue as a booking request for admin confirmation
       await _queueService.createQueue(payload);
 
       if (!mounted) return;
 
-      final paymentResult = await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => PaymentScreen(
-            orderId: newOrderId,
-            totalPrice: _totalPrice,
-            barbershopId: widget.barbershop.id,
-            barbermanId: _selectedBarberman!.id,
-            bookingTime: bookingDate,
-            serviceIds: _selectedServices.map((s) => s.id).toList(),
-          ),
-        ),
-      );
+      // Inform user that request is sent and admin will confirm
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Permintaan booking terkirim. Menunggu konfirmasi admin.'),
+        backgroundColor: Colors.green,
+      ));
 
-      if (paymentResult == true && mounted) {
-        Navigator.of(context).pop();
-      }
+      // return to previous screen (customer can view in My Bookings)
+      Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(

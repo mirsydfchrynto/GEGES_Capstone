@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geges_smartbarber/services/queue_service.dart';
 
 // ==========================
 // Konstanta warna tema
@@ -21,6 +22,7 @@ class BookingConfirmationScreen extends StatefulWidget {
 
 class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   final _processingIds = <String>{};
+  final QueueService _queueService = QueueService();
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _waitingBookingsStream() {
     // Menampilkan semua queue yang status == 'waiting'
@@ -59,23 +61,30 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   }
 
   // ==========================
-  // KONFIRMASI PEMBAYARAN -> book (manual confirm)
+  // KONFIRMASI BOOKING REQUEST (waiting → awaiting_payment)
   // ==========================
+  // PENTING: Admin hanya confirm request di sini
+  // Booking TIDAK langsung bisa masuk Live Queue
+  // Harus: waiting → awaiting_payment (tunggu customer bayar)
+  //       → awaiting_payment + payment_proof → booked (setelah admin verify payment)
+  //       → booked → masuk Live Queue baru
   Future<void> _confirmPayment(DocumentSnapshot<Map<String, dynamic>> doc) async {
     final id = doc.id;
     if (_processingIds.contains(id)) return;
-
-    final confirmedBy = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
-    final ref = doc.reference;
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
         backgroundColor: kDarkSurface,
-        title: const Text('Konfirmasi Pembayaran',
-            style: TextStyle(color: Colors.white)),
+        title: const Text('Konfirmasi Permintaan Booking',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         content: const Text(
-          'Yakin ingin mengonfirmasi pembayaran dan memindahkan booking ke status BOOKED? (Catatan: ini tidak memulai layanan)',
+          'Konfirmasi permintaan booking ini?\n\n'
+          'Setelah konfirmasi:\n'
+          '• Status berubah ke MENUNGGU PEMBAYARAN (awaiting_payment)\n'
+          '• Customer punya 10 menit untuk upload bukti pembayaran\n'
+          '• Tidak langsung masuk Live Queue\n'
+          '• Anda harus verifikasi pembayaran dahulu',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -85,7 +94,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent),
             onPressed: () => Navigator.pop(c, true),
-            child: const Text('Konfirmasi', style: TextStyle(color: Colors.black)),
+            child: const Text('Konfirmasi Request', style: TextStyle(color: Colors.black)),
           ),
         ],
       ),
@@ -95,24 +104,19 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
 
     setState(() => _processingIds.add(id));
     try {
-      await ref.update({
-        'status': 'booked',
-        'payment_confirmed_at': FieldValue.serverTimestamp(),
-        'payment_confirmed_by': confirmedBy,
-        'booked_at': FieldValue.serverTimestamp(),
-        'booked_by': confirmedBy,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
+      // Gunakan adminConfirmRequest dari QueueService
+      // Ini akan set status ke 'awaiting_payment' dan start payment window (10 menit)
+      await _queueService.adminConfirmRequest(id);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content:
-                Text('Pembayaran berhasil dikonfirmasi — status BOOKED'),
-            backgroundColor: kBrownAccent),
+            content: Text('Booking request dikonfirmasi — menunggu customer pembayaran (10 menit)'),
+            backgroundColor: kBrownAccent,
+            duration: Duration(seconds: 3)),
       );
     } catch (e) {
-      debugPrint('Error confirmPayment: $e');
+      debugPrint('Error _confirmPayment: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal konfirmasi: $e'), backgroundColor: Colors.redAccent),

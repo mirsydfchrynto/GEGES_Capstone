@@ -252,9 +252,44 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Expanded(child: ElevatedButton(onPressed: () async { try { await _queueService.adminRejectRequest(q.id, rejectionReason: noteCtrl.text.trim().isEmpty ? 'Rejected' : noteCtrl.text.trim()); if (c.mounted) { Navigator.pop(c); ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content: Text('Request rejected'), backgroundColor: Colors.red)); } } catch (e) { ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text('Error: $e'))); } }, style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size.fromHeight(44)), child: const Text('Reject'))),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final navigator = Navigator.of(c);
+                        final messenger = ScaffoldMessenger.of(c);
+                        try {
+                          await _queueService.adminRejectRequest(
+                            q.id,
+                            rejectionReason: noteCtrl.text.trim().isEmpty ? 'Rejected' : noteCtrl.text.trim(),
+                          );
+                          navigator.pop();
+                          messenger.showSnackBar(const SnackBar(content: Text('Request rejected'), backgroundColor: Colors.red));
+                        } catch (e) {
+                          messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size.fromHeight(44)),
+                      child: const Text('Reject'),
+                    ),
+                  ),
                   const SizedBox(width: 10),
-                  Expanded(child: ElevatedButton(onPressed: () async { try { await _queueService.adminConfirmRequest(q.id); if (c.mounted) { Navigator.pop(c); ScaffoldMessenger.of(c).showSnackBar(const SnackBar(content: Text('Booking confirmed'), backgroundColor: Colors.green)); } } catch (e) { ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text('Error: $e'))); } }, style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, minimumSize: const Size.fromHeight(44)), child: const Text('Approve'))),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final navigator = Navigator.of(c);
+                        final messenger = ScaffoldMessenger.of(c);
+                        try {
+                          await _queueService.adminConfirmRequest(q.id);
+                          navigator.pop();
+                          messenger.showSnackBar(const SnackBar(content: Text('Booking confirmed'), backgroundColor: Colors.green));
+                        } catch (e) {
+                          messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, minimumSize: const Size.fromHeight(44)),
+                      child: const Text('Approve'),
+                    ),
+                  ),
                 ],
               ),
             ],

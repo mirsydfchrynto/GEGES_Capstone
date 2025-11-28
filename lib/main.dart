@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import 'package:geges_smartbarber/screens/onboarding_screen.dart';
+import 'package:geges_smartbarber/services/notification_service.dart';
+import 'package:geges_smartbarber/services/app_navigator.dart';
 
 // ==========================================
 // file: lib/main.dart
@@ -38,6 +40,12 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    // Initialize notification service (FCM) after Firebase is ready
+    try {
+      await NotificationService.instance.init();
+    } catch (_) {
+      // non-fatal: continue even if notification init fails
+    }
     // firebase initialization berhasil
   } catch (e) {
     // firebase initialization error (akan di-log via crashlytics nanti)
@@ -79,6 +87,7 @@ class MyApp extends StatelessWidget {
     // - theme = style untuk seluruh aplikasi
     // - home = starting screen yang ditampilkan pertama kali
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'GEGES SmartBarber',
       debugShowCheckedModeBanner: false,
 

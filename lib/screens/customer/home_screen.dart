@@ -16,6 +16,7 @@ import 'package:geges_smartbarber/screens/customer/tabs/barbershop_detail_screen
 import 'package:geges_smartbarber/screens/customer/tabs/profile_screen.dart'; 
 import 'package:geges_smartbarber/screens/customer/tabs/chat_assistant_screen.dart'; // CHATBOT
 import 'package:geges_smartbarber/screens/customer/tabs/stylescan_screen.dart'; // STYLESCA N BARU
+import 'package:geges_smartbarber/screens/customer/notifications_screen.dart'; // NOTIFIKASI
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -78,7 +79,16 @@ class _HomeScreenState extends State<HomeScreen> {
               Text('Mejasem, Tegal', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
             ]),
           ]),
-          IconButton(icon: const Icon(Icons.notifications_none_outlined, color: Colors.white, size: 28), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.notifications_none_outlined, color: Colors.white, size: 28),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+              );
+            },
+            tooltip: 'Notifikasi',
+          ),
         ],
       ),
     );

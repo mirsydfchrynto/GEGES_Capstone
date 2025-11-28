@@ -78,8 +78,9 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
 
   Future<void> _confirmBooking(Queue queue) async {
     try {
-      await _queueService.manualConfirmBooking(queue.id);
-      _showSnackBar('Booking dikonfirmasi — status BOOKED', isError: false);
+      // Use adminConfirmRequest to move waiting -> awaiting_payment
+      await _queueService.adminConfirmRequest(queue.id);
+      _showSnackBar('Booking dikonfirmasi — menunggu pembayaran customer (awaiting_payment)', isError: false);
     } catch (e) {
       _showSnackBar('Gagal konfirmasi booking: $e', isError: true);
     }

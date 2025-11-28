@@ -175,6 +175,13 @@ class Queue {
 
   final Timestamp? createdAt;               // waktu record dibuat
   final String? paymentProofBase64;         // bukti pembayaran dalam bentuk base64
+  
+  // ============ REFUND FIELDS ============
+  final bool? isRefunded;                   // apakah booking sudah di-refund
+  final Timestamp? refundedAt;              // waktu refund diproses
+  final String? refundReason;               // alasan refund (cancelled, rejected, etc)
+  final String? refundedBy;                 // admin uid yang process refund
+  // ======================================
 
   // penjelasan constructor:
   // - constructor adalah method khusus untuk membuat object dari class ini
@@ -201,6 +208,10 @@ class Queue {
     this.verifiedBy,
     this.createdAt,
     this.paymentProofBase64,
+    this.isRefunded,
+    this.refundedAt,
+    this.refundReason,
+    this.refundedBy,
   });
 
   // penjelasan getter firstserviceid:
@@ -277,6 +288,14 @@ class Queue {
           (data['createdAt'] as Timestamp?),
       paymentProofBase64:
           readString(data['payment_proof_base64'] ?? data['paymentProofBase64']),
+      // NEW: refund fields
+      isRefunded: (data['is_refunded'] as bool?) ??
+          (data['isRefunded'] as bool?) ??
+          false,
+      refundedAt: (data['refunded_at'] as Timestamp?) ??
+          (data['refundedAt'] as Timestamp?),
+      refundReason: readString(data['refund_reason'] ?? data['refundReason']),
+      refundedBy: readString(data['refunded_by'] ?? data['refundedBy']),
     );
   }
 
@@ -308,6 +327,10 @@ class Queue {
       'verified_by': verifiedBy,
       'created_at': createdAt ?? FieldValue.serverTimestamp(),
       'payment_proof_base64': paymentProofBase64,
+      'is_refunded': isRefunded ?? false,
+      'refunded_at': refundedAt,
+      'refund_reason': refundReason,
+      'refunded_by': refundedBy,
     };
     // buang field yang bernilai null agar database tidak penuh dengan data kosong
     data.removeWhere((_, v) => v == null);
@@ -339,6 +362,10 @@ class Queue {
     String? verifiedBy,
     Timestamp? createdAt,
     String? paymentProofBase64,
+    bool? isRefunded,
+    Timestamp? refundedAt,
+    String? refundReason,
+    String? refundedBy,
   }) {
     return Queue(
       id: id ?? this.id,
@@ -361,6 +388,10 @@ class Queue {
       verifiedBy: verifiedBy ?? this.verifiedBy,
       createdAt: createdAt ?? this.createdAt,
       paymentProofBase64: paymentProofBase64 ?? this.paymentProofBase64,
+      isRefunded: isRefunded ?? this.isRefunded,
+      refundedAt: refundedAt ?? this.refundedAt,
+      refundReason: refundReason ?? this.refundReason,
+      refundedBy: refundedBy ?? this.refundedBy,
     );
   }
 }

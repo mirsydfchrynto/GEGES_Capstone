@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import '../booking_detail_screen.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
 const Color kDarkGrey = Color(0xFF1E1E1E);
@@ -32,6 +33,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // On screen init, trigger cancel checks for expired waiting / awaiting_payment
+    if (_customerId != null) {
+      // best-effort: cancel any expired requests (waiting) and expired awaiting payments
+      _queueService.cancelExpiredWaitingQueuesForCustomer(_customerId).then((c) => debugPrint('cancelled waiting: $c')).catchError((e) => debugPrint('cancelWaiting err: $e'));
+      _queueService.cancelExpiredAwaitingPaymentQueuesForCustomer(_customerId).then((c) => debugPrint('cancelled awaiting: $c')).catchError((e) => debugPrint('cancelAwaiting err: $e'));
+    }
   }
 
   @override
@@ -356,194 +364,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   }
 
   void _showBookingDetail(BuildContext context, Queue queue, Map<String, dynamic> details) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: kDarkGrey,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Booking Details', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                  GestureDetector(onTap: () => Navigator.pop(context), child: const Icon(Icons.close, color: Colors.white)),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _buildModalRow('Status', _formatStatus(queue.status), _getStatusColor(queue.status)),
-              _buildModalRow('Barbershop', details['barbershopName'] ?? '-'),
-              _buildModalRow('Barberman', details['barbermanName'] ?? '-'),
-              _buildModalRow('Layanan', details['serviceName'] ?? '-'),
-              _buildModalRow('Waktu Booking', _formatTimestamp(queue.bookingTime)),
-              if (queue.estimatedDuration != null)
-                _buildModalRow('Durasi', '${queue.estimatedDuration} menit'),
-              if (queue.totalPrice != null)
-                _buildModalRow(
-                  'Total',
-                  NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(queue.totalPrice),
-                ),
-              const SizedBox(height: 20),
-              if (queue.status == QueueStatus.booked)
-                ElevatedButton(
-                  onPressed: () => _showCancellationDialog(queue),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size(double.infinity, 48)),
-                  child: const Text('Batalkan'),
-                ),
-              if (queue.status == QueueStatus.served)
-                ElevatedButton(
-                  onPressed: () => _showRatingDialog(queue),
-                  style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, minimumSize: const Size(double.infinity, 48)),
-                  child: const Text('Kasih Rating'),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModalRow(String label, String value, [Color? valueColor]) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: kTextGrey, fontSize: 14)),
-          Text(value, style: TextStyle(color: valueColor ?? Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-
-  void _showCancellationDialog(Queue queue) {
-    final reasonController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: kDarkGrey,
-        title: const Text('Batalkan Pesanan', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Pembatalan akan memotong 10% dari total harga.', style: TextStyle(color: kTextGrey, fontSize: 13)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: reasonController,
-              style: const TextStyle(color: Colors.white),
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Alasan pembatalan...',
-                hintStyle: const TextStyle(color: Colors.white54),
-                filled: true,
-                fillColor: Colors.black26,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal', style: TextStyle(color: kTextGrey))),
-          TextButton(
-            onPressed: () async {
-              final reason = reasonController.text.trim();
-              if (reason.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alasan wajib diisi')));
-                return;
-              }
-              try {
-                await _queueService.customerRequestCancellation(queue.id, reason: reason, customerId: _customerId);
-                if (mounted) {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Pembatalan berhasil diminta'), backgroundColor: Colors.green),
-                  );
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-              }
-            },
-            child: const Text('Batalkan', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showRatingDialog(Queue queue) {
-    double rating = 5;
-    final commentController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: kDarkGrey,
-        title: const Text('Kasih Rating', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            StatefulBuilder(
-              builder: (context, setState) => Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      5,
-                      (index) => GestureDetector(
-                        onTap: () => setState(() => rating = (index + 1).toDouble()),
-                        child: Icon(Icons.star, color: index < rating ? Colors.amber : Colors.grey, size: 32),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: commentController,
-                    style: const TextStyle(color: Colors.white),
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: 'Komentar (opsional)',
-                      hintStyle: const TextStyle(color: Colors.white54),
-                      filled: true,
-                      fillColor: Colors.black26,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal', style: TextStyle(color: kTextGrey))),
-          TextButton(
-            onPressed: () async {
-              try {
-                await _queueService.submitRating(
-                  queue.id,
-                  rating: rating,
-                  barbershopId: queue.barbershopId,
-                  comment: commentController.text.isNotEmpty ? commentController.text.trim() : null,
-                  customerId: _customerId,
-                );
-                if (mounted) {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Rating terkirim'), backgroundColor: Colors.green),
-                  );
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-              }
-            },
-            child: const Text('Kirim', style: TextStyle(color: kBrownAccent)),
-          ),
-        ],
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => BookingDetailScreen(queueId: queue.id)),
     );
   }
 

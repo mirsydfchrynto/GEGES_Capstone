@@ -146,28 +146,11 @@ class QueueService {
 
   /// Konfirmasi manual admin → status booked, service belum dimulai
   Future<void> manualConfirmBooking(String queueId, {String? adminUid}) async {
-    final confirmedBy =
-        adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
-    final ref = _firestore.collection('queues').doc(queueId);
-
-    try {
-      await _firestore.runTransaction((tx) async {
-        final snap = await tx.get(ref);
-        if (!snap.exists) throw Exception('Queue not found: $queueId');
-
-        tx.update(ref, {
-          'status': 'booked',
-          'payment_confirmed_at': FieldValue.serverTimestamp(),
-          'payment_confirmed_by': confirmedBy,
-          'booked_at': FieldValue.serverTimestamp(),
-          'booked_by': confirmedBy,
-          'updated_at': FieldValue.serverTimestamp(),
-        });
-      });
-    } catch (e, st) {
-      debugPrint('Error manualConfirmBooking($queueId): $e\n$st');
-      rethrow;
-    }
+    // IMPORTANT: For safety we no longer directly move to 'booked' here.
+    // To enforce the payment-first flow, delegate to adminConfirmRequest
+    // which will set 'awaiting_payment' and create a payment deadline.
+    debugPrint('manualConfirmBooking() called - delegating to adminConfirmRequest to enforce payment flow');
+    await adminConfirmRequest(queueId, adminUid: adminUid);
   }
 
   /// Tolak manual admin → status cancelled
@@ -193,6 +176,11 @@ class QueueService {
           'updated_at': FieldValue.serverTimestamp(),
         });
       });
+      final doc = await _firestore.collection('queues').doc(queueId).get();
+      final customerId = doc.data()?['customer_id'] as String?;
+      if (customerId != null) {
+        await _createNotificationForUser(customerId, 'Booking Ditolak', 'Booking Anda ditolak oleh admin.', queueId);
+      }
     } catch (e, st) {
       debugPrint('Error manualRejectBooking($queueId): $e\n$st');
       rethrow;
@@ -236,7 +224,7 @@ class QueueService {
       // crucial: default to 'waiting' so admin must confirm to become 'booked'
       'status': queueData['status'] ?? 'waiting',
       // optional client-provided payment expiry (Timestamp). If not provided and status == 'waiting', we'll set below.
-      'payment_due_at': queueData['payment_due_at'],
+      'payment_deadline': queueData['payment_due_at'] ?? queueData['payment_deadline'],
       'created_at': FieldValue.serverTimestamp(),
       'payment_proof_base64': queueData['payment_proof_base64'] ?? queueData['payment_proof'],
       'payment_method': queueData['payment_method'],
@@ -249,13 +237,55 @@ class QueueService {
     dataToSave.removeWhere((_, v) => v == null);
 
     // If status is 'waiting' and no payment_due_at provided, set a 10-minute expiry from now.
-    if ((dataToSave['status'] as String?) == 'waiting' && dataToSave['payment_due_at'] == null) {
+    if ((dataToSave['status'] as String?) == 'waiting' && dataToSave['payment_deadline'] == null) {
       try {
         final due = DateTime.now().add(const Duration(minutes: 10));
-        dataToSave['payment_due_at'] = Timestamp.fromDate(due);
+        dataToSave['payment_deadline'] = Timestamp.fromDate(due);
       } catch (e) {
-        debugPrint('Failed to set payment_due_at: $e');
+        debugPrint('Failed to set payment_deadline: $e');
       }
+    }
+
+    // --- Validation: booking time not in the past and within shop hours ---
+    try {
+      final bookingTsLocal = dataToSave['booking_time'] as Timestamp?;
+      if (bookingTsLocal != null) {
+        final bookingDt = bookingTsLocal.toDate();
+        final now = DateTime.now();
+        if (bookingDt.isBefore(now.subtract(const Duration(seconds: 5)))) {
+          throw Exception('Waktu booking sudah lewat');
+        }
+
+        // If barbershop supplied, verify within open/close hours
+        final barbershopId = dataToSave['barbershop_id'] as String?;
+        if (barbershopId != null) {
+          final bsDoc = await _firestore.collection('barbershops').doc(barbershopId).get();
+          final bsData = bsDoc.data();
+          int parseHour(dynamic v, int fallback) {
+            if (v == null) return fallback;
+            if (v is int) return v;
+            if (v is String) {
+              if (v.contains(':')) return int.tryParse(v.split(':').first) ?? fallback;
+              return int.tryParse(v) ?? fallback;
+            }
+            return fallback;
+          }
+          final open = parseHour(bsData?['open_hour'] ?? bsData?['openHour'], 9);
+          final close = parseHour(bsData?['close_hour'] ?? bsData?['closeHour'], 21);
+
+          final estDuration = (dataToSave['estimated_duration'] as int?) ?? 0;
+          final finish = bookingDt.add(Duration(minutes: estDuration));
+          final dayOpen = DateTime(bookingDt.year, bookingDt.month, bookingDt.day, open);
+          final dayClose = DateTime(bookingDt.year, bookingDt.month, bookingDt.day, close);
+
+          if (bookingDt.isBefore(dayOpen) || finish.isAfter(dayClose)) {
+            throw Exception('Waktu booking di luar jam kerja barbershop');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Validation failed before creating queue: $e');
+      rethrow;
     }
 
     try {
@@ -431,7 +461,9 @@ class QueueService {
   // 👮 ADMIN PAYMENT CONFIRMATION
   // -----------------------
 
-  /// Admin confirms payment: waiting → booked (service belum dimulai)
+  /// Admin confirms payment: awaiting_payment → booked (service belum dimulai)
+  /// This is the second admin step: verify uploaded payment proof and then
+  /// mark the booking as officially booked so it enters the live queue.
   Future<void> adminConfirmPayment(
     String queueId, {
     String? adminUid,
@@ -447,9 +479,17 @@ class QueueService {
         if (!snap.exists) throw Exception('Queue not found: $queueId');
         final data = snap.data() ?? {};
 
-        if ((data['status'] as String?) != 'waiting') {
+        // only allow confirming payment when admin previously approved and
+        // the queue is awaiting payment
+        if ((data['status'] as String?) != 'awaiting_payment') {
           throw Exception(
-              'Queue status is not waiting (current: ${data['status']})');
+              'Queue status is not awaiting_payment (current: ${data['status']})');
+        }
+
+        // ensure payment proof exists
+        final paymentProof = data['payment_proof_base64'] as String?;
+        if (paymentProof == null || paymentProof.isEmpty) {
+          throw Exception('No payment proof uploaded for this queue');
         }
 
         tx.update(ref, {
@@ -462,6 +502,18 @@ class QueueService {
           'updated_at': FieldValue.serverTimestamp(),
         });
       });
+      // after successful transaction, notify customer
+      final afterDoc = await _firestore.collection('queues').doc(queueId).get();
+      final afterData = afterDoc.data();
+      final customerId = afterData?['customer_id'] as String?;
+      if (customerId != null) {
+        await _createNotificationForUser(
+          customerId,
+          'Pembayaran Dikonfirmasi',
+          'Pembayaran Anda telah diverifikasi. Booking Anda sekarang terkonfirmasi.',
+          queueId,
+        );
+      }
     } catch (e, st) {
       debugPrint('Error adminConfirmPayment($queueId): $e\n$st');
       rethrow;
@@ -492,9 +544,89 @@ class QueueService {
           'updated_at': FieldValue.serverTimestamp(),
         });
       });
+      final afterDoc = await _firestore.collection('queues').doc(queueId).get();
+      final afterData = afterDoc.data();
+      final customerId = afterData?['customer_id'] as String?;
+      if (customerId != null) {
+        await _createNotificationForUser(
+          customerId,
+          'Pembayaran Ditolak',
+          'Pembayaran Anda ditolak oleh admin. Silakan unggah bukti lagi atau hubungi admin.',
+          queueId,
+        );
+      }
     } catch (e, st) {
       debugPrint('Error adminRejectPayment($queueId): $e\n$st');
       rethrow;
+    }
+  }
+
+  /// Admin refund a booking - hapus bukti pembayaran, set isRefunded=true
+  /// Dipanggil ketika:
+  /// - Admin membatalkan booking
+  /// - Admin menerima request pembatalan dari customer
+  /// - Refund diproses manual atau otomatis
+  Future<void> adminRefundBooking(
+    String queueId, {
+    String? reason = 'Dibatalkan oleh admin',
+    String? adminUid,
+  }) async {
+    final refundedBy =
+        adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+    final ref = _firestore.collection('queues').doc(queueId);
+
+    try {
+      await _firestore.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        if (!snap.exists) throw Exception('Queue not found: $queueId');
+
+        // Update: set status cancelled, clear payment proof, track refund
+        tx.update(ref, {
+          'status': 'cancelled',
+          'is_refunded': true,
+          'refunded_at': FieldValue.serverTimestamp(),
+          'refund_reason': reason ?? 'Dibatalkan oleh admin',
+          'refunded_by': refundedBy,
+          // PENTING: Hapus bukti pembayaran dari database (hide proof)
+          'payment_proof_base64': FieldValue.delete(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+      });
+
+      // Ambil data updated untuk notifikasi
+      final afterDoc = await _firestore.collection('queues').doc(queueId).get();
+      final afterData = afterDoc.data();
+      final customerId = afterData?['customer_id'] as String?;
+
+      // Kirim notifikasi ke customer bahwa refund sudah diproses
+      if (customerId != null) {
+        await _createNotificationForUser(
+          customerId,
+          'Refund Diproses',
+          'Pesanan Anda telah dibatalkan dan refund akan diproses. Alasan: $reason',
+          queueId,
+        );
+      }
+    } catch (e, st) {
+      debugPrint('Error adminRefundBooking($queueId): $e\n$st');
+      rethrow;
+    }
+  }
+
+  /// Create a simple notification doc for a user (helper)
+  Future<void> _createNotificationForUser(String userId, String title, String body, String queueId) async {
+    try {
+      await _firestore.collection('notifications').add({
+        'user_id': userId,
+        'title': title,
+        'body': body,
+        'queue_id': queueId,
+        'created_at': FieldValue.serverTimestamp(),
+        'read': false,
+        'delivered': false,
+      });
+    } catch (e) {
+      debugPrint('Failed to create notification for $userId: $e');
     }
   }
 
@@ -702,7 +834,7 @@ class QueueService {
           .collection('queues')
           .where('customer_id', isEqualTo: customerId)
           .where('status', isEqualTo: 'waiting')
-          .where('payment_due_at', isLessThan: nowTs)
+          .where('payment_deadline', isLessThan: nowTs)
           .get();
 
       int count = 0;
@@ -719,6 +851,36 @@ class QueueService {
       return count;
     } catch (e, st) {
       debugPrint('Error cancelling expired waiting queues for customer $customerId: $e\n$st');
+      return 0;
+    }
+  }
+
+  /// Cancel awaiting_payment queues for a customer whose payment_due_at has passed.
+  /// Returns number of cancelled documents.
+  Future<int> cancelExpiredAwaitingPaymentQueuesForCustomer(String customerId) async {
+    try {
+      final nowTs = Timestamp.fromDate(DateTime.now());
+      final qs = await _firestore
+          .collection('queues')
+          .where('customer_id', isEqualTo: customerId)
+          .where('status', isEqualTo: 'awaiting_payment')
+          .where('payment_deadline', isLessThan: nowTs)
+          .get();
+
+      int count = 0;
+      for (final doc in qs.docs) {
+        await doc.reference.update({
+          'status': 'cancelled',
+          'cancellation_reason': 'Payment timeout',
+          'cancelled_by_uid': 'system',
+          'cancelled_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        count++;
+      }
+      return count;
+    } catch (e, st) {
+      debugPrint('Error cancelling expired awaiting_payment queues for customer $customerId: $e\n$st');
       return 0;
     }
   }
@@ -746,16 +908,36 @@ class QueueService {
         .map((snapshot) => snapshot.docs.map((d) => d.data()).toList());
   }
 
-  /// Admin confirm booking request (waiting → booked)
+  /// Admin confirms booking request (waiting → awaiting_payment)
+  /// This performs the first admin step: approve the request and give the
+  /// customer a limited window (e.g. 10 minutes) to upload payment proof.
   Future<void> adminConfirmRequest(String queueId, {String? adminUid}) async {
     try {
       final uid = adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+      // set status to awaiting_payment and give customer a 10-minute window to pay
+      final due = DateTime.now().add(const Duration(minutes: 10));
       await _firestore.collection('queues').doc(queueId).update({
-        'status': 'booked',
+        'status': 'awaiting_payment',
         'request_status': 'approved',
         'verified_by': uid,
+        'payment_deadline': Timestamp.fromDate(due),
         'updated_at': FieldValue.serverTimestamp(),
       });
+
+      // create a notification for the customer to pay
+      final doc = await _firestore.collection('queues').doc(queueId).get();
+      final qdata = doc.data();
+      final customerId = qdata?['customer_id'] as String?;
+      if (customerId != null) {
+        await _firestore.collection('notifications').add({
+          'user_id': customerId,
+          'title': 'Booking Disetujui - Silakan Bayar',
+          'body': 'Booking Anda telah disetujui. Silakan lakukan pembayaran dalam 10 menit untuk mengamankan slot.',
+          'queue_id': queueId,
+          'created_at': FieldValue.serverTimestamp(),
+          'read': false,
+        });
+      }
     } catch (e) {
       debugPrint('Error confirming request $queueId: $e');
       rethrow;
@@ -773,6 +955,12 @@ class QueueService {
         'verified_by': uid,
         'updated_at': FieldValue.serverTimestamp(),
       });
+      // notify customer
+      final doc = await _firestore.collection('queues').doc(queueId).get();
+      final customerId = doc.data()?['customer_id'] as String?;
+      if (customerId != null) {
+        await _createNotificationForUser(customerId, 'Request Ditolak', 'Permintaan booking Anda ditolak oleh admin.', queueId);
+      }
     } catch (e) {
       debugPrint('Error rejecting request $queueId: $e');
       rethrow;

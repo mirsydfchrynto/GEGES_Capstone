@@ -1,0 +1,17 @@
+{
+  "name": "geges-fcm-sender",
+  "version": "1.0.0",
+  "description": "Small helper to send FCM pushes to users of Geges SmartBarber using firebase-admin",
+  "main": "send_push.js",
+  "scripts": {
+    "start": "node send_push.js",
+    "serve": "node server.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.10.0",
+    "dotenv": "^16.3.1",
+    "minimist": "^1.2.8",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}

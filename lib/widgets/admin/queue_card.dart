@@ -11,6 +11,8 @@ import 'package:geges_smartbarber/models/barberman.dart';
 import 'package:geges_smartbarber/models/user_data.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
+import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 // Theme colors
 const Color kBrownAccent = Color(0xFFC3A47B);
@@ -42,6 +44,7 @@ class QueueCard extends StatefulWidget {
 class _QueueCardState extends State<QueueCard> {
   final AuthService _authService = AuthService();
   final BarbershopService _barbershopService = BarbershopService();
+  final QueueService _queueService = QueueService();
 
   late Future<UserData?> _customerFuture;
   late Future<Barberman?> _barbermanFuture;
@@ -50,6 +53,7 @@ class _QueueCardState extends State<QueueCard> {
   bool _processingFinish = false;
   bool _processingCancel = false;
   bool _processingConfirm = false;
+  bool _processingRefund = false;
 
   @override
   void initState() {
@@ -186,6 +190,68 @@ class _QueueCardState extends State<QueueCard> {
       _showSnack('Gagal membatalkan: $e', isError: true);
     } finally {
       if (mounted) setState(() => _processingCancel = false);
+    }
+  }
+
+  Future<void> _handleRefund() async {
+    // Show dialog for refund reason
+    String reason = 'Dibatalkan oleh admin';
+    bool shouldRefund = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        TextEditingController reasonCtrl = TextEditingController(text: reason);
+        return AlertDialog(
+          backgroundColor: kDarkSurface,
+          title: const Text('Proses Refund', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: TextField(
+            controller: reasonCtrl,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Alasan pembatalan/refund',
+              hintStyle: const TextStyle(color: Colors.white54),
+              fillColor: Colors.black26,
+              filled: true,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            maxLines: 2,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Batal', style: TextStyle(color: kBrownAccent)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                reason = reasonCtrl.text.trim();
+                shouldRefund = true;
+                Navigator.pop(dialogCtx);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              child: const Text('Proses Refund', style: TextStyle(color: Colors.black)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!shouldRefund) return;
+
+    setState(() => _processingRefund = true);
+    try {
+      // Call refund service directly
+      final adminUid = FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+      await _queueService.adminRefundBooking(
+        widget.queue.id,
+        reason: reason,
+        adminUid: adminUid,
+      );
+      _showSnack('Refund diproses');
+    } catch (e) {
+      _showSnack('Gagal proses refund: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _processingRefund = false);
     }
   }
 
@@ -445,6 +511,27 @@ class _QueueCardState extends State<QueueCard> {
                 }),
               ),
             ]),
+          
+          // REFUND ACTION BUTTON - Show for cancelled bookings that haven't been refunded yet
+          if (status == QueueStatus.cancelled && (queue.isRefunded != true))
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _processingRefund ? null : _handleRefund,
+                  icon: _processingRefund
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                      : const Icon(Icons.money_off, size: 16),
+                  label: const Text('Proses Refund'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ),
         ]),
       ),
     );
