@@ -10,8 +10,9 @@ import 'package:geges_smartbarber/models/barberman.dart';
 import 'package:geges_smartbarber/models/service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
-import 'package:geges_smartbarber/services/barberman_service.dart';
-import 'payment_screen_improved.dart';
+
+// Import Halaman Pembayaran
+// payment screen import removed: customer no longer navigates directly to payment
 
 class AppointmentScreen extends StatefulWidget {
   final Barbershop barbershop;
@@ -24,7 +25,6 @@ class AppointmentScreen extends StatefulWidget {
 class _AppointmentScreenState extends State<AppointmentScreen> {
   final BarbershopService _barbershopService = BarbershopService();
   final QueueService _queueService = QueueService();
-  final BarbermanService _barbermanService = BarbermanService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Theme tokens
@@ -307,38 +307,38 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       return;
     }
 
+    final String newOrderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
+
     final payload = {
       'barbershop_id': widget.barbershop.id,
       'customer_id': customerId,
+      'barberman_id': _selectedBarberman!.id,
       'service_ids': _selectedServices.map((s) => s.id).toList(),
-      'amount': _totalPrice,
-      'currency': 'IDR',
-      'scheduledAt': Timestamp.fromDate(bookingDate),
-      'estimatedDuration': _totalDuration,
+      'total_price': _totalPrice,
+      'estimated_duration': _totalDuration,
+      'booking_time': Timestamp.fromDate(bookingDate),
+      'status': 'waiting',
+      'order_id': newOrderId,
     };
 
     try {
-      // Buat booking di top-level bookings collection dan dapatkan bookingId
-      final bookingId = await _barbermanService.createBookingInBookings(
-        _selectedBarberman!.id,
-        payload,
-      );
+      // create queue as a booking request for admin confirmation
+      await _queueService.createQueue(payload);
 
       if (!mounted) return;
 
-      // Navigate ke PaymentScreenImproved dengan bookingId
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => PaymentScreenImproved(
-            bookingId: bookingId,
-            totalPrice: _totalPrice,
-          ),
-        ),
-      );
+      // Inform user that request is sent and admin will confirm
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Permintaan booking terkirim. Menunggu konfirmasi admin.'),
+        backgroundColor: Colors.green,
+      ));
+
+      // return to previous screen (customer can view in My Bookings)
+      Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(
-          content: Text('Gagal membuat booking: ${e.toString()}'),
+          content: Text('Gagal membuat antrean: ${e.toString()}'),
           backgroundColor: Colors.redAccent));
     } finally {
       if (mounted) setState(() => _isLoading = false);

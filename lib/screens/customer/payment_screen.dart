@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:geges_smartbarber/models/queue.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String orderId;
@@ -36,6 +37,7 @@ class PaymentScreen extends StatefulWidget {
   });
 
   @override
+  @override
   State<PaymentScreen> createState() => _PaymentScreenState();
 }
 
@@ -56,6 +58,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   File? _pickedImage;
   String? _pickedBase64; // caching base64 for preview
   bool _isSubmitting = false;
+  bool _hasUploadedProof = false;
+  String? _resolvedQueueId;
 
   // Cache data dummy order detail
   final Map<String, int> _dummyOrderDetails = {
@@ -71,12 +75,49 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.initState();
     _initTimeRemaining();
     _startTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialQueueState();
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadInitialQueueState() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Try to get by document ID first (orderId may be queue id)
+      final byId = await _queueService.getQueueById(widget.orderId);
+      if (byId != null && byId.customerId == user.uid) {
+        setState(() {
+          _resolvedQueueId = byId.id;
+          _hasUploadedProof = (byId.paymentProofBase64 != null && byId.paymentProofBase64!.isNotEmpty);
+        });
+        return;
+      }
+
+      // Fallback: search by order_id field for this user
+      final qs = await FirebaseFirestore.instance
+          .collection('queues')
+          .where('order_id', isEqualTo: widget.orderId)
+          .where('customer_id', isEqualTo: user.uid)
+          .limit(1)
+          .get();
+      if (qs.docs.isNotEmpty) {
+        final q = Queue.fromFirestore(qs.docs.first);
+        setState(() {
+          _resolvedQueueId = q.id;
+          _hasUploadedProof = (q.paymentProofBase64 != null && q.paymentProofBase64!.isNotEmpty);
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load initial queue state: $e');
+    }
   }
 
   // --- Timer logic ---
@@ -95,6 +136,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (_timeRemaining.inSeconds <= 0) {
         timer.cancel();
         if (mounted) setState(() {});
+        // when timer expires, attempt to auto-cancel the specific queue if needed
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          await _handleExpiry();
+        });
       } else {
         if (mounted) {
           setState(() {
@@ -104,6 +149,109 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
     });
   }
+
+  Future<void> _handleExpiry() async {
+    try {
+      if (_hasUploadedProof) return; // proof already uploaded, nothing to do
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+
+      // If we have a resolved queue id, check that queue specifically
+      if (_resolvedQueueId != null) {
+        final q = await _queueService.getQueueById(_resolvedQueueId!);
+        if (q == null) return;
+        // Only cancel if still awaiting payment and no proof
+        if (q.paymentDeadline != null && DateTime.now().isAfter(q.paymentDeadline!.toDate())) {
+          if ((q.paymentProofBase64 == null || q.paymentProofBase64!.isEmpty) && q.status.value == 'awaiting_payment') {
+            await _queueService.cancelQueue(q.id, reason: 'Payment timeout', cancelledBy: 'system');
+            if (mounted) {
+              _showSnack('Waktu pembayaran habis. Pesanan dibatalkan otomatis.', isError: true);
+            }
+          }
+        }
+        return;
+      }
+
+      // fallback: cancel any awaiting_payment for this customer that expired
+      await _queueService.cancelExpiredAwaitingPaymentQueuesForCustomer(uid);
+    } catch (e) {
+      debugPrint('Error handling expiry: $e');
+    }
+  }
+
+  /// Atomic transaction: find existing queue by order_id or create new one with proof.
+  /// Ensures proof is set and status is preserved (no regressions).
+  Future<void> _submitPaymentProofTransaction(String userId, String base64Proof, Queue existingQueue) async {
+    final firestore = FirebaseFirestore.instance;
+    final orderIndexRef = firestore.collection('order_index').doc(widget.orderId);
+
+    try {
+      await firestore.runTransaction((tx) async {
+        // Check order_index to find the queue id
+        final idxSnap = await tx.get(orderIndexRef);
+        DocumentReference<Map<String, dynamic>>? targetQueueRef;
+
+        if (idxSnap.exists && idxSnap.data()?['queue_id'] != null) {
+          // Existing queue — use it
+          final queueId = idxSnap.data()!['queue_id'] as String;
+          targetQueueRef = firestore.collection('queues').doc(queueId);
+
+          // Verify ownership in transaction
+          final qSnap = await tx.get(targetQueueRef);
+          if (!qSnap.exists) {
+            throw Exception('Queue referenced by order_index no longer exists');
+          }
+          final qData = qSnap.data();
+          if (qData?['customer_id'] != userId) {
+            throw Exception('Unauthorized: queue does not belong to current user');
+          }
+
+          // Update with proof, preserve status
+          tx.update(targetQueueRef, {
+            'payment_proof_base64': base64Proof,
+            'payment_method': 'bank_transfer',
+            'payment_amount': widget.totalPrice,
+            'status': (qData?['status'] as String?) ?? existingQueue.status.value,
+            'payment_submitted_at': FieldValue.serverTimestamp(),
+            'updated_at': FieldValue.serverTimestamp(),
+          });
+        } else {
+          // No index yet — create queue + index atomically
+          final newQueueRef = firestore.collection('queues').doc();
+          targetQueueRef = newQueueRef;
+
+          final queueData = {
+            'barbershop_id': widget.barbershopId,
+            'barberman_id': widget.barbermanId,
+            'booking_time': widget.bookingTime != null ? Timestamp.fromDate(widget.bookingTime!) : Timestamp.now(),
+            'service_ids': widget.serviceIds ?? [],
+            'total_price': widget.totalPrice,
+            'status': 'awaiting_payment',
+            'request_status': 'approved',
+            'payment_proof_base64': base64Proof,
+            'payment_submitted_at': FieldValue.serverTimestamp(),
+            'payment_method': 'bank_transfer',
+            'payment_amount': widget.totalPrice,
+            'order_id': widget.orderId,
+            'customer_id': userId,
+            'created_at': FieldValue.serverTimestamp(),
+            'payment_deadline': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 10))),
+          };
+
+          // Create queue and index atomically
+          tx.set(newQueueRef, queueData);
+          tx.set(orderIndexRef, {
+            'queue_id': newQueueRef.id,
+            'created_at': FieldValue.serverTimestamp(),
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Error in _submitPaymentProofTransaction: $e');
+      rethrow;
+    }
+  }
+
 
   String _formatDuration(Duration d) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -251,56 +399,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
         throw Exception('Ukuran file terlalu besar. Silakan kompres atau crop gambar.');
       }
 
-      final queueCollection = FirebaseFirestore.instance.collection('queues');
+      // Use atomic transaction: find-or-create with proof in single TX
+      await _submitPaymentProofTransaction(user.uid, _pickedBase64!, queue);
 
-      // try update existing by order_id, otherwise create
-      final existingQs = await queueCollection.where('order_id', isEqualTo: widget.orderId).limit(1).get();
-
-      final Map<String, dynamic> updateData = {
-        'payment_proof_base64': _pickedBase64,
-        'payment_method': 'bank_transfer',
-        'payment_amount': widget.totalPrice,
-        'status': 'waiting',
-        'payment_submitted_at': FieldValue.serverTimestamp(),
-        'order_id': widget.orderId,
-        'total_price': widget.totalPrice,
-        'customer_id': user.uid,
-        'updated_at': FieldValue.serverTimestamp(),
-      };
-
-      if (existingQs.docs.isNotEmpty) {
-        await existingQs.docs.first.reference.update(updateData);
-        _showSnack('Bukti pembayaran berhasil diunggah — menunggu konfirmasi admin.', success: true);
-      } else {
-        final queueData = {
-          'barbershop_id': widget.barbershopId,
-          'barberman_id': widget.barbermanId,
-          'booking_time': widget.bookingTime != null ? Timestamp.fromDate(widget.bookingTime!) : Timestamp.now(),
-          'service_ids': widget.serviceIds ?? [],
-          'total_price': widget.totalPrice,
-            'status': 'waiting',
-            'payment_proof_base64': _pickedBase64,
-            'payment_submitted_at': FieldValue.serverTimestamp(),
-          'payment_method': 'bank_transfer',
-          'payment_amount': widget.totalPrice,
-          'order_id': widget.orderId,
-          'customer_id': user.uid,
-          'created_at': FieldValue.serverTimestamp(),
-        };
-        await _createQueue(queueData);
-        _showSnack('Booking berhasil dibuat — menunggu konfirmasi admin.', success: true);
+      if (mounted) {
+        setState(() {
+          _hasUploadedProof = true;
+        });
+        Navigator.of(context).pop(true);
       }
-
-      if (mounted) Navigator.of(context).pop(true);
+      _showSnack('Bukti pembayaran berhasil diunggah — menunggu konfirmasi admin.', success: true);
     } catch (e) {
       _showSnack('Gagal submit bukti: ${e.toString().replaceAll('Exception: ', '')}', isError: true);
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
-  }
-
-  Future<DocumentReference> _createQueue(Map<String, dynamic> data) {
-    return _queueService.createQueue(data);
   }
 
   // --- UI Components ---
@@ -500,50 +613,59 @@ class _PaymentScreenState extends State<PaymentScreen> {
         Text('Upload screenshot/photo of the transfer receipt to speed up verification.', style: TextStyle(color: kDisabledText, fontSize: 13)),
         const SizedBox(height: 12),
         GestureDetector(
-          onTap: isExpired || _isSubmitting ? null : _showPickOptions,
+          onTap: (isExpired || _isSubmitting || _hasUploadedProof) ? null : _showPickOptions,
           child: Container(
-            width: double.infinity,
-            height: 180,
-            decoration: BoxDecoration(color: kSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white12)),
-            child: _pickedImage == null
-                ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    const Icon(Icons.upload_file_outlined, color: kBrownAccent, size: 42),
-                    const SizedBox(height: 8),
-                    Text(isExpired ? 'Time expired' : 'Tap to choose image (camera/gallery)', style: const TextStyle(color: Colors.white70)),
-                    const SizedBox(height: 8),
-                    Text('Format JPG/PNG. Crop to show transfer details.', style: TextStyle(color: kDisabledText, fontSize: 12)),
-                  ])
-                : Stack(children: [
-                    Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(_pickedImage!, fit: BoxFit.cover))),
-                    Positioned(
-                      right: 8, top: 8,
-                      child: Row(children: [
-                        InkWell(
-                          onTap: _viewFullScreenPreview,
-                          child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)), child: const Icon(Icons.remove_red_eye, color: Colors.white, size: 18)),
-                        ),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          onTap: () => setState(() { _pickedImage = null; _pickedBase64 = null; }),
-                          child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)), child: const Icon(Icons.close, color: Colors.white, size: 18)),
-                        ),
-                      ]),
-                    ),
-                    if (_isSubmitting)
-                      Positioned.fill(
-                        child: Container(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          child: const Center(child: CircularProgressIndicator()),
-                        ),
+              width: double.infinity,
+              height: 180,
+              decoration: BoxDecoration(color: kSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white12)),
+              child: _pickedImage == null
+                  ? (_hasUploadedProof
+                      ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          const Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 42),
+                          const SizedBox(height: 8),
+                          const Text('Bukti pembayaran sudah diunggah', style: TextStyle(color: Colors.white70)),
+                          const SizedBox(height: 6),
+                          Text('Jika ada masalah, hubungi admin.', style: TextStyle(color: kDisabledText, fontSize: 12)),
+                        ]))
+                      : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          const Icon(Icons.upload_file_outlined, color: kBrownAccent, size: 42),
+                          const SizedBox(height: 8),
+                          Text(isExpired ? 'Time expired' : 'Tap to choose image (camera/gallery)', style: const TextStyle(color: Colors.white70)),
+                          const SizedBox(height: 8),
+                          Text('Format JPG/PNG. Crop to show transfer details.', style: TextStyle(color: kDisabledText, fontSize: 12)),
+                        ]))
+                  : Stack(children: [
+                      Positioned.fill(child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(_pickedImage!, fit: BoxFit.cover))),
+                      Positioned(
+                        right: 8, top: 8,
+                        child: Row(children: [
+                          InkWell(
+                            onTap: _viewFullScreenPreview,
+                            child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)), child: const Icon(Icons.remove_red_eye, color: Colors.white, size: 18)),
+                          ),
+                          const SizedBox(width: 8),
+                          if (!_hasUploadedProof)
+                            InkWell(
+                              onTap: () => setState(() { _pickedImage = null; _pickedBase64 = null; }),
+                              child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)), child: const Icon(Icons.close, color: Colors.white, size: 18)),
+                            ),
+                        ]),
                       ),
-                  ]),
+                      if (_isSubmitting)
+                        Positioned.fill(
+                          child: Container(
+                            color: Color.fromRGBO(0, 0, 0, 0.45),
+                            child: const Center(child: CircularProgressIndicator()),
+                          ),
+                        ),
+                    ]),
           ),
         ),
         const SizedBox(height: 12),
         Row(children: [
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: _pickedImage == null ? null : _viewFullScreenPreview,
+              onPressed: (_pickedImage == null || _hasUploadedProof) ? null : _viewFullScreenPreview,
               icon: const Icon(Icons.remove_red_eye),
               label: const Text('Preview'),
               style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white12)),
@@ -588,11 +710,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Widget _buildActionButtons() {
     final isExpired = _timeRemaining.inSeconds == 0;
+    final disable = isExpired || _isSubmitting || _hasUploadedProof;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       ElevatedButton(
-        onPressed: (isExpired || _isSubmitting) ? null : _submitPaymentProof,
+        onPressed: disable ? null : _submitPaymentProof,
         style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: kTextDark, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-        child: Text(_isSubmitting ? 'Processing...' : 'Submit Proof & Create Queue', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        child: Text(_hasUploadedProof ? 'Bukti Terunggah' : (_isSubmitting ? 'Processing...' : 'Submit Proof & Create Queue'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       ),
     ]);
   }

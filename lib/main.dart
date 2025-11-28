@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
@@ -59,19 +61,58 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  final QueueService _queueService = QueueService();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    // Try an initial check shortly after startup
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _checkAndCancelExpiredForCurrentUser();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // On resume, run expiry checks for current user
+      _checkAndCancelExpiredForCurrentUser();
+    }
+  }
+
+  Future<void> _checkAndCancelExpiredForCurrentUser() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+
+      await Future.wait([
+        _queueService.cancelExpiredWaitingQueuesForCustomer(uid),
+        _queueService.cancelExpiredAwaitingPaymentQueuesForCustomer(uid),
+      ]);
+    } catch (e) {
+      debugPrint('Error running expiry checks: $e');
+    }
+  }
   // ========================================
   // warna tema aplikasi
   // ========================================
-  // penjelasan constant colors:
-  // - colors ini adalah constants yang digunakan di seluruh aplikasi
-  // - const berarti nilai tidak bisa diubah
-  // - static berarti bisa diakses tanpa instance (MyApp.kBrownAccent)
-  // - 0xFFC3A47B adalah hex color code RGB
-  //   - FF = tidak transparan (opaque)
-  //   - C3A47B = coklat tan color
   static const Color kBrownAccent = Color(0xFFC3A47B);      // warna coklat utama
   static const Color kBlackBackground = Colors.black;        // warna latar aplikasi
   static const Color kDarkGrey = Color(0xFF1E1E1E);          // warna abu-abu gelap untuk cards

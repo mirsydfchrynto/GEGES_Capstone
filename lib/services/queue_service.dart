@@ -125,12 +125,14 @@ class QueueService {
   Future<void> cancelQueue(
     String queueId, {
     String reason = 'Admin/Barberman Cancellation',
+    String? cancelledBy,
   }) async {
     try {
+      final by = cancelledBy ?? FirebaseAuth.instance.currentUser?.uid ?? 'system';
       await _firestore.collection('queues').doc(queueId).update({
         'status': 'cancelled',
         'cancellation_reason': reason,
-        'cancelled_by_uid': FirebaseAuth.instance.currentUser?.uid,
+        'cancelled_by_uid': by,
         'cancelled_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
       });
@@ -321,6 +323,87 @@ class QueueService {
       return docRef;
     } catch (e) {
       debugPrint("Error creating queue: $e");
+      rethrow;
+    }
+  }
+
+  /// Create queue with an `order_index` uniqueness guard. If `order_id` is
+  /// provided, this transaction will ensure only one queue is created for that
+  /// order. If an existing index exists it will return the existing queue
+  /// document reference instead of creating a duplicate.
+  Future<DocumentReference<Map<String, dynamic>>> createQueueWithOrderIndex(
+    Map<String, dynamic> queueData,
+  ) async {
+    final orderId = queueData['order_id'] as String? ?? queueData['orderId'] as String?;
+
+    // If no orderId supplied, fall back to regular createQueue behavior.
+    if (orderId == null || orderId.isEmpty) {
+      return createQueue(queueData);
+    }
+
+    final orderIndexRef = _firestore.collection('order_index').doc(orderId);
+
+    try {
+      final docRef = await _firestore.runTransaction<DocumentReference<Map<String, dynamic>>>((tx) async {
+        final idxSnap = await tx.get(orderIndexRef);
+        if (idxSnap.exists) {
+          final existing = idxSnap.data()?['queue_id'] as String?;
+          if (existing != null && existing.isNotEmpty) {
+            // Return existing queue ref
+            return _firestore.collection('queues').doc(existing);
+          }
+          // If an index exists but no queue_id yet, abort to avoid racing.
+          throw Exception('order_id already reserved — try again shortly');
+        }
+
+        // Build minimal data payload (normalize booking_time similar to createQueue)
+        Timestamp? bookingTs;
+        final bt = queueData['booking_time'] ?? queueData['bookingTime'];
+        if (bt is DateTime) {
+          bookingTs = Timestamp.fromDate(bt);
+        } else if (bt is Timestamp) {
+          bookingTs = bt;
+        } else {
+          bookingTs = null;
+        }
+
+        final Map<String, dynamic> dataToSave = {
+          'barbershop_id': queueData['barbershop_id'] ?? queueData['barbershopId'],
+          'customer_id': queueData['customer_id'] ?? queueData['customerId'] ?? FirebaseAuth.instance.currentUser?.uid,
+          'barberman_id': queueData['barberman_id'] ?? queueData['barbermanId'],
+          'service_ids': queueData['service_ids'] ?? (queueData['service_id'] != null ? [queueData['service_id']] : queueData['serviceIds'] ?? []),
+          'total_price': queueData['total_price'] ?? queueData['totalPrice'],
+          'estimated_duration': queueData['estimated_duration'] ?? queueData['estimatedDuration'],
+          'booking_time': bookingTs ?? FieldValue.serverTimestamp(),
+          'status': queueData['status'] ?? 'waiting',
+          'payment_deadline': queueData['payment_due_at'] ?? queueData['payment_deadline'],
+          'created_at': FieldValue.serverTimestamp(),
+          'payment_proof_base64': queueData['payment_proof_base64'] ?? queueData['payment_proof'],
+          'payment_method': queueData['payment_method'],
+          'payment_amount': queueData['payment_amount'],
+          'order_id': orderId,
+          'notes': queueData['notes'],
+        };
+
+        dataToSave.removeWhere((_, v) => v == null);
+
+        if ((dataToSave['status'] as String?) == 'waiting' && dataToSave['payment_deadline'] == null) {
+          final due = DateTime.now().add(const Duration(minutes: 10));
+          dataToSave['payment_deadline'] = Timestamp.fromDate(due);
+        }
+
+        // Create queue doc and index atomically
+        final queuesColl = _firestore.collection('queues');
+        final newRef = queuesColl.doc();
+        tx.set(newRef, dataToSave);
+        tx.set(orderIndexRef, {'queue_id': newRef.id, 'created_at': FieldValue.serverTimestamp()});
+
+        return newRef;
+      });
+
+      return docRef;
+    } catch (e) {
+      debugPrint('Error createQueueWithOrderIndex: $e');
       rethrow;
     }
   }

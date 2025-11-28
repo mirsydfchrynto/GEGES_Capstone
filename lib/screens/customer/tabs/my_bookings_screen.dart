@@ -33,7 +33,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
 
     // On screen init, trigger cancel checks for expired waiting / awaiting_payment
     if (_customerId != null) {
@@ -128,6 +128,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   String _formatStatusForQueue(Queue queue) {
     // If admin has approved request and payment deadline exists => awaiting payment
     if ((queue.requestStatus == RequestStatus.approved) && queue.paymentDeadline != null) {
+      // If customer already uploaded proof, show awaiting verification
+      if (queue.paymentProofBase64 != null && queue.paymentProofBase64!.isNotEmpty) {
+        return 'Pembayaran Dikirim (Menunggu Verifikasi)';
+      }
       return 'Menunggu Pembayaran';
     }
 
@@ -143,6 +147,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       case QueueStatus.cancelled:
         return 'Dibatalkan';
     }
+  }
+
+  String _formatRemaining(Timestamp? ts) {
+    if (ts == null) return '';
+    final rem = ts.toDate().difference(DateTime.now());
+    if (rem.inSeconds <= 0) return '00:00:00';
+    final h = rem.inHours;
+    final m = rem.inMinutes.remainder(60);
+    final s = rem.inSeconds.remainder(60);
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(h)}:${two(m)}:${two(s)}';
   }
 
   Color _getStatusColor(QueueStatus status) {
@@ -187,13 +202,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         title: const Text('My Bookings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
           indicatorColor: kBrownAccent,
           labelColor: kBrownAccent,
           unselectedLabelColor: kTextGrey,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           tabs: const [
-            Tab(text: 'Active'),
-            Tab(text: 'History'),
+            Tab(text: 'Menunggu Konfirmasi'),
+            Tab(text: 'Menunggu Pembayaran'),
+            Tab(text: 'Terverifikasi'),
+            Tab(text: 'Aktif / Antrian'),
+            Tab(text: 'Riwayat'),
+            Tab(text: 'Dibatalkan'),
           ],
         ),
       ),
@@ -205,25 +225,24 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         child: TabBarView(
           controller: _tabController,
           children: [
-            _buildBookingList(isCompleted: false),
-            _buildBookingList(isCompleted: true),
+            _buildBookingListWithStatuses(statuses: ['waiting']),
+            _buildBookingListWithStatuses(statuses: ['awaiting_payment']),
+            _buildBookingListWithStatuses(statuses: ['booked']),
+            _buildBookingListWithStatuses(statuses: ['ongoing']),
+            _buildBookingListWithStatuses(statuses: ['served', 'refund_pending']),
+            _buildBookingListWithStatuses(statuses: ['cancelled']),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildBookingList({required bool isCompleted}) {
+  Widget _buildBookingListWithStatuses({required List<String> statuses}) {
     if (_customerId == null) {
       return const Center(child: Text('Anda harus login', style: TextStyle(color: kTextGrey)));
     }
 
-    final List<String> requiredStatus = isCompleted
-        ? ['served', 'cancelled', 'refund_pending']
-        : ['waiting', 'booked', 'ongoing', 'cancellation_requested'];
-
     final Stream<List<Queue>> queueStream =
-        _queueService.streamQueuesForCustomer(_customerId, statusFilter: requiredStatus);
+        _queueService.streamQueuesForCustomer(_customerId, statusFilter: statuses);
 
     return StreamBuilder<List<Queue>>(
       stream: queueStream,
@@ -239,6 +258,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
 
         final filteredList = snapshot.data ?? [];
         if (filteredList.isEmpty) {
+          // choose an empty state message based on first status
+          final first = statuses.isNotEmpty ? statuses.first : '';
+          final isCompleted = (first == 'served' || first == 'cancelled' || first == 'refund_pending');
           return _buildEmptyState(isCompleted);
         }
 
@@ -333,9 +355,22 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(20)),
-                        child: Text(
-                          _formatStatusForQueue(queue),
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              _formatStatusForQueue(queue),
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                            if (queue.paymentDeadline != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                  _formatRemaining(queue.paymentDeadline),
+                                  style: const TextStyle(color: Colors.white70, fontSize: 10),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),

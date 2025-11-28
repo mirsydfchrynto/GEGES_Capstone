@@ -25,12 +25,14 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   final QueueService _queueService = QueueService();
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _waitingBookingsStream() {
-    // Menampilkan semua queue yang status == 'waiting'
+    // Menampilkan semua queue yang status == 'waiting' dan belum disetujui (request_status == 'pending')
+    // Ini mencegah dokumen yang sudah dipindah ke 'awaiting_payment' untuk muncul kembali.
     return FirebaseFirestore.instance
-        .collection('queues')
-        .where('status', isEqualTo: 'waiting')
-        .orderBy('booking_time', descending: false)
-        .snapshots();
+      .collection('queues')
+      .where('status', isEqualTo: 'waiting')
+      .where('request_status', isEqualTo: 'pending')
+      .orderBy('booking_time', descending: false)
+      .snapshots();
   }
 
   // Ambil field bukti pembayaran dari dokumen (mendukung beberapa nama field)
