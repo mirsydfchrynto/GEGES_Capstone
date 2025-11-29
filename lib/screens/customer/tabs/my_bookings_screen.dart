@@ -126,27 +126,54 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   }
 
   String _formatStatusForQueue(Queue queue) {
-    // If admin has approved request and payment deadline exists => awaiting payment
-    if ((queue.requestStatus == RequestStatus.approved) && queue.paymentDeadline != null) {
-      // If customer already uploaded proof, show awaiting verification
-      if (queue.paymentProofBase64 != null && queue.paymentProofBase64!.isNotEmpty) {
-        return 'Pembayaran Dikirim (Menunggu Verifikasi)';
+    // Prioritize definitive workflow statuses first
+    if (queue.status == QueueStatus.cancelled) return 'Dibatalkan';
+    if (queue.status == QueueStatus.served) return 'Selesai';
+    if (queue.status == QueueStatus.ongoing) return 'Sedang Dicukur';
+
+    // Handle awaiting_payment state (admin confirmed, waiting for payment)
+    if (queue.requestStatus == RequestStatus.approved && queue.paymentDeadline != null) {
+      // If belum upload bukti pembayaran
+      if (queue.paymentProofBase64 == null || queue.paymentProofBase64!.isEmpty) {
+        return 'Menunggu Pembayaran';
       }
-      return 'Menunggu Pembayaran';
+      // Sudah upload bukti, menunggu verifikasi admin
+      if (queue.paymentProofBase64 != null && queue.paymentProofBase64!.isNotEmpty && (queue.verifiedBy == null || queue.verifiedBy!.isEmpty)) {
+        return 'Pembayaran Dikirim';
+      }
+      // Sudah diverifikasi admin
+      if (queue.verifiedBy != null && queue.verifiedBy!.isNotEmpty) {
+        return 'Pembayaran Terverifikasi';
+      }
     }
 
-    switch (queue.status) {
-      case QueueStatus.waiting:
-        return 'Menunggu Konfirmasi';
-      case QueueStatus.booked:
-        return 'Booked';
-      case QueueStatus.ongoing:
-        return 'Sedang Berlangsung';
-      case QueueStatus.served:
-        return 'Selesai';
-      case QueueStatus.cancelled:
-        return 'Dibatalkan';
+    // Handle booked state (legacy)
+    if (queue.status == QueueStatus.booked) {
+      if (queue.verifiedBy != null && queue.verifiedBy!.isNotEmpty) {
+        return 'Pembayaran Terverifikasi';
+      }
+      if (queue.paymentProofBase64 != null && queue.paymentProofBase64!.isNotEmpty) {
+        return 'Pembayaran Dikirim';
+      }
+      return 'Booked';
     }
+
+    // Default for waiting / other states
+    if (queue.status == QueueStatus.waiting) return 'Menunggu Konfirmasi';
+    return queue.status.name;
+  }
+
+  bool _isAwaitingPaymentForQueue(Queue q) {
+    return q.requestStatus == RequestStatus.approved && q.paymentDeadline != null && (q.paymentProofBase64 == null || q.paymentProofBase64!.isEmpty);
+  }
+
+  Color _getColorForQueue(Queue q) {
+    // Verified payments -> green
+    if (q.verifiedBy != null && q.verifiedBy!.isNotEmpty) return Colors.green;
+    // Proof uploaded and awaiting admin -> amber
+    if (q.requestStatus == RequestStatus.approved && q.paymentProofBase64 != null && q.paymentProofBase64!.isNotEmpty) return Colors.amber;
+    // Otherwise rely on status color
+    return _getStatusColor(q.status);
   }
 
   String _formatRemaining(Timestamp? ts) {
@@ -210,8 +237,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           tabs: const [
             Tab(text: 'Menunggu Konfirmasi'),
             Tab(text: 'Menunggu Pembayaran'),
-            Tab(text: 'Terverifikasi'),
-            Tab(text: 'Aktif / Antrian'),
+            Tab(text: 'Pembayaran Terverifikasi'),
+            Tab(text: 'Sedang Dicukur'),
             Tab(text: 'Riwayat'),
             Tab(text: 'Dibatalkan'),
           ],
@@ -321,7 +348,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         }
 
         final details = snapshot.data!;
-        final statusColor = _getStatusColor(queue.status);
+        final statusColor = _getColorForQueue(queue);
 
         return GestureDetector(
           onTap: () => _showBookingDetail(context, queue, details),
@@ -362,7 +389,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                               _formatStatusForQueue(queue),
                               style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                             ),
-                            if (queue.paymentDeadline != null)
+                            if (_isAwaitingPaymentForQueue(queue))
                               Padding(
                                 padding: const EdgeInsets.only(top: 4.0),
                                 child: Text(

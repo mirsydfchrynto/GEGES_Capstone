@@ -3,6 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:image_picker/image_picker.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 
@@ -169,10 +173,22 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
                     final navigator = Navigator.of(c);
                     final messenger = ScaffoldMessenger.of(c);
                     try {
+                      // show loading
+                      showDialog(
+                        context: c,
+                        barrierDismissible: false,
+                        builder: (_) => const Center(child: CircularProgressIndicator()),
+                      );
                       await _queueService.adminRejectCancellation(q.id);
-                      navigator.pop();
-                      messenger.showSnackBar(const SnackBar(content: Text('Cancelled request rejected'), backgroundColor: Colors.red));
+                      // close loading then bottom sheet
+                      Navigator.of(c).pop(); // close loading dialog
+                      navigator.pop(); // close bottom sheet
+                      messenger.showSnackBar(const SnackBar(content: Text('Cancellation request rejected'), backgroundColor: Colors.red));
                     } catch (e) {
+                      // ensure loading closed
+                      try {
+                        Navigator.of(c).pop();
+                      } catch (_) {}
                       messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
                   },
@@ -184,13 +200,53 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
               Expanded(
                 child: ElevatedButton(
                   onPressed: () async {
-                    final navigator = Navigator.of(c);
                     final messenger = ScaffoldMessenger.of(c);
                     try {
-                      await _queueService.adminApproveCancellation(q.id);
-                      navigator.pop();
+                      final picked = await showModalBottomSheet<XFile?>(
+                        context: c,
+                        builder: (ctx) => _ApproveWithProofSheet(),
+                      );
+
+                      String? base64Proof;
+                      if (picked != null) {
+                        // show progress for encoding
+                        showDialog(
+                          context: c,
+                          barrierDismissible: false,
+                          builder: (_) => const Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircularProgressIndicator(),
+                                SizedBox(height: 12),
+                                Text('Processing proof...', style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                        );
+                        final bytes = await picked.readAsBytes();
+                        base64Proof = base64Encode(bytes);
+                        // close progress
+                        Navigator.of(c).pop();
+                      }
+
+                      // show loading for approval
+                      showDialog(
+                        context: c,
+                        barrierDismissible: false,
+                        builder: (_) => const Center(child: CircularProgressIndicator()),
+                      );
+
+                      await _queueService.adminApproveCancellation(q.id, refundProofBase64: base64Proof);
+
+                      // close loading then bottom sheet
+                      Navigator.of(c).pop(); // close loading
+                      Navigator.of(c).pop(); // close bottom sheet
                       messenger.showSnackBar(const SnackBar(content: Text('Refund approved'), backgroundColor: Colors.green));
                     } catch (e) {
+                      try {
+                        Navigator.of(c).pop();
+                      } catch (_) {}
                       messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
                   },
@@ -210,4 +266,116 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
   }
 
   String _formatTs(Timestamp ts) => DateFormat('EEE d MMM HH:mm').format(ts.toDate());
+}
+
+// Modal sheet: allow admin to pick an image (camera/gallery) and confirm
+class _ApproveWithProofSheet extends StatefulWidget {
+  @override
+  State<_ApproveWithProofSheet> createState() => _ApproveWithProofSheetState();
+}
+
+class _ApproveWithProofSheetState extends State<_ApproveWithProofSheet> {
+  XFile? _picked;
+  String? _errorMsg;
+  final ImagePicker _picker = ImagePicker();
+  static const int maxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
+  static const List<String> allowedFormats = ['jpg', 'jpeg', 'png'];
+
+  Future<void> _pick(ImageSource src) async {
+    try {
+      final XFile? file = await _picker.pickImage(source: src, maxWidth: 1200, maxHeight: 1200, imageQuality: 80);
+      if (file != null) {
+        // Validate file size and format
+        final fileSize = await file.length();
+        final fileName = file.name.toLowerCase();
+        final fileExt = fileName.split('.').last;
+
+        if (fileSize > maxFileSizeBytes) {
+          setState(() => _errorMsg = 'File terlalu besar (max 5 MB). Ukuran: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB');
+          return;
+        }
+
+        if (!allowedFormats.contains(fileExt)) {
+          setState(() => _errorMsg = 'Format tidak didukung. Pilih JPG atau PNG.');
+          return;
+        }
+
+        setState(() {
+          _picked = file;
+          _errorMsg = null;
+        });
+      }
+    } catch (e) {
+      setState(() => _errorMsg = 'Error: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('Upload Bukti Refund (opsional)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        (_picked != null)
+            ? Column(children: [
+                SizedBox(height: 180, child: ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(File(_picked!.path), fit: BoxFit.cover))),
+                const SizedBox(height: 8),
+                FutureBuilder<int>(
+                  future: _picked!.length(),
+                  builder: (ctx, snap) {
+                    final sizeStr = snap.hasData ? '${(snap.data! / 1024).toStringAsFixed(1)} KB' : 'Loading...';
+                    return Text('Ukuran: $sizeStr', style: const TextStyle(color: Colors.grey, fontSize: 11));
+                  },
+                ),
+              ])
+            : const SizedBox(height: 120, child: Center(child: Icon(Icons.image, color: Colors.white24, size: 40))),
+        const SizedBox(height: 12),
+        if (_errorMsg != null)
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
+            child: Text(_errorMsg!, style: const TextStyle(color: Colors.red, fontSize: 11)),
+          ),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.photo),
+              label: const Text('Galeri'),
+              onPressed: () => _pick(ImageSource.gallery),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[800]),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.camera_alt),
+              label: const Text('Camera'),
+              onPressed: () => _pick(ImageSource.camera),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[800]),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Skip'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(_picked);
+              },
+              child: const Text('Confirm'),
+            ),
+          ),
+        ])
+      ]),
+    );
+  }
 }

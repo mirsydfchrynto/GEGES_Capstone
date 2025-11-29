@@ -97,7 +97,14 @@ extension QueueStatusExtension on QueueStatus {
   // contoh: QueueStatus.fromString('booked') akan menghasilkan QueueStatus.booked
   static QueueStatus fromString(String status) {
     switch (status.toLowerCase()) {
+      // Common finalized states
       case 'booked':
+      case 'paid_verified':
+      case 'payment_confirmed':
+      case 'confirmed':
+      case 'awaiting_payment':
+      case 'payment_pending':
+        // Treat these as the "booked" bucket for UI/processing purposes
         return QueueStatus.booked;
       case 'ongoing':
         return QueueStatus.ongoing;
@@ -105,6 +112,8 @@ extension QueueStatusExtension on QueueStatus {
         return QueueStatus.served;
       case 'cancelled':
         return QueueStatus.cancelled;
+      case 'created':
+      case 'waiting':
       default:
         return QueueStatus.waiting;
     }

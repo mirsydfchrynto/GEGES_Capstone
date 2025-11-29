@@ -1,5 +1,6 @@
 // lib/screens/customer/booking_detail_screen.dart (enhanced with countdown timer)
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +30,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   bool _loading = true;
   Timer? _countdownTimer;
   Duration _remainingTime = Duration.zero;
+  String? _barbershopName;
+  String? _barbermanName;
+  String? _servicesLabel;
 
   @override
   void initState() {
@@ -39,8 +43,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   bool get _isAwaitingPayment {
     if (_queue == null) return false;
     try {
-      // Consider awaiting_payment when admin has approved the request and a payment deadline is set
-      return _queue!.requestStatus == RequestStatus.approved && _queue!.paymentDeadline != null;
+      // Awaiting payment only when admin approved, payment deadline exists
+      // AND customer hasn't uploaded payment proof yet.
+      return _queue!.requestStatus == RequestStatus.approved &&
+          _queue!.paymentDeadline != null &&
+          (_queue!.paymentProofBase64 == null || _queue!.paymentProofBase64!.isEmpty);
     } catch (_) {
       return false;
     }
@@ -59,12 +66,54 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       _queue = q;
       _loading = false;
     });
+    // Load related names for a richer, more professional detail view
+    if (_queue != null) {
+      _fetchRelatedNames();
+    }
     _startCountdownTimer();
+  }
+
+  Future<void> _fetchRelatedNames() async {
+    try {
+      final fs = FirebaseFirestore.instance;
+      final barbershopF = fs.collection('barbershops').doc(_queue!.barbershopId).get();
+      final barbermanF = fs.collection('barbermen').doc(_queue!.barbermanId).get();
+      final serviceDocsF = Future.wait((_queue!.serviceIds ?? []).map((id) => fs.collection('services').doc(id).get()));
+
+      final results = await Future.wait([barbershopF, barbermanF, serviceDocsF]);
+
+      final barbershopDoc = results[0] as DocumentSnapshot;
+      final barbermanDoc = results[1] as DocumentSnapshot;
+      final serviceDocs = results[2] as List<DocumentSnapshot>;
+
+      setState(() {
+        final bsData = barbershopDoc.data() as Map<String, dynamic>?;
+        final bmData = barbermanDoc.data() as Map<String, dynamic>?;
+        _barbershopName = bsData?['name'] as String? ?? 'Barbershop';
+        _barbermanName = bmData?['name'] as String? ?? 'Barberman';
+        final names = serviceDocs.where((d) => d.exists).map((d) => (d.data() as Map<String, dynamic>?)?['name'] as String? ?? '').where((s) => s.isNotEmpty).toList();
+        if (names.isEmpty) {
+          _servicesLabel = 'Layanan Tidak Tersedia';
+        } else if (names.length == 1) {
+          _servicesLabel = names[0];
+        } else {
+          _servicesLabel = '${names[0]} (+${names.length - 1})';
+        }
+      });
+    } catch (_) {
+      // ignore; keep defaults
+    }
   }
 
   void _startCountdownTimer() {
     _countdownTimer?.cancel();
+    // Don't start countdown if there's no deadline or proof already uploaded
     if (_queue?.paymentDeadline == null) return;
+    if (_queue?.paymentProofBase64 != null && _queue!.paymentProofBase64!.isNotEmpty) {
+      // Proof uploaded: treat as payment action completed — remove countdown
+      setState(() => _remainingTime = Duration.zero);
+      return;
+    }
 
     // Calculate initial remaining time
     final now = DateTime.now();
@@ -99,6 +148,45 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   String _formatTimestamp(Timestamp ts) => DateFormat('EEE, d MMM HH:mm').format(ts.toDate());
+
+  Future<void> _showCancellationDialog(BuildContext context) async {
+    final TextEditingController _reasonCtrl = TextEditingController();
+    final result = await showDialog<bool?>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Ajukan Pembatalan'),
+        content: TextField(
+          controller: _reasonCtrl,
+          maxLines: 3,
+          decoration: const InputDecoration(hintText: 'Jelaskan alasan pembatalan (wajib)'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () {
+              if (_reasonCtrl.text.trim().isEmpty) return;
+              Navigator.of(c).pop(true);
+            },
+            child: const Text('Kirim'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      final reason = _reasonCtrl.text.trim();
+      try {
+        await _queueService.customerRequestCancellation(_queue!.id, reason: reason);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permintaan pembatalan terkirim')));
+        // reload queue to reflect new status
+        await _load();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mengirim permintaan: $e')));
+      }
+    }
+  }
 
   String _formatCountdown(Duration duration) {
     if (duration.isNegative) return 'Waktu habis';
@@ -147,14 +235,48 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                             const SizedBox(height: 8),
                             Text('Waktu: ${_formatTimestamp(_queue!.bookingTime)}', style: const TextStyle(color: kTextGrey)),
                             const SizedBox(height: 8),
+                            Text('Barbershop: ${_barbershopName ?? _queue!.barbershopId}', style: const TextStyle(color: Colors.white)),
+                            const SizedBox(height: 6),
+                            Text('Layanan: ${_servicesLabel ?? 'Loading...'}', style: const TextStyle(color: kTextGrey)),
+                            const SizedBox(height: 6),
+                            Text('Barberman: ${_barbermanName ?? _queue!.barbermanId}', style: const TextStyle(color: kTextGrey)),
+                            const SizedBox(height: 8),
                             if (_queue!.estimatedDuration != null) Text('Durasi: ${_queue!.estimatedDuration} menit', style: const TextStyle(color: kTextGrey)),
                             const SizedBox(height: 8),
                             if (_queue!.totalPrice != null) Text('Total: Rp ${_queue!.totalPrice}', style: const TextStyle(color: kBrownAccent)),
                             const SizedBox(height: 12),
-                            // Only show payment proof confirmation during awaiting_payment phase
-                            if (_isAwaitingPayment && _queue!.paymentProofBase64 != null) ...[
-                              const SizedBox(height: 4),
-                              const Text('✓ Bukti pembayaran terunggah', style: TextStyle(color: Colors.green)),
+                            // Show payment proof state if present
+                            if (_queue!.paymentProofBase64 != null && _queue!.paymentProofBase64!.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(Icons.check_circle, color: Colors.green),
+                                  const SizedBox(width: 8),
+                                  const Expanded(child: Text('Bukti pembayaran telah terunggah — menunggu verifikasi oleh admin', style: TextStyle(color: Colors.green))),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () {
+                                  // show full preview dialog
+                                  try {
+                                    final bytes = base64Decode(_queue!.paymentProofBase64!);
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) => Dialog(
+                                        backgroundColor: Colors.transparent,
+                                        child: InteractiveViewer(
+                                          child: Image.memory(bytes),
+                                        ),
+                                      ),
+                                    );
+                                  } catch (_) {}
+                                },
+                                child: SizedBox(
+                                  height: 140,
+                                  child: ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.memory(base64Decode(_queue!.paymentProofBase64!))),
+                                ),
+                              ),
                             ],
                             // Show cancellation details
                             if (_queue!.status == QueueStatus.cancelled) ...[
@@ -196,7 +318,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Countdown Timer (if awaiting_payment)
+                      // Countdown Timer (only while customer still must pay)
                       if (_isAwaitingPayment && _queue!.paymentDeadline != null)
                         Container(
                           padding: const EdgeInsets.all(16),
@@ -223,7 +345,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                         ),
                       const SizedBox(height: 16),
 
-                            // Pay Button - Direct navigation to payment screen
+                      // Payment / Proof actions (customer)
+                      if (_queue!.requestStatus == RequestStatus.approved) ...[
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // If no proof yet, allow pay
                             if (_isAwaitingPayment)
                               ElevatedButton(
                                 onPressed: () {
@@ -248,45 +375,38 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                                 ),
                                 child: const Text('Bayar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                               ),
-                            const SizedBox(height: 8),
 
-                            // View Proof Button - opens PaymentScreen where proof (if any) is shown
-                            if (_isAwaitingPayment && _queue!.paymentProofBase64 != null)
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (c) => PaymentScreen(
-                                        orderId: _queue!.id,
-                                        totalPrice: _queue!.totalPrice ?? 0,
-                                        barbershopId: _queue!.barbershopId,
-                                        barbermanId: _queue!.barbermanId,
-                                        bookingTime: _queue!.bookingTime.toDate(),
-                                        serviceIds: _queue!.serviceIds,
-                                        paymentDeadline: _queue!.paymentDeadline?.toDate(),
-                                      ),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[800], minimumSize: const Size.fromHeight(44)),
-                                child: const Text('Lihat Bukti Pembayaran'),
-                              ),
-                            
-                            // Action button for cancelled/rejected bookings
-                            if (_queue!.status == QueueStatus.cancelled)
-                              ElevatedButton(
-                                onPressed: () {
-                                  // Go back to booking screen to create new booking
-                                  Navigator.of(context).pop();
-                                  Navigator.of(context).pop(); // back to my_bookings or home
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blueAccent,
-                                  minimumSize: const Size.fromHeight(48),
+                            // Allow customer to request cancellation when proof uploaded or already booked
+                            if ((_queue!.paymentProofBase64 != null && _queue!.paymentProofBase64!.isNotEmpty) || _queue!.status == QueueStatus.booked)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 12.0),
+                                child: OutlinedButton(
+                                  onPressed: () => _showCancellationDialog(context),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Colors.orange),
+                                    minimumSize: const Size.fromHeight(48),
+                                  ),
+                                  child: const Text('Minta Pembatalan / Refund', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.orange)),
                                 ),
-                                child: const Text('Buat Booking Baru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                               ),
+                          ],
+                        ),
+                      ],
+
+                      // Action button for cancelled bookings: offer to create new booking
+                      if (_queue!.status == QueueStatus.cancelled)
+                        ElevatedButton(
+                          onPressed: () {
+                            // Go back to booking screen to create new booking
+                            Navigator.of(context).pop();
+                            Navigator.of(context).pop(); // back to my_bookings or home
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueAccent,
+                            minimumSize: const Size.fromHeight(48),
+                          ),
+                          child: const Text('Buat Booking Baru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
                     ],
                   ),
                 ),
