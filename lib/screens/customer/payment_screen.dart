@@ -179,72 +179,42 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
-  /// Atomic transaction: find existing queue by order_id or create new one with proof.
-  /// Ensures proof is set and status is preserved (no regressions).
+  /// Atomic transaction: ONLY UPDATE existing queue with proof.
+  /// ✅ NEVER create duplicate booking — only update the existing one.
+  /// The queue must already exist when payment proof is submitted.
   Future<void> _submitPaymentProofTransaction(String userId, String base64Proof, Queue existingQueue) async {
     final firestore = FirebaseFirestore.instance;
-    final orderIndexRef = firestore.collection('order_index').doc(widget.orderId);
+    final queueRef = firestore.collection('queues').doc(existingQueue.id);
 
     try {
       await firestore.runTransaction((tx) async {
-        // Check order_index to find the queue id
-        final idxSnap = await tx.get(orderIndexRef);
-        DocumentReference<Map<String, dynamic>>? targetQueueRef;
-
-        if (idxSnap.exists && idxSnap.data()?['queue_id'] != null) {
-          // Existing queue — use it
-          final queueId = idxSnap.data()!['queue_id'] as String;
-          targetQueueRef = firestore.collection('queues').doc(queueId);
-
-          // Verify ownership in transaction
-          final qSnap = await tx.get(targetQueueRef);
-          if (!qSnap.exists) {
-            throw Exception('Queue referenced by order_index no longer exists');
-          }
-          final qData = qSnap.data();
-          if (qData?['customer_id'] != userId) {
-            throw Exception('Unauthorized: queue does not belong to current user');
-          }
-
-          // Update with proof, preserve status
-          tx.update(targetQueueRef, {
-            'payment_proof_base64': base64Proof,
-            'payment_method': 'bank_transfer',
-            'payment_amount': widget.totalPrice,
-            'status': (qData?['status'] as String?) ?? existingQueue.status.value,
-            'payment_submitted_at': FieldValue.serverTimestamp(),
-            'updated_at': FieldValue.serverTimestamp(),
-          });
-        } else {
-          // No index yet — create queue + index atomically
-          final newQueueRef = firestore.collection('queues').doc();
-          targetQueueRef = newQueueRef;
-
-          final queueData = {
-            'barbershop_id': widget.barbershopId,
-            'barberman_id': widget.barbermanId,
-            'booking_time': widget.bookingTime != null ? Timestamp.fromDate(widget.bookingTime!) : Timestamp.now(),
-            'service_ids': widget.serviceIds ?? [],
-            'total_price': widget.totalPrice,
-            'status': 'awaiting_payment',
-            'request_status': 'approved',
-            'payment_proof_base64': base64Proof,
-            'payment_submitted_at': FieldValue.serverTimestamp(),
-            'payment_method': 'bank_transfer',
-            'payment_amount': widget.totalPrice,
-            'order_id': widget.orderId,
-            'customer_id': userId,
-            'created_at': FieldValue.serverTimestamp(),
-            'payment_deadline': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 10))),
-          };
-
-          // Create queue and index atomically
-          tx.set(newQueueRef, queueData);
-          tx.set(orderIndexRef, {
-            'queue_id': newQueueRef.id,
-            'created_at': FieldValue.serverTimestamp(),
-          });
+        // 1. Get the existing queue document
+        final qSnap = await tx.get(queueRef);
+        if (!qSnap.exists) {
+          throw Exception('Queue dokumen tidak ditemukan: ${existingQueue.id}');
         }
+
+        final qData = qSnap.data();
+        if (qData == null) {
+          throw Exception('Queue data kosong');
+        }
+
+        // 2. Verify ownership — must belong to current user
+        final customerId = qData['customer_id'] as String?;
+        if (customerId == null || customerId != userId) {
+          throw Exception('Unauthorized: booking bukan milik Anda');
+        }
+
+        // 3. ✅ ONLY UPDATE existing queue — preserve all existing fields
+        // Only update payment-related fields, do NOT change status or other data
+        tx.update(queueRef, {
+          'payment_proof_base64': base64Proof,
+          'payment_method': 'bank_transfer',
+          'payment_amount': widget.totalPrice,
+          'payment_submitted_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+          // DO NOT change status here — let admin handle verification
+        });
       });
     } catch (e) {
       debugPrint('Error in _submitPaymentProofTransaction: $e');
