@@ -91,6 +91,9 @@ geges_smartbarber/
 3. Admin verify photo → confirm or reject
 4. Status → `booked` (confirm) atau `cancelled` (reject)
 
+**Per-Barbershop Payment Window:**
+- The `payment_deadline` for `awaiting_payment` bookings is set from a per-shop field `payment_window_minutes` if present; otherwise a **10-minute** default is used. This value is stored on the `barbershops` document and read by `QueueService` when creating bookings.
+
 ---
 
 ## 📖 Documentation Files

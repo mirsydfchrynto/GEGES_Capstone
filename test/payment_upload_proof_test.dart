@@ -1,11 +1,12 @@
-/// WHITE BOX TESTING – FITUR UPLOAD BUKTI PEMBAYARAN
-/// 
-/// Judul: Geges Smart Barber – Aplikasi Booking Barbershop & AI StyleScan
-/// Fitur yang diuji: Upload Bukti Pembayaran (_submitPaymentProof)
-/// Metode Pengujian: White Box Testing
-/// Teknik: Branch Coverage (100%)
-/// Jumlah Test Case: 10 TC untuk 16 branch endpoints
-/// 
+/*
+WHITE BOX TESTING – FITUR UPLOAD BUKTI PEMBAYARAN
+
+Judul: Geges Smart Barber – Aplikasi Booking Barbershop & AI StyleScan
+Fitur yang diuji: Upload Bukti Pembayaran (_submitPaymentProof)
+Metode Pengujian: White Box Testing
+Teknik: Branch Coverage (100%)
+Jumlah Test Case: 10 TC untuk 16 branch endpoints
+*/
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';

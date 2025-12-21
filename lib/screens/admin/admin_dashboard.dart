@@ -13,7 +13,6 @@ import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/screens/admin/live_queue_screen.dart';
 import 'package:geges_smartbarber/screens/admin/_manual_booking_form.dart';
-// Add manual booking screen is temporarily disabled in this build.
 import 'package:geges_smartbarber/screens/admin/payment_verification_screen.dart';
 import 'package:geges_smartbarber/screens/admin/send_notification_screen.dart';
 
@@ -351,31 +350,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       return;
     }
 
-    // fetch shop and show an inline form modal so we avoid cross-file analyzer issues
-    final barbershopDoc = await FirebaseFirestore.instance
-        .collection('barbershops')
-        .doc(_adminBarbershopId)
-        .get();
-
-    if (!barbershopDoc.exists) {
+    final barbershop = await _getBarbershopSafe(_adminBarbershopId!);
+    if (barbershop == null) {
       _showSnackBar('Data barbershop tidak ditemukan.');
       return;
     }
 
-    final barbershop = Barbershop.fromFirestore(barbershopDoc);
-
     if (!mounted) return;
 
-    // show modal bottom sheet with a small manual booking form
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: _ManualBookingForm(barbershop: barbershop, queueService: _queueService),
-      ),
-    );
-    
+    // Navigate to a full-screen manual booking page using the existing ManualBookingForm
+    Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
+      appBar: AppBar(backgroundColor: kBrownAccent, title: const Text('Tambah Booking Manual', style: TextStyle(color: Colors.black))),
+      backgroundColor: kBlack,
+      body: SafeArea(child: Padding(padding: const EdgeInsets.all(12.0), child: ManualBookingForm(barbershop: barbershop, queueService: _queueService))),
+    )));
   },
 ),
 

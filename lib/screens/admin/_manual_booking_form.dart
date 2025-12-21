@@ -10,7 +10,7 @@ import 'package:geges_smartbarber/services/barbershop_service.dart';
 class ManualBookingForm extends StatefulWidget {
   final Barbershop barbershop;
   final QueueService queueService;
-  const ManualBookingForm({required this.barbershop, required this.queueService});
+  const ManualBookingForm({super.key, required this.barbershop, required this.queueService});
 
   @override
   State<ManualBookingForm> createState() => ManualBookingFormState();
@@ -59,6 +59,7 @@ class ManualBookingFormState extends State<ManualBookingForm> {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(context: context, initialDate: now, firstDate: now, lastDate: now.add(const Duration(days: 30)));
     if (pickedDate == null) return;
+    if (!mounted) return;
     final pickedTime = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(now.add(const Duration(minutes: 15))));
     if (pickedTime == null) return;
     setState(() {
@@ -134,7 +135,13 @@ class ManualBookingFormState extends State<ManualBookingForm> {
               DropdownButtonFormField<Barberman?>(initialValue: _selectedBarberman, items: _barbermen.map((b) => DropdownMenuItem(value: b, child: Text(b.name))).toList(), onChanged: (v) => setState(() { _selectedBarberman = v; }), decoration: const InputDecoration(labelText: 'Barberman')),
               const SizedBox(height: 8),
               Wrap(spacing: 8, children: _services.map((s) => FilterChip(label: Text(s.name), selected: _selectedServiceIds.contains(s.id), onSelected: (sel) {
-                setState((){ if (sel) _selectedServiceIds.add(s.id); else _selectedServiceIds.remove(s.id); });
+                setState(() {
+                  if (sel) {
+                    _selectedServiceIds.add(s.id);
+                  } else {
+                    _selectedServiceIds.remove(s.id);
+                  }
+                });
               })).toList()),
               const SizedBox(height: 8),
               Row(children: [Expanded(child: Text(_selectedDateTime == null ? 'Belum memilih waktu' : _dtLabel.format(_selectedDateTime!))), TextButton(onPressed: _pickDateTime, child: const Text('Pilih Waktu'))]),
