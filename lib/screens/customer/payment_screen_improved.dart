@@ -1,12 +1,12 @@
-/// Payment Screen yang diperbaiki untuk mencegah double-upload
-///
-/// Features:
-/// - Disable upload button setelah submit sukses
-/// - Optimistic UI (tampilkan loading saat submit)
-/// - Snapshot listener untuk real-time status
-/// - Error handling & user feedback
-/// - Countdown timer untuk payment deadline
-/// Gunakan sebagai pengganti/patch untuk payment_screen.dart yang sudah ada
+// Payment Screen yang diperbaiki untuk mencegah double-upload
+//
+// Features:
+// - Disable upload button setelah submit sukses
+// - Optimistic UI (tampilkan loading saat submit)
+// - Snapshot listener untuk real-time status
+// - Error handling & user feedback
+// - Countdown timer untuk payment deadline
+// Gunakan sebagai pengganti/patch untuk payment_screen.dart yang sudah ada
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';

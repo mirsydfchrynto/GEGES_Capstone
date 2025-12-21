@@ -1,12 +1,12 @@
-/// My Bookings dengan tab eksklusif untuk mencegah duplikasi di UI
-///
-/// Tab queries:
-/// 1. Menunggu Konfirmasi: status='created'
-/// 2. Menunggu Pembayaran: status='confirmed' & payment.verificationStatus==null
-/// 3. Pembayaran Dikirim: payment.verificationStatus='pending'
-/// 4. Terbayar: status='paid_verified'
-/// 5. Dibatalkan: status='cancelled'
-/// Setiap query eksklusif — tidak ada overlap/duplikasi
+// My Bookings dengan tab eksklusif untuk mencegah duplikasi di UI
+//
+// Tab queries:
+// 1. Menunggu Konfirmasi: status='created'
+// 2. Menunggu Pembayaran: status='confirmed' & payment.verificationStatus==null
+// 3. Pembayaran Dikirim: payment.verificationStatus='pending'
+// 4. Terbayar: status='paid_verified'
+// 5. Dibatalkan: status='cancelled'
+// Setiap query eksklusif — tidak ada overlap/duplikasi
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';

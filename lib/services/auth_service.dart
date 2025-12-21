@@ -7,9 +7,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:geges_smartbarber/models/user_data.dart'; // Import Model Anda
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
 
+  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+      : _auth = auth ?? FirebaseAuth.instance,
+        _firestore = firestore ?? FirebaseFirestore.instance;
   User? get currentUser => _auth.currentUser;
 
   // ============================
@@ -39,9 +42,29 @@ class AuthService {
       final role = (data['role'] as String?) ?? 'customer';
       return {'success': true, 'role': role};
     } on FirebaseAuthException catch (e) {
-      return {'success': false, 'message': e.message ?? 'Login gagal'};
+      return {
+        'success': false,
+        'message': _mapAuthErrorMessage(e),
+      };
     } catch (e) {
       return {'success': false, 'message': 'Terjadi kesalahan saat login: $e'};
+    }
+  }
+
+  String _mapAuthErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return 'Email tidak ditemukan.';
+      case 'wrong-password':
+        return 'Password salah.';
+      case 'invalid-email':
+        return 'Format email salah.';
+      case 'too-many-requests':
+        return 'Terlalu banyak percobaan login. Coba lagi nanti.';
+      case 'network-request-failed':
+        return 'Gagal koneksi jaringan. Periksa koneksi Anda.';
+      default:
+        return e.message ?? 'Login gagal.';
     }
   }
 
@@ -89,9 +112,6 @@ class AuthService {
   // ============================
   // GOOGLE SIGN IN
   // ============================
-
-  /// Sign in with Google. Buat dokumen user di Firestore jika akun baru.
-  /// Mengembalikan Map: { 'success': bool, 'role': String?, 'message': String? }
   Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
       final googleSignIn = GoogleSignIn(scopes: <String>['email', 'profile']);
@@ -149,7 +169,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       return {
         'success': false,
-        'message': e.message ?? 'Google sign-in gagal (FirebaseAuth).',
+        'message': _mapAuthErrorMessage(e),
       };
     } on Exception catch (e) {
       // Tangani khusus ApiException: 10 (common Android Google Sign-in error)

@@ -14,6 +14,7 @@ class Barbershop {
   final List<String> services;     // list berisi id service yang ada di barbershop ini
   final int openHour;              // jam buka toko (format 0-23, contoh: 9 = jam 9 pagi)
   final int closeHour;             // jam tutup toko (format 0-23, contoh: 21 = jam 9 malam)
+  final int? paymentWindowMinutes; // payment window in minutes for awaiting_payment (optional)
   final bool isOpen;               // status apakah toko sedang buka sekarang
 
   // penjelasan constructor:
@@ -28,6 +29,7 @@ class Barbershop {
     required this.services,
     required this.openHour,
     required this.closeHour,
+    this.paymentWindowMinutes,
     required this.isOpen,
   });
 
@@ -93,6 +95,8 @@ class Barbershop {
       openHour: parseHour(data['open_hour'] ?? data['openHour'], 9),
       // default jam tutup 21 (9 malam) jika tidak ada di database
       closeHour: parseHour(data['close_hour'] ?? data['closeHour'], 21),
+      // paymentWindowMinutes: optional per-shop configuration
+      paymentWindowMinutes: (data['payment_window_minutes'] as num?)?.toInt() ?? (data['paymentWindowMinutes'] as num?)?.toInt(),
       // isOpen: ambil dari database, default false jika tidak ada
       isOpen: data['isOpen'] as bool? ?? false,
     );
@@ -112,6 +116,7 @@ class Barbershop {
       'services': services,
       'open_hour': openHour,
       'close_hour': closeHour,
+      'payment_window_minutes': paymentWindowMinutes,
       'isOpen': isOpen,
     };
   }

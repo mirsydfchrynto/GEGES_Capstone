@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:geges_smartbarber/services/style_scan_service.dart';
 
 class StyleScanScreen extends StatefulWidget {
   const StyleScanScreen({super.key});
@@ -19,6 +20,13 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
 
   File? _pickedImage;
   final ImagePicker _picker = ImagePicker();
+  bool _loading = false;
+  Map<String, dynamic>? _scanResult;
+
+  // Base URL is configurable via `--dart-define=STYLE_SCAN_BASE_URL=http://your.vps:5000`
+  // Fallback: http://0.0.0.0:5000 (use this only for local testing)
+  final String _baseUrl = const String.fromEnvironment('STYLE_SCAN_BASE_URL', defaultValue: 'http://0.0.0.0:5000');
+  late final StyleScanService _service = StyleScanService(baseUrl: _baseUrl);
 
   // --- Permission Helpers ---
   Future<bool> _ensurePermission(Permission permission) async {
@@ -50,10 +58,32 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
           _pickedImage = File(f.path);
           // Di sini nanti Anda akan memanggil fungsi AI processing
           // _processImage(_pickedImage!); 
+          _scanResult = null;
         });
+        // Start scan after UI updates
+        _performScan();
       }
     } catch (e) {
       _showSnack('Gagal mengambil gambar: $e');
+    }
+  }
+
+  Future<void> _performScan() async {
+    if (_pickedImage == null) return;
+    setState(() {
+      _loading = true;
+      _scanResult = null;
+    });
+
+    try {
+      final resp = await _service.scanImage(_pickedImage!);
+      if (mounted) setState(() => _scanResult = resp);
+    } catch (e) {
+      if (mounted) {
+        _showSnack('Gagal scan: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -138,6 +168,20 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
 
   Widget _buildResultView() {
     // Tampilan hasil setelah gambar dipilih
+    // Use API results when available, otherwise fall back to previous placeholders
+    final detections = _scanResult != null && _scanResult!['data'] != null && _scanResult!['data']['detections'] is List
+        ? List<Map<String, dynamic>>.from((_scanResult!['data']['detections'] as List).map((e) => Map<String, dynamic>.from(e as Map)))
+        : null;
+
+    final Map<String, dynamic>? first = (detections != null && detections.isNotEmpty) ? detections[0] : null;
+
+    final detectedName = first != null ? (first['class_name'] ?? first['class_id'] ?? 'Unknown') : 'Taper Fade Klasik';
+    final detectedConfidence = first != null && first['confidence'] != null ? '${((first['confidence'] as num) * 100).toStringAsFixed(0)}%' : '85%';
+    final faceShape = _scanResult != null && _scanResult!['data'] != null && _scanResult!['data']['face_shape'] != null ? _scanResult!['data']['face_shape'].toString() : 'Oval';
+    final description = _scanResult != null && _scanResult!['data'] != null
+        ? 'Gaya ini terdeteksi sebagai $detectedName dengan tingkat kecocokan $detectedConfidence.'
+        : 'Gaya ini cocok untuk Anda karena menonjolkan tekstur rambut atas dan rapi di sisi. Barbershop terdekat yang ahli dalam gaya ini adalah...';
+
     return Column(
       children: [
         Padding(
@@ -156,6 +200,11 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
             ],
           ),
         ),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.0),
+            child: LinearProgressIndicator(minHeight: 4),
+          ),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.only(bottom: 50),
@@ -187,13 +236,13 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildAnalysisRow(Icons.cut, 'Gaya Terdeteksi:', 'Taper Fade Klasik'),
-                          _buildAnalysisRow(Icons.local_offer, 'Kecocokan:', '85%'),
-                          _buildAnalysisRow(Icons.face, 'Bentuk Wajah:', 'Oval'),
+                          _buildAnalysisRow(Icons.cut, 'Gaya Terdeteksi:', detectedName),
+                          _buildAnalysisRow(Icons.local_offer, 'Kecocokan:', detectedConfidence),
+                          _buildAnalysisRow(Icons.face, 'Bentuk Wajah:', faceShape),
                           const Divider(color: Colors.white12, height: 25),
                           const Text('Deskripsi:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 5),
-                          const Text('Gaya ini cocok untuk Anda karena menonjolkan tekstur rambut atas dan rapi di sisi. Barbershop terdekat yang ahli dalam gaya ini adalah...', style: TextStyle(color: Colors.white70)),
+                          Text(description, style: const TextStyle(color: Colors.white70)),
                         ],
                       ),
                     ),

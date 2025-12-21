@@ -1,12 +1,12 @@
-/// Admin Payment Verification Screen
-///
-/// Menampilkan hanya booking dengan payment.verificationStatus == 'pending'
-/// Satu entry per bookingId (deduplicated)
-///
-/// Admin dapat:
-/// - Accept → verificationStatus='accepted', status='paid_verified'
-/// - Reject → verificationStatus='rejected', status='confirmed' (allow re-upload)
-/// - View payment proof
+// Admin Payment Verification Screen
+//
+// Menampilkan hanya booking dengan payment.verificationStatus == 'pending'
+// Satu entry per bookingId (deduplicated)
+//
+// Admin dapat:
+// - Accept → verificationStatus='accepted', status='paid_verified'
+// - Reject → verificationStatus='rejected', status='confirmed' (allow re-upload)
+// - View payment proof
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';

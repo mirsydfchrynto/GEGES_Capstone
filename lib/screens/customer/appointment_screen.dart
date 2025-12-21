@@ -11,8 +11,8 @@ import 'package:geges_smartbarber/models/service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 
-// Import Halaman Pembayaran
-// payment screen import removed: customer no longer navigates directly to payment
+// Payment screen (we now navigate customer directly to payment after booking)
+import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
 
 class AppointmentScreen extends StatefulWidget {
   final Barbershop barbershop;
@@ -290,6 +290,18 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       return;
     }
 
+    // Validasi tambahan: booking harus dibuat minimal 30 menit sebelum waktu mulai
+    final minLeadClient = DateTime.now().add(const Duration(minutes: 30));
+    if (bookingDate.isBefore(minLeadClient)) {
+      if (mounted) {
+        messenger.showSnackBar(const SnackBar(
+            content: Text('Booking harus dibuat minimal 30 menit sebelum waktu mulai'),
+            backgroundColor: Colors.orangeAccent));
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
+
     // Validasi akhir: pastikan booking mulai & selesai berada dalam jam kerja barbershop
     final openHour = widget.barbershop.openHour;
     final closeHour = widget.barbershop.closeHour;
@@ -309,6 +321,9 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
     final String newOrderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
 
+    final now = DateTime.now();
+    final paymentDue = now.add(const Duration(minutes: 10));
+
     final payload = {
       'barbershop_id': widget.barbershop.id,
       'customer_id': customerId,
@@ -317,24 +332,33 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       'total_price': _totalPrice,
       'estimated_duration': _totalDuration,
       'booking_time': Timestamp.fromDate(bookingDate),
-      'status': 'waiting',
+      // Direct payment-first flow: lock slot immediately and require payment
+      'status': 'awaiting_payment',
+      'request_status': 'approved',
+      'payment_deadline': Timestamp.fromDate(paymentDue),
       'order_id': newOrderId,
     };
 
     try {
-      // create queue as a booking request for admin confirmation
+      // create queue and immediately go to payment screen (slot is locked)
       await _queueService.createQueue(payload);
 
       if (!mounted) return;
 
-      // Inform user that request is sent and admin will confirm
       messenger.showSnackBar(const SnackBar(
-        content: Text('Permintaan booking terkirim. Menunggu konfirmasi admin.'),
+        content: Text('Booking terkunci. Silakan lakukan pembayaran untuk mengamankan slot.'),
         backgroundColor: Colors.green,
       ));
 
-      // return to previous screen (customer can view in My Bookings)
-      Navigator.of(context).pop();
+      // Navigate to PaymentScreen so user can upload payment proof immediately
+      Navigator.of(context).push(MaterialPageRoute(builder: (c) => PaymentScreen(
+        orderId: newOrderId,
+        totalPrice: _totalPrice,
+        barbershopId: widget.barbershop.id,
+        barbermanId: _selectedBarberman!.id,
+        bookingTime: bookingDate,
+        paymentDeadline: paymentDue,
+      )));
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(

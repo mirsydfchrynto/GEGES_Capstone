@@ -12,7 +12,8 @@ import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/screens/admin/live_queue_screen.dart';
-import 'package:geges_smartbarber/screens/admin/add_manual_booking_screen.dart'; // <-- import added
+import 'package:geges_smartbarber/screens/admin/_manual_booking_form.dart';
+// Add manual booking screen is temporarily disabled in this build.
 import 'package:geges_smartbarber/screens/admin/payment_verification_screen.dart';
 import 'package:geges_smartbarber/screens/admin/send_notification_screen.dart';
 
@@ -350,7 +351,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       return;
     }
 
-    // 🔹 Ambil data Barbershop dari Firestore
+    // fetch shop and show an inline form modal so we avoid cross-file analyzer issues
     final barbershopDoc = await FirebaseFirestore.instance
         .collection('barbershops')
         .doc(_adminBarbershopId)
@@ -363,15 +364,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     final barbershop = Barbershop.fromFirestore(barbershopDoc);
 
-    // 🔹 Pindah ke halaman tambah booking manual
     if (!mounted) return;
-    // ignore: use_build_context_synchronously
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddManualBookingScreen(barbershop: barbershop),
+
+    // show modal bottom sheet with a small manual booking form
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: _ManualBookingForm(barbershop: barbershop, queueService: _queueService),
       ),
     );
+    
   },
 ),
 

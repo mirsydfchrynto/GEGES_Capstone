@@ -19,7 +19,10 @@ import 'package:geges_smartbarber/screens/register_screen.dart';
 // - loginscreen adalah statefulwidget karena ada state yang berubah (error message, loading, password visible)
 // - setstate() dipanggil untuk update ui saat ada perubahan
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final AuthService? authService;
+  final WidgetBuilder? homeBuilder;
+  final WidgetBuilder? adminBuilder;
+  const LoginScreen({super.key, this.authService, this.homeBuilder, this.adminBuilder});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -36,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // penjelasan authservice:
   // - authservice adalah service yang menangani semua operasi autentikasi (login, register, google sign-in)
   // - sudah diimplementasikan di lib/services/auth_service.dart
-  final AuthService _authService = AuthService();
+  late final AuthService _authService;
 
   // penjelasan variabel state:
   // - _errorMessage: menampilkan pesan error jika login gagal (email tidak terdaftar, password salah, dll)
@@ -65,63 +68,45 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _authService = widget.authService ?? AuthService();
+  }
+
   // ========================================
   // fungsi login dengan email & password
   // ========================================
   void _login() async {
-    // penjelasan:
-    // - fungsi ini dijalankan saat user tekan tombol "sign in"
-    // - mengambil nilai email & password dari controller
-    // - validasi input (jangan kosong)
-    // - panggil authservice.signin() untuk authenticate ke firebase
-    // - jika sukses, navigasi ke home atau admin dashboard berdasarkan role
-    // - jika gagal, tampilkan error message
-    
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    // penjelasan validasi:
-    // - cek apakah email atau password kosong
-    // - jika kosong, tampilkan error message & return (keluar dari fungsi)
     if (email.isEmpty || password.isEmpty) {
       setState(() => _errorMessage = 'email dan password wajib diisi.');
       return;
     }
 
-    // penjelasan setstate:
-    // - ubah state _isLoading = true untuk menampilkan spinner
-    // - kosongkan _errorMessage untuk menghapus pesan error sebelumnya
+    // Simple email format validation
+    final emailRegex = RegExp(r"^[\w\.-]+@[\w\.-]+\.\w+");
+    if (!emailRegex.hasMatch(email)) {
+      setState(() => _errorMessage = 'Format email salah.');
+      return;
+    }
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
     try {
-      // penjelasan async operation:
-      // - panggil _authService.signIn() yang mengembalikan future dengan hasil
-      // - result berisi {success: true/false, role: 'customer'/'admin_owner', message: 'error message'}
       final result = await _authService.signIn(email: email, password: password);
-
-      // penjelasan mounted check:
-      // - mounted adalah flag yang true jika widget masih di layar
-      // - jika user navigate away sebelum login selesai, mounted akan false
-      // - ini untuk mencegah error "setState() called on unmounted widget"
       if (!mounted) return;
       setState(() => _isLoading = false);
-
-      // penjelasan kondisi login:
-      // - jika result['success'] true, berarti login sukses
-      // - navigasi ke home atau admin berdasarkan role
-      // - jika gagal, simpan error message di _errorMessage untuk ditampilkan di UI
       if (result['success'] == true) {
         _navigateByRole(result['role']);
       } else {
         setState(() => _errorMessage = result['message'] ?? 'login gagal.');
       }
     } catch (e) {
-      // penjelasan error handling:
-      // - jika ada exception (network error, firebase error, dll), tangkap di sini
-      // - tampilkan pesan error yang user-friendly
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -142,9 +127,9 @@ class _LoginScreenState extends State<LoginScreen> {
     
     Widget targetScreen;
     if (role == 'customer') {
-      targetScreen = const HomeScreen();
+      targetScreen = widget.homeBuilder?.call(context) ?? const HomeScreen();
     } else if (role == 'admin_owner') {
-      targetScreen = const AdminDashboardScreen();
+      targetScreen = widget.adminBuilder?.call(context) ?? const AdminDashboardScreen();
     } else {
       setState(() => _errorMessage = 'role pengguna tidak valid.');
       return;

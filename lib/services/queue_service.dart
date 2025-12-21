@@ -6,10 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 
 class QueueService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
   final Map<String, int> _serviceDurationCache = {};
 
-  QueueService();
+  QueueService({FirebaseFirestore? firestore}) : _firestore = firestore ?? FirebaseFirestore.instance;
 
   // -----------------------
   // 🔁 STREAM LISTENERS
@@ -238,10 +238,28 @@ class QueueService {
     // remove nulls so Firestore doc stays clean
     dataToSave.removeWhere((_, v) => v == null);
 
+    // If client created a booking already intending to pay (awaiting_payment),
+    // ensure payment_deadline is set and mark as approved for compatibility
+    if ((dataToSave['status'] as String?) == 'awaiting_payment') {
+      try {
+        if (dataToSave['payment_deadline'] == null) {
+          final shopId = dataToSave['barbershop_id'] as String?;
+          final window = await getPaymentWindowForBarbershop(shopId);
+          final due = DateTime.now().add(Duration(minutes: window));
+          dataToSave['payment_deadline'] = Timestamp.fromDate(due);
+        }
+        dataToSave['request_status'] = dataToSave['request_status'] ?? 'approved';
+      } catch (e) {
+        debugPrint('Failed to set awaiting_payment defaults: $e');
+      }
+    }
+
     // If status is 'waiting' and no payment_due_at provided, set a 10-minute expiry from now.
     if ((dataToSave['status'] as String?) == 'waiting' && dataToSave['payment_deadline'] == null) {
       try {
-        final due = DateTime.now().add(const Duration(minutes: 10));
+        final shopId = dataToSave['barbershop_id'] as String?;
+        final window = await getPaymentWindowForBarbershop(shopId);
+        final due = DateTime.now().add(Duration(minutes: window));
         dataToSave['payment_deadline'] = Timestamp.fromDate(due);
       } catch (e) {
         debugPrint('Failed to set payment_deadline: $e');
@@ -256,6 +274,12 @@ class QueueService {
         final now = DateTime.now();
         if (bookingDt.isBefore(now.subtract(const Duration(seconds: 5)))) {
           throw Exception('Waktu booking sudah lewat');
+        }
+
+        // Enforce business rule: booking must be made at least 30 minutes
+        // before the selected booking time to avoid immediate collisions.
+        if (!QueueService.isBookingLeadTimeSufficient(bookingDt, minMinutes: 30)) {
+          throw Exception('Booking harus dibuat minimal 30 menit sebelum waktu mulai');
         }
 
         // If barbershop supplied, verify within open/close hours
@@ -388,7 +412,10 @@ class QueueService {
         dataToSave.removeWhere((_, v) => v == null);
 
         if ((dataToSave['status'] as String?) == 'waiting' && dataToSave['payment_deadline'] == null) {
-          final due = DateTime.now().add(const Duration(minutes: 10));
+          // Respect per-barbershop payment window if available
+          final bsId = queueData['barbershop_id'] ?? queueData['barbershopId'];
+            final window = await getPaymentWindowForBarbershop(bsId as String?);
+          final due = DateTime.now().add(Duration(minutes: window));
           dataToSave['payment_deadline'] = Timestamp.fromDate(due);
         }
 
@@ -428,11 +455,12 @@ class QueueService {
         Duration(minutes: estimatedDurationMinutes),
       );
 
-      final QuerySnapshot<Map<String, dynamic>> qs = await _firestore
+        // include 'awaiting_payment' because awaiting payment should lock the slot
+        final QuerySnapshot<Map<String, dynamic>> qs = await _firestore
           .collection('queues')
           .where('barbershop_id', isEqualTo: barbershopId)
           .where('barberman_id', isEqualTo: barbermanId)
-          .where('status', whereIn: ['booked', 'ongoing'])
+          .where('status', whereIn: ['booked', 'ongoing', 'awaiting_payment'])
           .get();
 
       for (final doc in qs.docs) {
@@ -471,6 +499,41 @@ class QueueService {
     } catch (e, st) {
       debugPrint("Error in isSlotAvailable: $e\n$st");
       return false;
+    }
+  }
+
+  /// Check that a booking is at least [minMinutes] ahead of now.
+  /// Returns true when `bookingTime` is at least `minMinutes` in the future.
+  static bool isBookingLeadTimeSufficient(DateTime bookingTime, {int minMinutes = 30}) {
+    final minLead = DateTime.now().add(Duration(minutes: minMinutes));
+    return bookingTime.isAfter(minLead) || bookingTime.isAtSameMomentAs(minLead);
+  }
+
+  /// Default payment window in minutes when barbershop doesn't override.
+  static const int defaultPaymentWindowMinutes = 10;
+
+  /// Resolve payment window (in minutes) for a given barbershop.
+  /// Returns [defaultPaymentWindowMinutes] when the barbershop doesn't
+  /// specify a value or when an error occurs reading it.
+  /// Resolve payment window (in minutes) for a given barbershop.
+  /// Public for testing.
+  Future<int> getPaymentWindowForBarbershop(String? barbershopId) async {
+    if (barbershopId == null || barbershopId.isEmpty) return QueueService.defaultPaymentWindowMinutes;
+    try {
+      final doc = await _firestore.collection('barbershops').doc(barbershopId).get();
+      final data = doc.data() ?? {};
+      final raw = data['payment_window_minutes'] ?? data['paymentWindowMinutes'];
+      if (raw == null) return QueueService.defaultPaymentWindowMinutes;
+      if (raw is int) return raw;
+      if (raw is num) return raw.toInt();
+      if (raw is String) {
+        final parsed = int.tryParse(raw);
+        if (parsed != null) return parsed;
+      }
+      return QueueService.defaultPaymentWindowMinutes;
+    } catch (e) {
+      debugPrint('Failed to read paymentWindowMinutes for $barbershopId: $e');
+      return QueueService.defaultPaymentWindowMinutes;
     }
   }
 
@@ -1022,8 +1085,12 @@ class QueueService {
   Future<void> adminConfirmRequest(String queueId, {String? adminUid}) async {
     try {
       final uid = adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
-      // set status to awaiting_payment and give customer a 10-minute window to pay
-      final due = DateTime.now().add(const Duration(minutes: 10));
+      // Determine per-shop payment window and set awaiting_payment with deadline
+      final qdoc = await _firestore.collection('queues').doc(queueId).get();
+      final qdata = qdoc.data();
+      final bsId = qdata?['barbershop_id'] as String?;
+      final window = await getPaymentWindowForBarbershop(bsId);
+      final due = DateTime.now().add(Duration(minutes: window));
       await _firestore.collection('queues').doc(queueId).update({
         'status': 'awaiting_payment',
         'request_status': 'approved',
@@ -1034,13 +1101,13 @@ class QueueService {
 
       // create a notification for the customer to pay
       final doc = await _firestore.collection('queues').doc(queueId).get();
-      final qdata = doc.data();
-      final customerId = qdata?['customer_id'] as String?;
+      final afterData = doc.data();
+      final customerId = afterData?['customer_id'] as String?;
       if (customerId != null) {
         await _firestore.collection('notifications').add({
           'user_id': customerId,
           'title': 'Booking Disetujui - Silakan Bayar',
-          'body': 'Booking Anda telah disetujui. Silakan lakukan pembayaran dalam 10 menit untuk mengamankan slot.',
+          'body': 'Booking Anda telah disetujui. Silakan lakukan pembayaran dalam $window menit untuk mengamankan slot.',
           'queue_id': queueId,
           'created_at': FieldValue.serverTimestamp(),
           'read': false,

@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:geges_smartbarber/screens/admin/payment_verification_screen.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
 const Color kDarkGrey = Color(0xFF1E1E1E);
@@ -276,18 +277,33 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
-                        final navigator = Navigator.of(c);
-                        final messenger = ScaffoldMessenger.of(c);
-                        try {
-                          await _queueService.adminConfirmRequest(q.id);
-                          navigator.pop();
-                          messenger.showSnackBar(const SnackBar(content: Text('Booking confirmed'), backgroundColor: Colors.green));
-                        } catch (e) {
-                          messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
-                        }
+                        // Informational: admin confirmation step removed in new flow
+                        await showDialog(
+                          context: c,
+                          builder: (dctx) => AlertDialog(
+                            backgroundColor: kDarkGrey,
+                            title: const Text('Informasi Flow Pembayaran', style: TextStyle(color: Colors.white)),
+                            content: const Text(
+                              'Booking kini dibuat langsung sebagai "Menunggu Pembayaran" (awaiting_payment) dan slot otomatis dikunci saat booking dibuat.\n\n'
+                              'Admin tidak perlu lagi melakukan konfirmasi request. Gunakan menu "Verifikasi Pembayaran" untuk memeriksa bukti pembayaran dan menyetujui booking (menjadi booked).',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(dctx), child: const Text('Tutup')),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(dctx);
+                                  Navigator.pop(c);
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentVerificationScreen()));
+                                },
+                                child: const Text('Buka Verifikasi Pembayaran'),
+                              ),
+                            ],
+                          ),
+                        );
                       },
                       style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, minimumSize: const Size.fromHeight(44)),
-                      child: const Text('Approve'),
+                      child: const Text('Info'),
                     ),
                   ),
                 ],

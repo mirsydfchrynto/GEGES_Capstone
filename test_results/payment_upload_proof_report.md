@@ -1,0 +1,76 @@
+# WHITE BOX TESTING – FITUR UPLOAD BUKTI PEMBAYARAN
+
+**Judul:** Geges Smart Barber – Aplikasi Booking Barbershop & AI StyleScan
+
+**Fitur yang diuji:** Upload Bukti Pembayaran
+
+**Metode Pengujian:** White Box Testing
+
+**Teknik:** Branch Coverage
+
+
+## Deskripsi Fitur
+Fitur Upload Bukti Pembayaran digunakan pengguna untuk mengunggah gambar bukti transfer, yang kemudian akan diproses oleh backend untuk:
+- Memastikan file bukti pembayaran tidak kosong
+- Memvalidasi format file (hanya JPG/JPEG/PNG yang diterima)
+- Memverifikasi booking yang dituju benar ada
+- Memastikan status booking saat ini adalah "Menunggu Pembayaran"
+- Menyimpan file dan mengubah status menjadi "Menunggu Verifikasi"
+
+Fitur ini memastikan bahwa proses upload berjalan aman dan valid, serta menampilkan pesan error yang tepat apabila pengguna mengunggah file yang salah atau booking tidak sesuai.
+
+## Analisis Alur
+1) Pemeriksaan File Kosong
+- Sistem memeriksa apakah file bukti pembayaran diupload.
+- Jika kosong → gagal (error)
+- Jika ada → lanjut ke validasi format
+
+2) Pemeriksaan Format File
+- Memastikan format file termasuk JPG/JPEG/PNG.
+- Jika bukan gambar → gagal (error)
+- Jika valid → lanjut memeriksa booking
+
+3) Pemeriksaan Booking
+- Sistem mencari booking berdasarkan booking_id.
+- Jika tidak ditemukan → gagal
+- Jika ditemukan → lanjut cek status booking
+
+4) Pemeriksaan Status Booking
+- Booking hanya bisa upload jika status = Menunggu Pembayaran.
+- Jika status salah → gagal
+- Jika benar → lanjut proses upload
+
+5) Proses Upload
+- File disimpan
+- Status booking diubah menjadi Menunggu Verifikasi
+- Return sukses
+
+
+## Perbandingan Level Coverage pada Upload Bukti Pembayaran
+**Statement Coverage – LEMAH**
+- Hanya butuh 1 test case (alur valid), tapi tidak menguji file kosong, format salah, booking tidak ditemukan, status invalid; error-handling tidak teruji.
+
+**Branch Coverage – KUAT**
+- Membutuhkan minimal 5 test case.
+- Setiap kondisi IF diuji dalam keadaan TRUE dan FALSE.
+- Menjamin seluruh percabangan logika diperiksa.
+
+**Path Coverage – IDEAL**
+- Semua jalur dieksekusi: semua error path dan jalur sukses.
+- Memberikan hasil validasi yang paling lengkap.
+
+
+## Rencana Test Case (Minimal 100% Branch Coverage)
+
+| Test Case ID | Skenario Uji | Input | Expected Output | Branch yang Diuji |
+|---|---|---:|---|---|
+| TC-UP-01 | File kosong | file = None | Error: "File bukti pembayaran wajib diupload" | IF file is None → TRUE |
+| TC-UP-02 | Format file tidak valid | file.extension = "pdf" | Error: "Format file tidak valid" | IF format not in [jpg/jpeg/png] → TRUE |
+| TC-UP-03 | Booking tidak ditemukan | booking_id tidak ada | Error: "Booking tidak ditemukan" | IF booking is None → TRUE |
+| TC-UP-04 | Status booking tidak valid | booking.status = "Selesai" | Error: "Status booking tidak valid" | IF booking.status != "Menunggu Pembayaran" → TRUE |
+| TC-UP-05 | Upload sukses | file valid (.jpg/.png), booking ada, status = "Menunggu Pembayaran" | Output: "Upload berhasil", status berubah → "Menunggu Verifikasi" | Semua branch IF → FALSE (alur valid) |
+
+
+---
+
+Jika Anda mau, saya bisa juga membuat versi `.log` yang berisi output terminal dari `flutter test`, atau `.json` agar mudah diintegrasikan ke CI. Sebutkan ekstensi yang Anda inginkan.

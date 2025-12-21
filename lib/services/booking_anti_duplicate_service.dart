@@ -1,11 +1,11 @@
-/// Layanan untuk mencegah duplikasi booking dan upload bukti pembayaran
-///
-/// Menggunakan Firestore transactions untuk atomicity dan consistency.
-/// Pola:
-/// 1. Setiap upload payment proof hanya boleh terjadi sekali (lock mechanism)
-/// 2. Hanya satu dokumen per booking ID
-/// 3. Transisi status ketat: created to confirmed to pending to accepted to paid_verified
-/// 4. proofLocked = true mencegah UI double-submit
+// Layanan untuk mencegah duplikasi booking dan upload bukti pembayaran
+//
+// Menggunakan Firestore transactions untuk atomicity dan consistency.
+// Pola:
+// 1. Setiap upload payment proof hanya boleh terjadi sekali (lock mechanism)
+// 2. Hanya satu dokumen per booking ID
+// 3. Transisi status ketat: created to confirmed to pending to accepted to paid_verified
+// 4. proofLocked = true mencegah UI double-submit
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -317,7 +317,7 @@ class BookingAntiDuplicateService {
 
   /// Identify duplikasi: cari booking dengan kombinasi userId + scheduledAt yang sama
   /// 
-  /// Return: List<List<String>> dimana setiap inner list adalah group ID yang duplikasi
+  /// Return: `List<List<String>>` dimana setiap inner list adalah group ID yang duplikasi
   /// Gunakan untuk admin cleanup manual
   Future<List<List<String>>> identifyDuplicateBookings() async {
     try {

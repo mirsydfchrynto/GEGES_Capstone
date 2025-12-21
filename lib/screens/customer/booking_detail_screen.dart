@@ -150,13 +150,13 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   String _formatTimestamp(Timestamp ts) => DateFormat('EEE, d MMM HH:mm').format(ts.toDate());
 
   Future<void> _showCancellationDialog(BuildContext context) async {
-    final TextEditingController _reasonCtrl = TextEditingController();
+    final TextEditingController reasonCtrl = TextEditingController();
     final result = await showDialog<bool?>(
       context: context,
       builder: (c) => AlertDialog(
         title: const Text('Ajukan Pembatalan'),
         content: TextField(
-          controller: _reasonCtrl,
+          controller: reasonCtrl,
           maxLines: 3,
           decoration: const InputDecoration(hintText: 'Jelaskan alasan pembatalan (wajib)'),
         ),
@@ -164,7 +164,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('Batal')),
           ElevatedButton(
             onPressed: () {
-              if (_reasonCtrl.text.trim().isEmpty) return;
+              if (reasonCtrl.text.trim().isEmpty) return;
               Navigator.of(c).pop(true);
             },
             child: const Text('Kirim'),
@@ -174,16 +174,18 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     );
 
     if (result == true) {
-      final reason = _reasonCtrl.text.trim();
+      final reason = reasonCtrl.text.trim();
+      // ignore: use_build_context_synchronously
+      final messenger = ScaffoldMessenger.of(this.context);
       try {
         await _queueService.customerRequestCancellation(_queue!.id, reason: reason);
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permintaan pembatalan terkirim')));
+        messenger.showSnackBar(const SnackBar(content: Text('Permintaan pembatalan terkirim')));
         // reload queue to reflect new status
         await _load();
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mengirim permintaan: $e')));
+        messenger.showSnackBar(SnackBar(content: Text('Gagal mengirim permintaan: $e')));
       }
     }
   }

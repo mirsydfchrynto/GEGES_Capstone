@@ -1,0 +1,86 @@
+BLACK-BOX TESTING – FITUR LOGIN
+Project Name: Geges Smart Barber – Aplikasi Booking Barbershop & AI Hairstyle Recommendation
+Platform: Mobile Application (Android – Flutter)
+Feature: Login (email & password)
+Test Level: Functional Testing
+Testing Type: Black-Box Testing
+Technique Used: Equivalence Partitioning (EP)
+Prepared By: Marsha
+Reviewed By: Irsyad
+Date: 05 Desember 2025
+
+OBJECTIVE
+Pengujian ini memastikan fitur Login bekerja sesuai kebutuhan fungsional: memverifikasi validasi input, perilaku saat kredensial benar/salah, dan navigasi berdasarkan role pengguna.
+
+SCOPE
+Fitur yang diuji:
+- Field `Email`
+- Field `Password`
+- Tombol `Masuk`
+
+Output yang diharapkan:
+- Navigasi ke halaman utama (Home / AdminDashboard) jika login berhasil
+- Pesan error atau validasi jika input tidak sesuai atau terjadi kegagalan autentikasi
+
+EQUIVALENCE PARTITIONING (EP)
+No | Input Field | Equivalence Class | Contoh Input | Expected Result
+---|-------------|-------------------|--------------|----------------
+1  | Email       | Valid & terdaftar | esa@gmail.com| Login berhasil (service returns {success:true, role: ...})
+2  | Email       | Valid tapi tidak terdaftar | irsyad@gmail.com | Gagal autentikasi (user-not-found) → UI menampilkan pesan error
+3  | Email       | Format tidak valid | esa.gmail.com | Validasi UI: "Format email salah" (tidak memanggil service)
+4  | Email       | Kosong | (kosong) | Validasi UI: "Email wajib diisi"
+5  | Password    | Benar | 123456789 | Login berhasil
+6  | Password    | Salah | 1234abcd | Gagal autentikasi (wrong-password) → UI menampilkan pesan error
+7  | Password    | Kosong | (kosong) | Validasi UI: "Password wajib diisi"
+8  | Kombinasi   | Email valid + password valid | esa@gmail.com / 123456789 | Navigasi sesuai `role` (customer → Home, admin_owner → AdminDashboard)
+9  | Kombinasi   | Salah satu tidak valid | irsyad@gmail.com / 1234abcd | Pesan error sesuai kondisi
+
+IMPLEMENTATION NOTES (terkait `AuthService.signIn()`)
+- Jika autentikasi Firebase gagal, `AuthService.signIn()` menangkap `FirebaseAuthException` dan mengembalikan:
+  `{'success': false, 'message': e.message ?? 'Login gagal'}`
+  Artinya teks pesan yang ditampilkan di UI berasal dari `FirebaseAuthException.message` kecuali kita menambahkan mapping pesan di service.
+- Jika autentikasi berhasil tetapi dokumen Firestore pengguna tidak ditemukan, method mengembalikan `{'success': false, 'message': 'Data pengguna tidak ditemukan.'}`.
+- Jika autentikasi & Firestore berhasil, method mengembalikan `{'success': true, 'role': role}`.
+
+ANALYSIS & RECOMMENDATIONS
+1) Konsistensi Pesan Error
+   - Saat ini pesan error diteruskan dari `FirebaseAuthException.message`. Untuk black-box testing yang mengandalkan teks persis, sebaiknya tambahkan mapping `code → localized message` di `AuthService`.
+   - Alternatif yang lebih longgar: uji berdasarkan behavior (success/failure) dan bukan teks exact.
+
+2) Validasi UI vs Server
+   - Validasi format email dan required fields adalah tanggung jawab UI (sebelum network call). Gunakan widget tests untuk memastikan pesan validasi muncul tanpa memanggil service.
+
+3) Tambahan Test Cases yang Direkomendasikan
+   - Network error / timeout → pastikan UI menampilkan pesan jaringan yang ramah.
+   - Too-many-requests / rate limit → pastikan handling dan pesan user-friendly.
+
+TEST CASES (disesuaikan dengan perilaku aktual `AuthService`)
+ID | Skenario Uji | Input | Expected Behavior
+---|--------------|-------|------------------
+TC-BB-01 | Empty fields | Email='', Password='' | UI validation: show "Email dan Password wajib diisi" (no network call)
+TC-BB-02 | Invalid email format | Email='esa.gmail.com' | UI validation: show "Format email salah" (no network call)
+TC-BB-03 | Email not registered | Valid email not registered | AuthService returns success:false with FirebaseAuthException (user-not-found) → UI shows friendly error
+TC-BB-04 | Wrong password | Existing email + wrong password | AuthService returns success:false with FirebaseAuthException (wrong-password) → UI shows friendly error
+TC-BB-05 | Missing Firestore doc | Auth OK but no user doc | AuthService returns {'success':false,'message':'Data pengguna tidak ditemukan.'} → UI shows that message
+TC-BB-06 | Login success - customer | Valid customer creds | AuthService returns {'success':true,'role':'customer'} → App navigates to HomeScreen
+TC-BB-07 | Login success - admin | Valid admin_owner creds | AuthService returns {'success':true,'role':'admin_owner'} → App navigates to AdminDashboard
+TC-BB-08 | Network error / timeout | Simulated network failure | AuthService returns success:false; UI shows network error message
+
+TEST EXECUTION NOTES
+- Unit tests: `test/auth_service_test.dart` currently covers service-level behavior (auth failures, missing Firestore doc, success roles). Local runs show the tests pass.
+- Widget/Integration tests: required to assert UI validation messages and navigation flows (TC-BB-01/02/06/07).
+
+SUGGESTED SMALL IMPROVEMENT
+- Implement mapping inside `AuthService.signIn()`: `FirebaseAuthException.code` → Bahasa Indonesia friendly message. This removes variability from provider messages and makes black-box text assertions deterministic.
+
+CONCLUSION
+- Dokumen black-box ini disesuaikan dengan behavior nyata `AuthService.signIn()` di proyek.
+- Unit tests sudah meng-cover beberapa jalur penting; disarankan menambahkan widget/integration tests dan/atau standar mapping pesan jika teks pasti dibutuhkan.
+
+NEXT STEPS (opsional — saya bisa bantu):
+- Tambahkan mapping pesan pada `AuthService.signIn()` dan update unit tests untuk memeriksa pesan lokal.
+- Buat widget/integration tests yang otomatis menjalankan skenario TC-BB-01, TC-BB-02, TC-BB-06, TC-BB-07.
+
+---
+Laporan ini disimpan di `test_results/login_blackbox_report.txt` dan `test_results/login_blackbox_report.md`.
+

@@ -126,7 +126,7 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
 
   void _showDetail(BuildContext context, Queue q, Map<String, dynamic> d, double refundAmount) {
     showModalBottomSheet(
-      context: context,
+      context: this.context,
       backgroundColor: kDarkGrey,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -174,6 +174,7 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
                     final messenger = ScaffoldMessenger.of(c);
                     try {
                       // show loading
+                      // ignore: use_build_context_synchronously
                       showDialog(
                         context: c,
                         barrierDismissible: false,
@@ -181,13 +182,13 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
                       );
                       await _queueService.adminRejectCancellation(q.id);
                       // close loading then bottom sheet
-                      Navigator.of(c).pop(); // close loading dialog
+                      navigator.pop(); // close loading dialog
                       navigator.pop(); // close bottom sheet
                       messenger.showSnackBar(const SnackBar(content: Text('Cancellation request rejected'), backgroundColor: Colors.red));
                     } catch (e) {
                       // ensure loading closed
                       try {
-                        Navigator.of(c).pop();
+                        navigator.pop();
                       } catch (_) {}
                       messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
@@ -200,10 +201,11 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
               Expanded(
                 child: ElevatedButton(
                   onPressed: () async {
+                    final navigator = Navigator.of(c);
                     final messenger = ScaffoldMessenger.of(c);
                     try {
                       final picked = await showModalBottomSheet<XFile?>(
-                        context: c,
+                        context: context,
                         builder: (ctx) => _ApproveWithProofSheet(),
                       );
 
@@ -211,7 +213,7 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
                       if (picked != null) {
                         // show progress for encoding
                         showDialog(
-                          context: c,
+                          context: this.context, // ignore: use_build_context_synchronously
                           barrierDismissible: false,
                           builder: (_) => const Center(
                             child: Column(
@@ -227,12 +229,12 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
                         final bytes = await picked.readAsBytes();
                         base64Proof = base64Encode(bytes);
                         // close progress
-                        Navigator.of(c).pop();
+                        navigator.pop();
                       }
 
                       // show loading for approval
                       showDialog(
-                        context: c,
+                        context: this.context, // ignore: use_build_context_synchronously
                         barrierDismissible: false,
                         builder: (_) => const Center(child: CircularProgressIndicator()),
                       );
@@ -240,12 +242,12 @@ class _CancellationRequestsScreenState extends State<CancellationRequestsScreen>
                       await _queueService.adminApproveCancellation(q.id, refundProofBase64: base64Proof);
 
                       // close loading then bottom sheet
-                      Navigator.of(c).pop(); // close loading
-                      Navigator.of(c).pop(); // close bottom sheet
+                      navigator.pop(); // close loading
+                      navigator.pop(); // close bottom sheet
                       messenger.showSnackBar(const SnackBar(content: Text('Refund approved'), backgroundColor: Colors.green));
                     } catch (e) {
                       try {
-                        Navigator.of(c).pop();
+                        navigator.pop();
                       } catch (_) {}
                       messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
