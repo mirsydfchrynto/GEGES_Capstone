@@ -11,15 +11,16 @@
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:geges_smartbarber/screens/login_screen.dart';
+import 'package:geges_smartbarber/services/auth_service.dart';
 
 // penjelasan statefulwidget:
 // - registerscreen adalah statefulwidget karena ada state yang berubah (error message, loading)
 // - setstate() dipanggil untuk update ui saat ada perubahan
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final AuthServiceBase? authService;
+  const RegisterScreen({super.key, this.authService});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -37,17 +38,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
-  // penjelasan firebase instances:
-  // - firebaseauth digunakan untuk operasi auth (create user account)
-  // - firebasefirestore digunakan untuk menyimpan user document di cloud firestore
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // FocusNodes for inputs to allow animated focused styling
+  late final FocusNode _nameFocusNode;
+  late final FocusNode _emailFocusNode;
+  late final FocusNode _passwordFocusNode;
+  late final FocusNode _confirmFocusNode;
+
+  // penjelasan authservice:
+  // - authservice adalah service yang menangani semua operasi autentikasi
+  // - digunakan untuk registerCustomer dan signInWithGoogle
+  AuthServiceBase? _authService;
+
+  // NOTE: removed direct Firebase instances to avoid initialization during widget tests
+  // (we rely on AuthService for all firebase interactions)
 
   // penjelasan variabel state:
   // - _errorMessage: menampilkan pesan error jika registrasi gagal
   // - _isLoading: flag untuk menampilkan loading spinner saat proses registrasi
+  // - _passwordVisible: flag untuk toggle password visibility
   String _errorMessage = '';
   bool _isLoading = false;
+  bool _passwordVisible = false;
+  bool _confirmPasswordVisible = false;
 
   // penjelasan warna tema:
   // - kBrownAccent: warna coklat utama dari design system
@@ -56,6 +68,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
   static const Color kBrownAccent = Color(0xFFC3A47B);
   static const Color kDarkGrey = Color(0xFF1E1E1E);
   static const Color kHintText = Color(0xFF6B6B6B);
+
+  // UI strings (extract to constants to prepare for localization)
+  // TODO: move these to ARB/localization files and use intl package
+  static const String _kErrAllFields = 'Semua field wajib diisi.';
+  static const String _kErrNameMin = 'Nama minimal 3 karakter.';
+  static const String _kErrEmailFormat = 'Format email tidak valid.';
+  static const String _kErrPasswordMismatch = 'Password dan konfirmasi tidak cocok.';
+  static const String _kErrPasswordMin = 'Password minimal 6 karakter.';
+  static const String _kMsgRegisterSuccess = 'Pendaftaran berhasil!';
+  static const String _kMsgGoogleRegisterSuccess = 'Registrasi dengan Google berhasil! Navigasi ke Home.';
+
+  @override
+  void initState() {
+    super.initState();
+    // Defer to injected AuthService if provided (avoids initializing Firebase in widget tests)
+    _authService = widget.authService;
+    // initialize focus nodes for animated input styling
+    _nameFocusNode = FocusNode();
+    _emailFocusNode = FocusNode();
+    _passwordFocusNode = FocusNode();
+    _confirmFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    // dispose focus nodes
+    _nameFocusNode.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _confirmFocusNode.dispose();
+    super.dispose();
+  }
 
   // ========================================
   // fungsi registrasi dengan firebase auth & firestore
@@ -81,7 +129,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - cek apakah ada field yang kosong
     // - jika ada, tampilkan error message & return
     if (name.isEmpty || email.isEmpty || password.isEmpty || confirm.isEmpty) {
-      setState(() => _errorMessage = 'semua field wajib diisi.');
+      setState(() => _errorMessage = _kErrAllFields);
+      return;
+    }
+
+    // penjelasan validasi nama:
+    // - minimal 3 karakter untuk nama valid
+    if (name.length < 3) {
+      setState(() => _errorMessage = _kErrNameMin);
+      return;
+    }
+
+    // penjelasan validasi email:
+    // - cek format email dengan regex
+    final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
+    if (!emailRegex.hasMatch(email)) {
+      setState(() => _errorMessage = _kErrEmailFormat);
       return;
     }
     
@@ -89,7 +152,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - cek apakah password dan konfirmasi sama
     // - jika tidak cocok, tampilkan error message
     if (password != confirm) {
-      setState(() => _errorMessage = 'password dan konfirmasi tidak cocok.');
+      setState(() => _errorMessage = _kErrPasswordMismatch);
       return;
     }
     
@@ -97,7 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - cek apakah password minimal 6 karakter
     // - ini adalah minimal requirement dari firebase
     if (password.length < 6) {
-      setState(() => _errorMessage = 'password minimal 6 karakter.');
+      setState(() => _errorMessage = _kErrPasswordMin);
       return;
     }
 
@@ -110,100 +173,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      // penjelasan step 1: create firebase auth account:
-      // - firebaseauth.createUserWithEmailAndPassword() membuat akun baru
-      // - mengembalikan usercredential yang berisi user instance
-      // - jika email sudah terdaftar atau invalid, akan throw exception
-      final userCredential = await _auth.createUserWithEmailAndPassword(
+      // Gunakan AuthService untuk register (lebih clean dan reusable)
+      final auth = _authService ?? AuthService();
+      final result = await auth.registerCustomer(
         email: email,
         password: password,
+        name: name,
       );
 
-      // penjelasan null check:
-      // - user bisa null jika ada masalah (jarang terjadi)
-      // - throw exception jika user null untuk trigger catch block
-      final user = userCredential.user;
-      if (user == null) {
-        throw FirebaseAuthException(code: 'null-user', message: 'gagal membuat akun.');
-      }
-
-      // penjelasan step 2: update display name di firebase auth:
-      // - updateDisplayName() mengupdate nama user di firebase auth
-      // - ini opsional tapi berguna untuk menampilkan nama user di tempat lain
-      await user.updateDisplayName(name);
-      
-      // penjelasan step 3: buat user document di firestore:
-      // - firestore.collection('users').doc(user.uid).set() membuat document baru
-      // - menyimpan data user: uid, nama, email, role, created_at
-      // - role default 'customer' untuk user baru yang register
-      // - fieldvalue.servereimestamp() menggunakan server time untuk konsistensi data
-      await _firestore.collection('users').doc(user.uid).set({
-        'uid': user.uid,
-        'name': name,
-        'email': email,
-        'role': 'customer',
-        'created_at': FieldValue.serverTimestamp(),
-      });
-
-      // penjelasan step 4: kirim email verifikasi:
-      // - sendemailverification() mengirim email ke user untuk verify email
-      // - user harus verify email sebelum bisa menggunakan beberapa fitur
-      // - link verifikasi valid selama beberapa jam
-      await user.sendEmailVerification();
-
-      // penjelasan mounted check:
-      // - mounted adalah flag yang true jika widget masih di layar
-      // - jika user navigate away sebelum register selesai, mounted akan false
-      // - ini untuk mencegah error "setstate() called on unmounted widget"
       if (!mounted) return;
-      
-      // penjelasan step 5: tampilkan pesan sukses:
-      // - snackbar untuk notifikasi sukses registrasi
-      // - teks berisi email tujuan verifikasi
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('pendaftaran sukses! verifikasi email telah dikirim ke $email'),
-          backgroundColor: const Color(0xFF4CAF50),
-        ),
-      );
 
-      // penjelasan step 6: navigasi ke login:
-      // - setelah registrasi sukses, navigasi ke login screen
-      // - user bisa login dengan email & password yang baru dibuat
-      _goToLogin();
-    } on FirebaseAuthException catch (e) {
-      // penjelasan error handling firebase auth:
-      // - error dari firebase auth memiliki code yang spesifik
-      // - berbeda kode error memberikan pesan yang berbeda
-      // - "email-already-in-use": email sudah terdaftar akun lain
-      // - "invalid-email": format email tidak valid
-      // - "weak-password": password terlalu lemah (kurang 6 char)
-      
-      String msg;
-      switch (e.code) {
-        case 'email-already-in-use':
-          msg = 'email sudah terdaftar. gunakan email lain.';
-          break;
-        case 'invalid-email':
-          msg = 'format email tidak valid.';
-          break;
-        case 'weak-password':
-          msg = 'password terlalu lemah.';
-          break;
-        default:
-          msg = e.message ?? 'terjadi kesalahan saat registrasi.';
+      if (result['success'] == true) {
+        // Tampilkan snackbar sukses & navigasi ke login
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? _kMsgRegisterSuccess),
+            backgroundColor: const Color(0xFF4CAF50),
+          ),
+        );
+        _goToLogin();
+      } else {
+        // Tampilkan error message
+        setState(() => _errorMessage = result['message'] ?? 'Registrasi gagal.');
       }
-      setState(() => _errorMessage = msg);
     } catch (e) {
-      // penjelasan error handling umum:
-      // - tangkap error lainnya seperti network error, firestore error, dll
-      // - tampilkan pesan error yang user-friendly
-      setState(() => _errorMessage = 'terjadi kesalahan: $e');
+      if (!mounted) return;
+      setState(() => _errorMessage = 'Terjadi kesalahan: $e');
     } finally {
-      // penjelasan finally block:
-      // - finally block selalu dijalankan baik success atau error
-      // - hidden loading spinner di sini
-      // - mounted check untuk mencegah error
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -227,17 +223,80 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   // ========================================
-  // google sign-up (placeholder)
+  // google sign-up dengan real google authentication
   // ========================================
-  void _signInWithGoogle() {
+  void _signInWithGoogle() async {
     // penjelasan:
-    // - fungsi ini adalah placeholder untuk google sign-up
-    // - di implementasi sebenarnya harus panggil authservice.signinwithgoogle()
-    // - untuk saat ini hanya tampilkan snackbar bahwa fitur belum tersedia
+    // - fungsi ini dijalankan saat user tekan tombol "continue with google"
+    // - panggil _authService.signInWithGoogle() untuk authenticate dengan google
+    // - jika user belum terdaftar, akan otomatis dibuat account baru
+    // - jika user sudah terdaftar, akan login langsung
+    // - navigasi ke login screen untuk menunjukkan sukses
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('fitur "sign in with google" belum diimplementasikan.')),
-    );
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      final auth = _authService ?? AuthService();
+      final result = await auth.signInWithGoogle();
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (result['success'] == true) {
+        // Sukses registrasi/login dengan Google
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(_kMsgGoogleRegisterSuccess),
+            backgroundColor: Color(0xFF4CAF50),
+          ),
+        );
+        // Langsung navigasi ke Login agar user bisa masuk dengan role yang tepat
+        _goToLogin();
+      } else {
+        // Tampilkan error
+        final message = result['message'] ?? 'Google sign-up gagal.';
+        setState(() => _errorMessage = message);
+
+        // Jika error related to recaptcha atau credential, tawarkan retry
+        final isRecaptcha = message.toLowerCase().contains('recaptcha') || message.toLowerCase().contains('captcha');
+        final isCredential = message.toLowerCase().contains('credential') || message.toLowerCase().contains('developer_error') || message.toLowerCase().contains('oauth');
+
+        if (isRecaptcha || isCredential) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: const Color(0xFFD32F2F),
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: _signInWithGoogle,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Terjadi kesalahan: $e';
+      });
+
+      // Tawarkan retry untuk error tertentu
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('recaptcha') || msg.contains('credential') || msg.contains('developer_error')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Terjadi kesalahan autentikasi: $e'),
+            backgroundColor: const Color(0xFFD32F2F),
+            action: SnackBarAction(label: 'Retry', textColor: Colors.white, onPressed: _signInWithGoogle),
+          ),
+        );
+      }
+    }
   }
 
   // Helper function to check password strength
@@ -313,18 +372,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // - _buildTextField() adalah custom widget untuk input field styling
               // - hinttext, icon, keyboardtype parameter untuk konfigurasi
               // username field
-              _buildTextField(_nameController, 'Username', Icons.person_outline),
+              _buildTextField(_nameController, 'Username', Icons.person_outline, key: const Key('register_name'), focusNode: _nameFocusNode),
               const SizedBox(height: 16),
               // email field
               _buildTextField(_emailController, 'Email', Icons.email_outlined,
-                  keyboardType: TextInputType.emailAddress),
+                  key: const Key('register_email'), keyboardType: TextInputType.emailAddress, focusNode: _emailFocusNode),
               const SizedBox(height: 16),
               // password field (hidden)
-              _buildTextField(_passwordController, 'Password', Icons.lock_outline, isObscure: true),
+              _buildTextField(_passwordController, 'Password', Icons.lock_outline,
+                  key: const Key('register_password'), isObscure: !_passwordVisible,
+                  onPasswordToggle: () => setState(() => _passwordVisible = !_passwordVisible), focusNode: _passwordFocusNode),
               const SizedBox(height: 16),
               // confirm password field (hidden)
               _buildTextField(_confirmPasswordController, 'Confirm Password', Icons.lock_outline,
-                  isObscure: true),
+                  key: const Key('register_confirm_password'), isObscure: !_confirmPasswordVisible,
+                  onPasswordToggle: () => setState(() => _confirmPasswordVisible = !_confirmPasswordVisible), focusNode: _confirmFocusNode),
               const SizedBox(height: 20),
 
               // penjelasan password strength indicator:
@@ -354,6 +416,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Text(
                     _errorMessage,
+                    key: const Key('register_error_text'),
                     style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
@@ -369,6 +432,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator(color: kBrownAccent))
                     : ElevatedButton(
+                        key: const Key('register_create_btn'),
                         onPressed: _register,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: kBrownAccent,
@@ -394,6 +458,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               SizedBox(
                 height: 55,
                 child: ElevatedButton.icon(
+                  key: const Key('register_google_btn'),
                   onPressed: _signInWithGoogle,
                   icon: Image.asset(
                     'assets/images/google.png',
@@ -486,7 +551,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // custom widget: text input field
   // ========================================
   Widget _buildTextField(TextEditingController c, String hint, IconData icon,
-      {bool isObscure = false, TextInputType keyboardType = TextInputType.text}) {
+      {Key? key, bool isObscure = false, TextInputType keyboardType = TextInputType.text, VoidCallback? onPasswordToggle, FocusNode? focusNode}) {
     // penjelasan:
     // - reusable widget untuk membuat input field dengan style yang konsisten
     // - c: controller menangkap text yang user ketik
@@ -494,23 +559,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - icon: icon di sebelah kiri input
     // - isobscure: true untuk password field (hide character)
     // - keyboardtype: tipe keyboard yang muncul (email, number, text, dll)
-    
-    return TextField(
-      controller: c,
-      obscureText: isObscure,
-      keyboardType: keyboardType,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: kHintText),
-        filled: true,
-        fillColor: kDarkGrey,
-        prefixIcon: Icon(icon, color: kHintText, size: 22),
-        border: InputBorder.none,
-        enabledBorder: InputBorder.none,
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
+    // - onpasswordtoggle: callback untuk toggle password visibility
+
+    final node = focusNode;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      decoration: BoxDecoration(
+        color: kDarkGrey,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: (node != null && node.hasFocus)
+            ? [BoxShadow(color: kBrownAccent.withValues(alpha: 0.12), blurRadius: 8, spreadRadius: 1)]
+            : null,
+      ),
+      child: TextField(
+        key: key,
+        controller: c,
+        obscureText: isObscure,
+        keyboardType: keyboardType,
+        focusNode: node,
+        onChanged: (_) => setState(() {}), // Rebuild untuk password strength indicator
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: kHintText),
+          filled: true,
+          fillColor: Colors.transparent,
+          prefixIcon: Icon(icon, color: kHintText, size: 22),
+          suffixIcon: onPasswordToggle != null
+              ? IconButton(
+                  icon: Icon(
+                    isObscure ? Icons.visibility : Icons.visibility_off,
+                    color: kHintText,
+                  ),
+                  onPressed: onPasswordToggle,
+                )
+              : null,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
+          ),
         ),
       ),
     );

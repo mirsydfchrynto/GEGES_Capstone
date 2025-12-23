@@ -4,7 +4,7 @@
 // Pola:
 // 1. Setiap upload payment proof hanya boleh terjadi sekali (lock mechanism)
 // 2. Hanya satu dokumen per booking ID
-// 3. Transisi status ketat: created to confirmed to pending to accepted to paid_verified
+// 3. Transisi status ketat: awaiting_payment -> (upload proof) -> pending -> accepted -> booked
 // 4. proofLocked = true mencegah UI double-submit
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -61,9 +61,10 @@ class BookingAntiDuplicateService {
         final proofLocked = payment['proofLocked'] as bool? ?? false;
 
         // Step 2: Validasi kondisi
-        if (status != 'confirmed') {
+        // Dalam flow payment-first, customer mengirimkan bukti saat status == 'awaiting_payment'
+        if (status != 'awaiting_payment') {
           throw Exception(
-            'Booking tidak dalam status confirmed. Status saat ini: $status',
+            'Booking tidak dalam status awaiting_payment. Status saat ini: $status',
           );
         }
 
@@ -102,7 +103,7 @@ class BookingAntiDuplicateService {
 
   /// Admin verifikasi pembayaran: accepted
   /// 
-  /// Update: verificationStatus='accepted', status='paid_verified'
+  /// Update: verificationStatus='accepted', status='booked'
   /// Persyaratan: verificationStatus harus 'pending'
   Future<void> acceptPaymentVerification({
     required String bookingId,
@@ -135,7 +136,8 @@ class BookingAntiDuplicateService {
           'payment.verificationAcceptedBy': adminUid,
           if (adminNotes != null && adminNotes.isNotEmpty)
             'payment.verificationNotes': adminNotes,
-          'status': 'paid_verified',
+          // After verification the booking becomes booked and enters the live queue
+          'status': 'booked',
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
@@ -152,7 +154,7 @@ class BookingAntiDuplicateService {
 
   /// Admin reject pembayaran
   /// 
-  /// Update: verificationStatus='rejected', status='confirmed' (allow re-upload)
+  /// Update: verificationStatus='rejected', status='awaiting_payment' (allow re-upload)
   /// atau status='cancelled' tergantung policy
   Future<void> rejectPaymentVerification({
     required String bookingId,
@@ -185,7 +187,7 @@ class BookingAntiDuplicateService {
           'payment.verificationRejectedBy': adminUid,
           'payment.rejectionReason': rejectionReason,
           'payment.proofLocked': !allowReupload, // Unlock jika reupload allowed
-          'status': allowReupload ? 'confirmed' : 'cancelled',
+          'status': allowReupload ? 'awaiting_payment' : 'cancelled',
           'updatedAt': FieldValue.serverTimestamp(),
         };
 
@@ -234,23 +236,25 @@ class BookingAntiDuplicateService {
   /// Stream bookings untuk customer dengan filter eksklusif
   /// 
   /// Gunakan untuk setiap tab agar tidak ada overlap/duplikasi
+  /// filterType supported:
+  /// - 'awaiting_payment' : status == 'awaiting_payment' & no verificationStatus
+  /// - 'payment_pending'  : payment.verificationStatus == 'pending'
+  /// - 'booked'           : status in ['booked', 'ongoing']
+  /// - 'cancelled'        : status == 'cancelled'
   Stream<List<DocumentSnapshot>> streamCustomerBookingsFiltered({
     required String userId,
-    required String filterType, // 'created', 'confirmed', 'payment_pending', 'paid', 'cancelled'
+    required String filterType, // 'awaiting_payment', 'payment_pending', 'booked', 'cancelled'
   }) {
     Query<Map<String, dynamic>> query = _firestore
         .collection(bookingsCollection)
         .where('userId', isEqualTo: userId);
 
     switch (filterType) {
-      case 'created':
-        query = query.where('status', isEqualTo: 'created');
-        break;
 
-      case 'confirmed':
-        // Menunggu pembayaran: confirmed & belum upload
+      case 'awaiting_payment':
+        // Menunggu pembayaran: awaiting_payment & belum upload
         query = query
-            .where('status', isEqualTo: 'confirmed')
+            .where('status', isEqualTo: 'awaiting_payment')
             .where('payment.verificationStatus', isNull: true);
         break;
 
@@ -259,9 +263,9 @@ class BookingAntiDuplicateService {
         query = query.where('payment.verificationStatus', isEqualTo: 'pending');
         break;
 
-      case 'paid':
-        // Terbayar: status = paid_verified
-        query = query.where('status', isEqualTo: 'paid_verified');
+      case 'booked':
+        // Terbayar / sudah booked: status in booked or ongoing
+        query = query.where('status', whereIn: ['booked', 'ongoing']);
         break;
 
       case 'cancelled':

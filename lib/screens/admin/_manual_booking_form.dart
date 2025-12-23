@@ -95,6 +95,8 @@ class ManualBookingFormState extends State<ManualBookingForm> {
 
       if (!isAvailable) throw Exception('Slot tidak tersedia - bentrok');
 
+      final manualCustomerId = 'manual_${DateTime.now().millisecondsSinceEpoch}';
+
       final Map<String, dynamic> payload = {
         'barbershop_id': widget.barbershop.id,
         'barberman_id': _selectedBarberman!.id,
@@ -102,7 +104,9 @@ class ManualBookingFormState extends State<ManualBookingForm> {
         'booking_time': _selectedDateTime,
         'status': 'booked',
         'payment_method': 'cash',
-        'customer_id': 'manual_customer',
+        'customer_id': manualCustomerId,
+        'customer_name': _nameCtrl.text.trim(),
+        'customer_is_manual': true,
         'notes': _notesCtrl.text.isEmpty ? null : _notesCtrl.text,
       };
 

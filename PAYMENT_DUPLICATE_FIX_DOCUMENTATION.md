@@ -164,7 +164,7 @@
 
 ## 4. Query per Tab (Customer My Bookings)
 
-### Tab 1: Menunggu Konfirmasi
+### Tab 1: Menunggu Pembayaran
 ```dart
 where('userId', isEqualTo: userId)
   .where('status', isEqualTo: 'created')

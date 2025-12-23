@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:geges_smartbarber/services/barbershop_gallery_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class BarbershopGalleryScreen extends StatefulWidget {
   final String barbershopId;
@@ -104,7 +105,7 @@ class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
                       itemCount: photoUrls.length,
                       itemBuilder: (context, index) {
                         final url = photoUrls[index];
-                        return _PhotoCard(
+                        return PhotoCard(
                           imageUrl: url,
                           onDelete: () => _deletePhoto(url),
                         );
@@ -193,11 +194,12 @@ class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
 // -----------------------
 // PHOTO CARD WIDGET
 // -----------------------
-class _PhotoCard extends StatelessWidget {
+class PhotoCard extends StatelessWidget {
   final String imageUrl;
   final VoidCallback onDelete;
 
-  const _PhotoCard({
+  const PhotoCard({
+    super.key,
     required this.imageUrl,
     required this.onDelete,
   });
@@ -206,23 +208,21 @@ class _PhotoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Image
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            image: DecorationImage(
-              image: NetworkImage(imageUrl),
-              fit: BoxFit.cover,
-            ),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => _showImagePreview(context),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                   color: Colors.black.withValues(alpha: 0),
+        // Image (use CachedNetworkImage widget directly so we can display an error placeholder)
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: GestureDetector(
+            onTap: () => _showImagePreview(context),
+            child: SizedBox(
+              height: double.infinity,
+              width: double.infinity,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                placeholder: (c, u) => Container(color: Colors.grey[900], child: const Center(child: CircularProgressIndicator())),
+                errorWidget: (c, u, e) => Container(
+                  color: Colors.grey[900],
+                  child: const Center(child: Icon(Icons.broken_image, size: 48, color: Colors.white30)),
                 ),
               ),
             ),
@@ -260,9 +260,11 @@ class _PhotoCard extends StatelessWidget {
         backgroundColor: Colors.black,
         child: GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: Image.network(
-            imageUrl,
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
             fit: BoxFit.contain,
+            placeholder: (c, u) => const Center(child: CircularProgressIndicator()),
+            errorWidget: (c, u, e) => const Center(child: Icon(Icons.broken_image, size: 48)),
           ),
         ),
       ),

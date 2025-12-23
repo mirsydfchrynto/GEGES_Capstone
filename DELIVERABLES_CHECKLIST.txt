@@ -22,7 +22,7 @@ PRODUCTION-READY CODE FILES (4):
 
 ✅ lib/screens/customer/my_bookings_screen_improved.dart
    - Customer bookings with 5 tabs
-   - Tab 1: Menunggu Konfirmasi (status='created')
+   - Tab 1: Menunggu Pembayaran (status='awaiting_payment' or 'waiting')
    - Tab 2: Menunggu Pembayaran (status='confirmed' & verificationStatus=null)
    - Tab 3: Pembayaran Dikirim (verificationStatus='pending')
    - Tab 4: Terbayar (status='paid_verified')

@@ -29,6 +29,7 @@ dependencies:
 
   # 🔍 plugin Google Sign-In yang stabil
   google_sign_in: ^6.2.1
+  flutter_secure_storage: ^8.0.0
 
   google_mlkit_face_detection: ^0.11.0
   image_picker: ^1.1.2
@@ -39,9 +40,13 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   flutter_lints: ^5.0.0
   mockito: ^5.4.4
   build_runner: ^2.4.8
+  # Use a lightweight in-memory Firestore for unit tests to avoid fragile typed mocks
+  fake_cloud_firestore: ^3.1.0
 
 flutter:
   uses-material-design: true

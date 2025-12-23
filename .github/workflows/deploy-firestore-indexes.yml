@@ -1,0 +1,34 @@
+name: Deploy Firestore Indexes
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy-indexes:
+    runs-on: ubuntu-latest
+    if: secrets.FIREBASE_TOKEN != ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Authenticate Firebase
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          echo "$FIREBASE_TOKEN" | firebase login:ci --no-localhost || true
+
+      - name: Deploy Firestore Indexes
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          firebase deploy --only firestore:indexes --project ${{ secrets.FIREBASE_PROJECT_ID }}

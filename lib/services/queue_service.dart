@@ -5,7 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 
-class QueueService {
+import 'queue_service_contract.dart';
+
+class QueueService implements QueueServiceContract {
   final FirebaseFirestore _firestore;
   final Map<String, int> _serviceDurationCache = {};
 
@@ -35,6 +37,8 @@ class QueueService {
     String barbershopId, {
     List<String>? statusFilter,
     String? barbermanIdFilter,
+    int limit = 50,
+    DocumentSnapshot? startAfter,
   }) {
     Query<Map<String, dynamic>> query = _firestore
         .collection('queues')
@@ -48,7 +52,9 @@ class QueueService {
       query = query.where('status', whereIn: statusFilter);
     }
 
-    query = query.orderBy('booking_time', descending: false);
+    query = query.orderBy('booking_time', descending: false).limit(limit);
+
+    if (startAfter != null) query = query.startAfterDocument(startAfter);
 
     return query
         .withConverter<Queue>(
@@ -122,6 +128,7 @@ class QueueService {
   }
 
   /// Batalkan antrean
+  @override
   Future<void> cancelQueue(
     String queueId, {
     String reason = 'Admin/Barberman Cancellation',
@@ -941,6 +948,7 @@ class QueueService {
   // -----------------------
 
   /// Get queue details by ID
+  @override
   Future<Queue?> getQueueById(String queueId) async {
     try {
       final snap = await _firestore.collection('queues').doc(queueId).get();
@@ -977,6 +985,85 @@ class QueueService {
     }
   }
 
+  /// Resolve a queue for a customer by either queue document id or order id.
+  ///
+  /// Use this when the UI passes an `orderId` (e.g., 'ORD-123...') rather than the
+  /// Firestore document id. Returns the Queue if found and owned by the given customer.
+  @override
+  Future<Queue?> resolveQueueForCustomerByIdOrOrder(String idOrOrderId, String customerId) async {
+    try {
+      // First, try doc id lookup
+      final docSnap = await _firestore.collection('queues').doc(idOrOrderId).get();
+      if (docSnap.exists) {
+        final q = Queue.fromFirestore(docSnap);
+        if (q.customerId == customerId) return q;
+        return null; // found but not owned by customer
+      }
+
+      // Fallback: query by order_id
+      final qs = await _firestore
+          .collection('queues')
+          .where('order_id', isEqualTo: idOrOrderId)
+          .where('customer_id', isEqualTo: customerId)
+          .limit(1)
+          .get();
+      if (qs.docs.isNotEmpty) {
+        return Queue.fromFirestore(qs.docs.first);
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Error resolving queue for $idOrOrderId: $e');
+      return null;
+    }
+  }
+
+  /// Submit payment proof for an existing queue document in a transaction.
+  ///
+  /// Validations:
+  /// - Queue must exist
+  /// - queue.customer_id must match userId
+  /// - Will update only payment-related fields (won't change status)
+  ///
+  /// This moves the transactional logic out of UI and centralizes tests.
+  @override
+  Future<void> submitPaymentProofForQueue({
+    required String queueId,
+    required String userId,
+    required String base64Proof,
+  }) async {
+    final firestore = _firestore;
+    final queueRef = firestore.collection('queues').doc(queueId);
+
+    try {
+      await firestore.runTransaction((tx) async {
+        final qSnap = await tx.get(queueRef);
+        if (!qSnap.exists) {
+          throw Exception('Queue dokumen tidak ditemukan: $queueId');
+        }
+
+        final qData = qSnap.data();
+        if (qData == null) throw Exception('Queue data kosong');
+
+        final customerId = qData['customer_id'] as String?;
+        if (customerId == null || customerId != userId) {
+          throw Exception('Unauthorized: booking bukan milik Anda');
+        }
+
+        tx.update(queueRef, {
+          'payment_proof_base64': base64Proof,
+          'payment_method': 'bank_transfer',
+          'payment_amount': (qData['total_price'] as num?)?.toInt() ?? qData['payment_amount'] ?? 0,
+          'payment_submitted_at': FieldValue.serverTimestamp(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+      });
+    } catch (e) {
+      debugPrint('Error submitPaymentProofForQueue($queueId): $e');
+      rethrow;
+    }
+  }
+
   /// Get all booking history for barbershop
   Future<List<Queue>> getBarbershopBookingHistory(
     String barbershopId, {
@@ -996,11 +1083,25 @@ class QueueService {
     }
   }
 
+  /// Count queues for a specific barbershop and optional status filter.
+  /// This is a lightweight `get().size` and should be used for badges/counters.
+  Future<int> countQueuesForBarbershop(String barbershopId, {String? status}) async {
+    try {
+      Query<Map<String, dynamic>> q = _firestore.collection('queues').where('barbershop_id', isEqualTo: barbershopId);
+      if (status != null && status.isNotEmpty) q = q.where('status', isEqualTo: status);
+      final snap = await q.get();
+      return snap.size;
+    } catch (e) {
+      debugPrint('Error counting queues for $barbershopId status=$status: $e');
+      return 0;
+    }
+  }
+
   /// Cancel waiting queues for a customer whose payment_due_at has passed.
   /// Returns number of cancelled documents.
   Future<int> cancelExpiredWaitingQueuesForCustomer(String customerId) async {
+    final nowTs = Timestamp.fromDate(DateTime.now());
     try {
-      final nowTs = Timestamp.fromDate(DateTime.now());
       final qs = await _firestore
           .collection('queues')
           .where('customer_id', isEqualTo: customerId)
@@ -1021,6 +1122,34 @@ class QueueService {
       }
       return count;
     } catch (e, st) {
+      // If Firestore requires a composite index for this query, fall back to a safe client-side filter
+      // so the app behaves correctly even if the project doesn't have the composite index configured.
+      if (e is FirebaseException && e.code == 'failed-precondition') {
+        debugPrint('Firestore index required for cancelExpiredWaitingQueuesForCustomer: ${e.message} — falling back to client-side filter (consider creating the composite index for better performance)');
+        try {
+          final qs = await _firestore.collection('queues').where('customer_id', isEqualTo: customerId).get();
+          int count = 0;
+          for (final doc in qs.docs) {
+            final data = doc.data();
+            final status = data['status'] as String?;
+            final paymentDeadline = data['payment_deadline'] as Timestamp?;
+            if (status == 'waiting' && paymentDeadline != null && paymentDeadline.compareTo(nowTs) < 0) {
+              await doc.reference.update({
+                'status': 'cancelled',
+                'cancellation_reason': 'Payment timeout',
+                'cancelled_by_uid': 'system',
+                'cancelled_at': FieldValue.serverTimestamp(),
+                'updated_at': FieldValue.serverTimestamp(),
+              });
+              count++;
+            }
+          }
+          return count;
+        } catch (e2, st2) {
+          debugPrint('Fallback cancelExpiredWaitingQueuesForCustomer failed for $customerId: $e2\n$st2');
+          return 0;
+        }
+      }
       debugPrint('Error cancelling expired waiting queues for customer $customerId: $e\n$st');
       return 0;
     }
@@ -1028,9 +1157,10 @@ class QueueService {
 
   /// Cancel awaiting_payment queues for a customer whose payment_due_at has passed.
   /// Returns number of cancelled documents.
+  @override
   Future<int> cancelExpiredAwaitingPaymentQueuesForCustomer(String customerId) async {
+    final nowTs = Timestamp.fromDate(DateTime.now());
     try {
-      final nowTs = Timestamp.fromDate(DateTime.now());
       final qs = await _firestore
           .collection('queues')
           .where('customer_id', isEqualTo: customerId)
@@ -1051,6 +1181,34 @@ class QueueService {
       }
       return count;
     } catch (e, st) {
+      // If Firestore requires a composite index for this query, fall back to a safe client-side filter
+      // so the app behaves correctly even if the project doesn't have the composite index configured.
+      if (e is FirebaseException && e.code == 'failed-precondition') {
+        debugPrint('Firestore index required for cancelExpiredAwaitingPaymentQueuesForCustomer: ${e.message} — falling back to client-side filter (consider creating the composite index for better performance)');
+        try {
+          final qs = await _firestore.collection('queues').where('customer_id', isEqualTo: customerId).get();
+          int count = 0;
+          for (final doc in qs.docs) {
+            final data = doc.data();
+            final status = data['status'] as String?;
+            final paymentDeadline = data['payment_deadline'] as Timestamp?;
+            if (status == 'awaiting_payment' && paymentDeadline != null && paymentDeadline.compareTo(nowTs) < 0) {
+              await doc.reference.update({
+                'status': 'cancelled',
+                'cancellation_reason': 'Payment timeout',
+                'cancelled_by_uid': 'system',
+                'cancelled_at': FieldValue.serverTimestamp(),
+                'updated_at': FieldValue.serverTimestamp(),
+              });
+              count++;
+            }
+          }
+          return count;
+        } catch (e2, st2) {
+          debugPrint('Fallback cancelExpiredAwaitingPaymentQueuesForCustomer failed for $customerId: $e2\n$st2');
+          return 0;
+        }
+      }
       debugPrint('Error cancelling expired awaiting_payment queues for customer $customerId: $e\n$st');
       return 0;
     }

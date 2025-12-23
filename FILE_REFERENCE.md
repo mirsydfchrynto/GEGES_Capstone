@@ -93,6 +93,8 @@ geges_smartbarber/
 
 **Per-Barbershop Payment Window:**
 - The `payment_deadline` for `awaiting_payment` bookings is set from a per-shop field `payment_window_minutes` if present; otherwise a **10-minute** default is used. This value is stored on the `barbershops` document and read by `QueueService` when creating bookings.
+  - The `payment_deadline` for `awaiting_payment` bookings is set from a per-shop field `payment_window_minutes` if present; otherwise a **10-minute** default is used. This value is stored on the `barbershops` document and read by `QueueService` when creating bookings.
+  - Supported types for `payment_window_minutes`: `int`, `num`, or numeric `String` (e.g. `'10'`). Non-numeric values will be ignored and the default applied.
 
 ---
 

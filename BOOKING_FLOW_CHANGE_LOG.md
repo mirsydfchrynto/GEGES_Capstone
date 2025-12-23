@@ -22,7 +22,7 @@ Key changes:
 
 - Manual booking by admin:
   - Admins can create manual (walk-in) bookings from `Add Manual Booking` screen.
-  - Manual bookings are created with `status = 'booked'` and `payment_method = 'cash'` and use a shared `customer_id = 'manual_customer'` for easy tracing.
+  - Manual bookings are created with `status = 'booked'` and `payment_method = 'cash'` and use a generated `customer_id` (prefix `manual_`) and store the entered `customer_name` so the customer's name is visible in the UI.
   - Manual booking UI validates slot availability (same as customer flow) before saving.
 
 - Auto-cancel / cleanup:
@@ -31,6 +31,7 @@ Key changes:
 - Per-barbershop payment window:
   - Default payment window is **10 minutes** when a booking enters `awaiting_payment` or `waiting` without a client-provided `payment_deadline`.
   - Barbershops may override this per-shop via `payment_window_minutes` in their document. The server (QueueService) reads this value and sets `payment_deadline` accordingly.
+  - Supported value types: integer numeric values (e.g. `10`), numeric strings (e.g. `'10'`) and numeric `num` types (e.g. `10.0`). If the value is missing or non-numeric (e.g. `'ten'`), the service will safely fall back to the **10-minute** default.
 
 Notes:
 - Tests: added unit tests for the server-side lead-time helper (`QueueService.isBookingLeadTimeSufficient`).

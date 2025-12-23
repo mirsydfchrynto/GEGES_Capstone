@@ -1,0 +1,44 @@
+name: Flutter tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run analyzer
+        run: flutter analyze
+
+      - name: Run unit & widget tests
+        env:
+          CI: true
+        run: flutter test --coverage
+
+      - name: Upload coverage (optional)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+
+      - name: Upload to Codecov (optional)
+        if: env.CODECOV_TOKEN != ''
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          bash <(curl -s https://codecov.io/bash) -f coverage/lcov.info || true

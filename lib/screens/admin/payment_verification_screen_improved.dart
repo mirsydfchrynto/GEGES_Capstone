@@ -12,6 +12,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:geges_smartbarber/services/booking_anti_duplicate_service.dart';
 
@@ -247,11 +248,11 @@ class _PaymentVerificationScreenImprovedState
           fit: StackFit.expand,
           children: [
             if (proofUrl.startsWith('http'))
-              Image.network(
-                proofUrl,
+              CachedNetworkImage(
+                imageUrl: proofUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Center(child: Text('Gagal load gambar')),
+                placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                errorWidget: (context, url, error) => const Center(child: Text('Gagal load gambar')),
               )
             else
               Center(
@@ -290,7 +291,7 @@ class _PaymentVerificationScreenImprovedState
               child: Container(
                 color: Colors.grey[900],
                 child: proofUrl.startsWith('http')
-                    ? Image.network(proofUrl, fit: BoxFit.contain)
+                    ? CachedNetworkImage(imageUrl: proofUrl, fit: BoxFit.contain, placeholder: (c, u) => const Center(child: CircularProgressIndicator()), errorWidget: (c, u, e) => const Center(child: Text('Gambar tidak tersedia')))
                     : const Center(child: Text('Gambar tidak tersedia')),
               ),
             ),

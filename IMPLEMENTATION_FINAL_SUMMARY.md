@@ -305,7 +305,8 @@ Future<void> _checkAndCancelExpiredForCurrentUser() async {
 
 ### Admin-Side Flow
 ```
-"Konfirmasi Booking" Screen (status='waiting' + request_status='pending')
+"Booking Requests" Screen (status='waiting' + request_status='pending')
+*(Note: the legacy label "Konfirmasi Booking" has been deprecated and replaced by "Booking Requests" / admin pending requests view.)*
    │
    ├─ Admin reviews customer & service details
    │

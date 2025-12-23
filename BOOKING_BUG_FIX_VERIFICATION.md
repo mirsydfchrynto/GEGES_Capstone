@@ -104,13 +104,13 @@ LIVE QUEUE (Now shows 'booked' items)
 **Step 2: Admin Confirms Request (as Admin)**
 1. Log out customer user
 2. Log in as admin user
-3. Go to "Konfirmasi Booking" screen
+3. Go to "Booking Requests" screen (or use the Info → "Buka Verifikasi Pembayaran" shortcut)
 4. Find the booking from Step 1
 5. Click "Konfirmasi Request" button
 6. Confirm in dialog
 
 **Expected (with fix):**
-- ✅ Booking disappears from "Konfirmasi Booking" list
+- ✅ Booking disappears from the admin "Booking Requests" (pending requests) list
 - ✅ Status should be `awaiting_payment` (NOT 'booked')
 - ✅ Booking does NOT appear in "Live Antrian" (it's still waiting for payment)
 - ✅ Customer receives notification: "Booking Disetujui - Silakan Bayar"
@@ -219,7 +219,7 @@ LIVE QUEUE (Now shows 'booked' items)
 **If you still see booking entering Live Queue immediately:**
 
 1. **Check which screen you're using:**
-   - `Konfirmasi Booking` screen? (Should be fixed)
+   - `Booking Requests` screen? (Should be fixed)
    - `Live Antrian` with confirm button? (Fixed now)
    - Other admin screen? Let me know which one
 

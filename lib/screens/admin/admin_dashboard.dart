@@ -72,7 +72,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return;
       }
 
-      if (adminData.role != 'admin_owner' && adminData.role != 'owner') {
+      // Accept multiple admin role variants to be robust against inconsistent DB values
+      if (!(adminData.role == 'admin_owner' || adminData.role == 'owner' || adminData.role == 'admin')) {
         if (mounted) {
           setState(() {
             _loadingError = 'ERROR: Akses ditolak. Role Anda: ${adminData.role}.';
@@ -331,9 +332,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
-        _buildMenuCard(Icons.verified_user_sharp, 'Konfirmasi Booking', 'Waiting List', () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => LiveQueueScreen(barbershopId: _adminBarbershopId!, initialFilter: [QueueStatus.waiting.value], title: 'Konfirmasi Booking')));
-        }),
+        // 'Konfirmasi Booking' has been removed in favor of 'Verifikasi Pembayaran'
+        // Admin should verify payment from the "Verifikasi Pembayaran" menu.
         _buildMenuCard(Icons.playlist_add_check, 'Antrean Live', 'Booked & Ongoing', () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => LiveQueueScreen(barbershopId: _adminBarbershopId!, initialFilter: [QueueStatus.booked.value, QueueStatus.ongoing.value], title: 'Antrean Live')));
         }),
@@ -439,8 +439,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<String> _getUpcomingDetails(Queue queue) async {
     try {
-      final userSnap = await FirebaseFirestore.instance.collection('users').doc(queue.customerId).get();
-      final customerName = userSnap.data()?['name'] ?? 'Pelanggan Tidak Dikenal';
+      // Prefer customer_name stored on the queue (manual bookings) then fallback to users collection
+      String customerName = 'Pelanggan Tidak Dikenal';
+      try {
+        final dataSnap = await FirebaseFirestore.instance.collection('queues').doc(queue.id).get();
+        final qData = dataSnap.data();
+        if (qData != null && qData['customer_name'] != null && (qData['customer_name'] as String).isNotEmpty) {
+          customerName = qData['customer_name'] as String;
+        } else {
+          final userSnap = await FirebaseFirestore.instance.collection('users').doc(queue.customerId).get();
+          customerName = userSnap.data()?['name'] ?? 'Pelanggan Tidak Dikenal';
+        }
+      } catch (_) {
+        // best effort fallback to users collection
+        final userSnap = await FirebaseFirestore.instance.collection('users').doc(queue.customerId).get();
+        customerName = userSnap.data()?['name'] ?? 'Pelanggan Tidak Dikenal';
+      }
 
       // TODO: resolve real service name by looking up service collection if stored (for demo use placeholder)
       const serviceName = 'Signature Haircut';
@@ -481,6 +495,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       return const Scaffold(backgroundColor: kBlack, body: Center(child: CircularProgressIndicator(color: kBrownAccent)));
     }
 
+    // Limit stream size to reduce UI load; counts should be fetched via helpers for accurate badges.
     final stream = _queueService.streamQueuesForBarbershop(
       _adminBarbershopId!,
       statusFilter: [QueueStatus.waiting.value, QueueStatus.booked.value, QueueStatus.ongoing.value, QueueStatus.served.value, QueueStatus.cancelled.value],
@@ -514,7 +529,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
             // waiting = jumlah 'waiting'
             final pending = todayQueues.where((q) => q.status == QueueStatus.waiting).length;
-            // bookedCount = jumlah 'booked' (konfirmasi oleh admin)
+            // bookedCount = jumlah 'booked' (setelah verifikasi pembayaran oleh admin)
             final bookedCount = todayQueues.where((q) => q.status == QueueStatus.booked).length;
             // ongoingCount = jumlah 'ongoing' (sudah mulai)
             final ongoingCount = todayQueues.where((q) => q.status == QueueStatus.ongoing).length;

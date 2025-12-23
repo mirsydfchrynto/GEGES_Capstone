@@ -1,12 +1,10 @@
-// My Bookings dengan tab eksklusif untuk mencegah duplikasi di UI
-//
+// My Bookings (riwayat pelanggan) — status tabs focused on payment-first flow
 // Tab queries:
-// 1. Menunggu Konfirmasi: status='created'
-// 2. Menunggu Pembayaran: status='confirmed' & payment.verificationStatus==null
-// 3. Pembayaran Dikirim: payment.verificationStatus='pending'
-// 4. Terbayar: status='paid_verified'
-// 5. Dibatalkan: status='cancelled'
-// Setiap query eksklusif — tidak ada overlap/duplikasi
+// 1. Menunggu Pembayaran: status='awaiting_payment' (customer should pay)
+// 2. Pembayaran Dikirim: payment.verificationStatus == 'pending' (proof uploaded)
+// 3. Pesanan Saya: status in ['booked','ongoing'] (confirmed / paid)
+// 4. Dibatalkan: status='cancelled'
+// Clicking an "awaiting_payment" or "payment_pending" card opens the Payment screen directly.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -28,7 +26,6 @@ class _MyBookingsScreenImprovedState extends State<MyBookingsScreenImproved>
   late BookingAntiDuplicateService _antiDupService;
 
   final List<String> _tabs = [
-    'Menunggu Konfirmasi',
     'Menunggu Pembayaran',
     'Pembayaran Dikirim',
     'Terbayar',
@@ -36,10 +33,9 @@ class _MyBookingsScreenImprovedState extends State<MyBookingsScreenImproved>
   ];
 
   final List<String> _filterTypes = [
-    'created',
-    'confirmed',
+    'awaiting_payment',
     'payment_pending',
-    'paid',
+    'booked',
     'cancelled',
   ];
 
@@ -148,24 +144,24 @@ class _MyBookingsScreenImprovedState extends State<MyBookingsScreenImproved>
     Color statusColor = Colors.grey;
 
     switch (status) {
-      case 'created':
-        statusLabel = 'Menunggu Konfirmasi';
-        statusColor = Colors.blue;
-        break;
-      case 'confirmed':
+      case 'awaiting_payment':
         if (verificationStatus == null) {
           statusLabel = 'Menunggu Pembayaran';
           statusColor = Colors.orange;
         }
         break;
-      case 'paid_verified':
+
+      case 'booked':
+      case 'ongoing':
         statusLabel = 'Terbayar';
         statusColor = Colors.green;
         break;
+
       case 'cancelled':
         statusLabel = 'Dibatalkan';
         statusColor = Colors.red;
         break;
+
       default:
         statusLabel = status;
     }
@@ -175,101 +171,106 @@ class _MyBookingsScreenImprovedState extends State<MyBookingsScreenImproved>
       statusColor = Colors.amber;
     }
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
+    final card = GestureDetector(
+      onTap: () {}, // No action on tap for awaiting_payment
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Booking ID: $bookingId',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        if (scheduledAt != null)
+                          Text(
+                            'Jadwal: ${DateFormat('dd MMM yyyy, HH:mm').format(scheduledAt.toDate())}',
+                            style: const TextStyle(fontSize: 11, color: Colors.black54),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Chip(
+                    label: Text(
+                      statusLabel,
+                      style: const TextStyle(fontSize: 10, color: Colors.white),
+                    ),
+                    backgroundColor: statusColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total: Rp ${NumberFormat('#,###', 'id_ID').format(totalPrice)}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  if (createdAt != null)
+                    Text(
+                      'Dibuat: ${DateFormat('dd MMM HH:mm').format(createdAt.toDate())}',
+                      style: const TextStyle(fontSize: 10, color: Colors.black54),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Tampilkan info payment jika ada
+              if (payment.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Booking ID: $bookingId',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                      if (payment['proofUrl'] != null)
+                        Row(
+                          children: [
+                            const Icon(Icons.check_circle, size: 16, color: Colors.green),
+                            const SizedBox(width: 4),
+                            const Text('Bukti Dikirim', style: TextStyle(fontSize: 10)),
+                          ],
                         ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      if (scheduledAt != null)
-                        Text(
-                          'Jadwal: ${DateFormat('dd MMM yyyy, HH:mm').format(scheduledAt.toDate())}',
-                          style: const TextStyle(fontSize: 11, color: Colors.black54),
+                      if (payment['proofLocked'] == true)
+                        Row(
+                          children: [
+                            const Icon(Icons.lock, size: 16, color: Colors.orange),
+                            const SizedBox(width: 4),
+                            const Text('Upload Terkunci', style: TextStyle(fontSize: 10)),
+                          ],
                         ),
                     ],
                   ),
                 ),
-                Chip(
-                  label: Text(
-                    statusLabel,
-                    style: const TextStyle(fontSize: 10, color: Colors.white),
-                  ),
-                  backgroundColor: statusColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Total: Rp ${NumberFormat('#,###', 'id_ID').format(totalPrice)}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                if (createdAt != null)
-                  Text(
-                    'Dibuat: ${DateFormat('dd MMM HH:mm').format(createdAt.toDate())}',
-                    style: const TextStyle(fontSize: 10, color: Colors.black54),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Tampilkan info payment jika ada
-            if (payment.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (payment['proofUrl'] != null)
-                      Row(
-                        children: [
-                          const Icon(Icons.check_circle, size: 16, color: Colors.green),
-                          const SizedBox(width: 4),
-                          const Text('Bukti Dikirim', style: TextStyle(fontSize: 10)),
-                        ],
-                      ),
-                    if (payment['proofLocked'] == true)
-                      Row(
-                        children: [
-                          const Icon(Icons.lock, size: 16, color: Colors.orange),
-                          const SizedBox(width: 4),
-                          const Text('Upload Terkunci', style: TextStyle(fontSize: 10)),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+
+    return card;
   }
 }

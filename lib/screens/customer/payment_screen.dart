@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:geges_smartbarber/services/queue_service_contract.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 
 class PaymentScreen extends StatefulWidget {
@@ -25,6 +26,11 @@ class PaymentScreen extends StatefulWidget {
   final List<String>? serviceIds;
   final DateTime? paymentDeadline;
 
+  /// Optional injection point for tests to provide a fake or mock [QueueService].
+  final QueueServiceContract? queueService;
+  /// Optional: inject a test-only user id to avoid depending on FirebaseAuth in widget tests
+  final String? testUserId;
+
   const PaymentScreen({
     super.key,
     required this.orderId,
@@ -34,6 +40,8 @@ class PaymentScreen extends StatefulWidget {
     this.bookingTime,
     this.serviceIds,
     this.paymentDeadline,
+    this.queueService,
+    this.testUserId,
   });
 
   @override
@@ -68,13 +76,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
     'Service Fee': 2500,
   };
 
-  final QueueService _queueService = QueueService();
+  late final QueueServiceContract _queueService;
 
   @override
   void initState() {
     super.initState();
     _initTimeRemaining();
     _startTimer();
+    // Allow injecting a QueueServiceContract for testing
+    _queueService = widget.queueService ?? QueueService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInitialQueueState();
     });
@@ -88,12 +98,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Future<void> _loadInitialQueueState() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      final userId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) return;
 
       // Try to get by document ID first (orderId may be queue id)
       final byId = await _queueService.getQueueById(widget.orderId);
-      if (byId != null && byId.customerId == user.uid) {
+      if (byId != null && byId.customerId == userId) {
         setState(() {
           _resolvedQueueId = byId.id;
           _hasUploadedProof = (byId.paymentProofBase64 != null && byId.paymentProofBase64!.isNotEmpty);
@@ -105,7 +115,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final qs = await FirebaseFirestore.instance
           .collection('queues')
           .where('order_id', isEqualTo: widget.orderId)
-          .where('customer_id', isEqualTo: user.uid)
+          .where('customer_id', isEqualTo: userId)
           .limit(1)
           .get();
       if (qs.docs.isNotEmpty) {
@@ -114,6 +124,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
           _resolvedQueueId = q.id;
           _hasUploadedProof = (q.paymentProofBase64 != null && q.paymentProofBase64!.isNotEmpty);
         });
+        return;
+      }
+
+      // Fallback #2: Some legacy/alternate flows use a 'bookings' collection.
+      // Try to find a booking document that matches this orderId and belongs to the user.
+      final bookingDoc = await FirebaseFirestore.instance.collection('bookings').doc(widget.orderId).get();
+      if (bookingDoc.exists) {
+        final bdata = bookingDoc.data() ?? {};
+        if ((bdata['userId'] as String?) == userId) {
+          // If the booking document contains a queue reference, prefer that
+          final possibleQueueId = bdata['queue_id'] ?? bdata['queueId'] ?? bdata['relatedQueueId'];
+          if (possibleQueueId is String && possibleQueueId.isNotEmpty) {
+            setState(() => _resolvedQueueId = possibleQueueId);
+          }
+          final payment = (bdata['payment'] as Map<String, dynamic>?) ?? {};
+          setState(() => _hasUploadedProof = (payment['proofUrl'] as String?)?.isNotEmpty ?? false);
+          return;
+        }
       }
     } catch (e) {
       debugPrint('Failed to load initial queue state: $e');
@@ -183,43 +211,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
   /// ✅ NEVER create duplicate booking — only update the existing one.
   /// The queue must already exist when payment proof is submitted.
   Future<void> _submitPaymentProofTransaction(String userId, String base64Proof, Queue existingQueue) async {
-    final firestore = FirebaseFirestore.instance;
-    final queueRef = firestore.collection('queues').doc(existingQueue.id);
-
-    try {
-      await firestore.runTransaction((tx) async {
-        // 1. Get the existing queue document
-        final qSnap = await tx.get(queueRef);
-        if (!qSnap.exists) {
-          throw Exception('Queue dokumen tidak ditemukan: ${existingQueue.id}');
-        }
-
-        final qData = qSnap.data();
-        if (qData == null) {
-          throw Exception('Queue data kosong');
-        }
-
-        // 2. Verify ownership — must belong to current user
-        final customerId = qData['customer_id'] as String?;
-        if (customerId == null || customerId != userId) {
-          throw Exception('Unauthorized: booking bukan milik Anda');
-        }
-
-        // 3. ✅ ONLY UPDATE existing queue — preserve all existing fields
-        // Only update payment-related fields, do NOT change status or other data
-        tx.update(queueRef, {
-          'payment_proof_base64': base64Proof,
-          'payment_method': 'bank_transfer',
-          'payment_amount': widget.totalPrice,
-          'payment_submitted_at': FieldValue.serverTimestamp(),
-          'updated_at': FieldValue.serverTimestamp(),
-          // DO NOT change status here — let admin handle verification
-        });
-      });
-    } catch (e) {
-      debugPrint('Error in _submitPaymentProofTransaction: $e');
-      rethrow;
-    }
+    // Delegate to QueueService implementation to keep transactional logic centralized
+    await _queueService.submitPaymentProofForQueue(
+      queueId: existingQueue.id,
+      userId: userId,
+      base64Proof: base64Proof,
+    );
   }
 
 
@@ -338,8 +335,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
 
     try {
-      // Validate ownership using QueueService method
-      final queue = await _queueService.getQueueByIdForCustomer(widget.orderId, user.uid);
+      // Resolve queue by either queue id or order id and validate ownership
+      final userId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        _showSnack('User not authenticated. Please log in again.', isError: true);
+        setState(() => _isSubmitting = false);
+        return;
+      }
+      final queue = await _queueService.resolveQueueForCustomerByIdOrOrder(widget.orderId, userId);
       if (queue == null) {
         _showSnack('Pesanan tidak ditemukan atau tidak milik Anda', isError: true);
         setState(() => _isSubmitting = false);
@@ -378,7 +381,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         });
         Navigator.of(context).pop(true);
       }
-      _showSnack('Bukti pembayaran berhasil diunggah — menunggu konfirmasi admin.', success: true);
+      _showSnack('Bukti pembayaran berhasil diunggah — menunggu verifikasi admin.', success: true);
     } catch (e) {
       _showSnack('Gagal submit bukti: ${e.toString().replaceAll('Exception: ', '')}', isError: true);
     } finally {

@@ -354,28 +354,71 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                           children: [
                             // If no proof yet, allow pay
                             if (_isAwaitingPayment)
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (c) => PaymentScreen(
-                                        orderId: _queue!.id,
-                                        totalPrice: _queue!.totalPrice ?? 0,
-                                        barbershopId: _queue!.barbershopId,
-                                        barbermanId: _queue!.barbermanId,
-                                        bookingTime: _queue!.bookingTime.toDate(),
-                                        serviceIds: _queue!.serviceIds,
-                                        paymentDeadline: _queue!.paymentDeadline?.toDate(),
-                                      ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (c) => PaymentScreen(
+                                            orderId: _queue!.id,
+                                            totalPrice: _queue!.totalPrice ?? 0,
+                                            barbershopId: _queue!.barbershopId,
+                                            barbermanId: _queue!.barbermanId,
+                                            bookingTime: _queue!.bookingTime.toDate(),
+                                            serviceIds: _queue!.serviceIds,
+                                            paymentDeadline: _queue!.paymentDeadline?.toDate(),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      minimumSize: const Size.fromHeight(48),
                                     ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  minimumSize: const Size.fromHeight(48),
-                                ),
-                                child: const Text('Bayar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                    child: const Text('Bayar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  ),
+
+                                  const SizedBox(height: 12),
+
+                                  // Allow customer to cancel the order while still awaiting payment
+                                  OutlinedButton(
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool?>(
+                                        context: context,
+                                        builder: (c) => AlertDialog(
+                                          title: const Text('Batalkan Pesanan'),
+                                          content: const Text('Apakah Anda yakin ingin membatalkan pesanan ini?'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('Batal')),
+                                            ElevatedButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('Ya, Batalkan')),
+                                          ],
+                                        ),
+                                      );
+
+                                      if (!mounted) return;
+
+                                      if (confirm == true) {
+                                        try {
+                                          await _queueService.cancelQueue(_queue!.id, reason: 'Cancelled by customer');
+                                          if (!mounted) return;
+                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pesanan dibatalkan')));
+                                          await _load();
+                                        } catch (e) {
+                                          if (!mounted) return;
+                                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal membatalkan: $e')));
+                                        }
+                                      }
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: Colors.red),
+                                      minimumSize: const Size.fromHeight(48),
+                                    ),
+                                    child: const Text('Batalkan Pesanan', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red)),
+                                  ),
+                                ],
                               ),
 
                             // Allow customer to request cancellation when proof uploaded or already booked

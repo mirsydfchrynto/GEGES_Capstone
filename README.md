@@ -16,6 +16,11 @@ kontribusi.
 
 ## ringkasan singkat
 
+[![Flutter Tests](https://github.com/mirsydfchrynto/GEGES_Capstone/actions/workflows/flutter-test.yml/badge.svg)](https://github.com/mirsydfchrynto/GEGES_Capstone/actions/workflows/flutter-test.yml)
+
+[![Coverage](https://codecov.io/gh/mirsydfchrynto/GEGES_Capstone/branch/main/graph/badge.svg)](https://codecov.io/gh/mirsydfchrynto/GEGES_Capstone)
+
+
 geges_smartbarber adalah aplikasi mobile berbasis flutter yang
 memfasilitasi:
 

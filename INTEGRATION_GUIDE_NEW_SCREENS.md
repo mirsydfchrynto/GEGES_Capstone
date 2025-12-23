@@ -185,7 +185,7 @@ Future<void> migrateExistingBookings() async {
 
 3. **My Bookings Tabs**
    - [ ] Open My Bookings
-   - [ ] Should have 5 tabs (Menunggu Konfirmasi, Pembayaran, Dikirim, Terbayar, Dibatalkan)
+  - [ ] Should have 5 tabs (Menunggu Pembayaran, Pembayaran, Dikirim, Terbayar, Dibatalkan)
    - [ ] Each booking should appear in only ONE tab
    - [ ] Tap between tabs → no duplication
 

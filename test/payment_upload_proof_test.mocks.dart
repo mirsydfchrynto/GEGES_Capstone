@@ -874,6 +874,8 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
     String? barbershopId, {
     List<String>? statusFilter,
     String? barbermanIdFilter,
+    int? limit = 50,
+    _i5.DocumentSnapshot<Object?>? startAfter,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
@@ -882,6 +884,8 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
               {
                 #statusFilter: statusFilter,
                 #barbermanIdFilter: barbermanIdFilter,
+                #limit: limit,
+                #startAfter: startAfter,
               },
             ),
             returnValue: _i6.Stream<List<_i9.Queue>>.empty(),
@@ -1183,6 +1187,37 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
           as _i6.Future<_i9.Queue?>);
 
   @override
+  _i6.Future<_i9.Queue?> resolveQueueForCustomerByIdOrOrder(
+    String? idOrOrderId,
+    String? customerId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#resolveQueueForCustomerByIdOrOrder, [
+              idOrOrderId,
+              customerId,
+            ]),
+            returnValue: _i6.Future<_i9.Queue?>.value(),
+          )
+          as _i6.Future<_i9.Queue?>);
+
+  @override
+  _i6.Future<void> submitPaymentProofForQueue({
+    required String? queueId,
+    required String? userId,
+    required String? base64Proof,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#submitPaymentProofForQueue, [], {
+              #queueId: queueId,
+              #userId: userId,
+              #base64Proof: base64Proof,
+            }),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
   _i6.Future<List<_i9.Queue>> getBarbershopBookingHistory(
     String? barbershopId, {
     int? limit = 50,
@@ -1196,6 +1231,21 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
             returnValue: _i6.Future<List<_i9.Queue>>.value(<_i9.Queue>[]),
           )
           as _i6.Future<List<_i9.Queue>>);
+
+  @override
+  _i6.Future<int> countQueuesForBarbershop(
+    String? barbershopId, {
+    String? status,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #countQueuesForBarbershop,
+              [barbershopId],
+              {#status: status},
+            ),
+            returnValue: _i6.Future<int>.value(0),
+          )
+          as _i6.Future<int>);
 
   @override
   _i6.Future<int> cancelExpiredWaitingQueuesForCustomer(String? customerId) =>

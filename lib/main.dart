@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geges_smartbarber/screens/auth_gate.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
-import 'package:geges_smartbarber/screens/onboarding_screen.dart';
 import 'package:geges_smartbarber/services/notification_service.dart';
 import 'package:geges_smartbarber/services/app_navigator.dart';
 
@@ -215,21 +215,25 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           prefixIconColor: Colors.grey.shade600,
           // border = garis tepi saat field tidak fokus
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none, // tidak ada garis
+            borderRadius: BorderRadius.circular(20),
+            // Use a transparent border with same width as focused border to avoid layout shift on focus
+            borderSide: BorderSide(color: Colors.transparent, width: 1.5),
+            gapPadding: 0,
           ),
           // enabledborder = garis tepi saat field aktif tapi tidak fokus
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide(color: Colors.transparent, width: 1.5),
           ),
           // focusedborder = garis tepi saat user sedang ketik (fokus)
           // ini untuk highlighting field yang sedang diisi
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
             // borderSide = garis dengan warna coklat & tebal 1.5
             borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
           ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          floatingLabelBehavior: FloatingLabelBehavior.never,
         ),
 
         // ========== appBarTheme ==========
@@ -252,7 +256,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // - OnboardingScreen = layar pengenalan aplikasi untuk user baru
       // - jika user sudah pernah buka, bisa langsung ke LoginScreen
       // - (implementasi bisa menggunakan shared_preferences untuk check)
-      home: const OnboardingScreen(), 
+      home: const AuthGate(), 
     );
   }
 }

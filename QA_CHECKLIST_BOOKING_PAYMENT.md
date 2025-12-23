@@ -41,7 +41,7 @@
 ### Test 2: Admin Confirms Booking Request
 
 **Steps**:
-1. Admin app: Open "Konfirmasi Booking" screen
+1. Admin app: Open "Booking Requests" screen (previously labeled "Konfirmasi Booking")
 2. Should see the booking created in Test 1
 3. Tap "Konfirmasi Request"
 4. Confirm the dialog
@@ -176,7 +176,7 @@
 
 **Scenario**: After completing Test 2 (booking moved to `awaiting_payment`)
 
-**Step A**: Open "Konfirmasi Booking" screen
+**Step A**: Open "Booking Requests" screen (admin pending requests)
 - **Expected**: Booking should NOT appear (query filters `status='waiting' AND request_status='pending'`)
 
 **Step B**: Open "Verifikasi Pembayaran" screen
@@ -185,9 +185,9 @@
 **Step C**: Customer uploads proof (Test 3), then open Admin "Verifikasi Pembayaran"
 - **Expected**: Booking NOW appears with status "PROOF OK"
 
-**Step D**: Admin verifies payment (Test 4), then open "Konfirmasi Booking" and "Verifikasi Pembayaran"
+**Step D**: Admin verifies payment (Test 4), then open "Booking Requests" and "Verifikasi Pembayaran"
 - **Expected**:
-  - "Konfirmasi Booking": Booking NOT shown (status no longer `waiting`)
+  - "Booking Requests": Booking NOT shown (status no longer `waiting`)
   - "Verifikasi Pembayaran": Booking NOT shown (status no longer `awaiting_payment`)
   - Live Queue or Booked screen: Booking should appear
 

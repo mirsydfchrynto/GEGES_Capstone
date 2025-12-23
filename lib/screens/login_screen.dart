@@ -19,7 +19,7 @@ import 'package:geges_smartbarber/screens/register_screen.dart';
 // - loginscreen adalah statefulwidget karena ada state yang berubah (error message, loading, password visible)
 // - setstate() dipanggil untuk update ui saat ada perubahan
 class LoginScreen extends StatefulWidget {
-  final AuthService? authService;
+  final AuthServiceBase? authService;
   final WidgetBuilder? homeBuilder;
   final WidgetBuilder? adminBuilder;
   const LoginScreen({super.key, this.authService, this.homeBuilder, this.adminBuilder});
@@ -36,10 +36,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   
+  // Focus nodes for inputs (used to animate focused state)
+  late final FocusNode _emailFocusNode;
+  late final FocusNode _passwordFocusNode;
+  
   // penjelasan authservice:
   // - authservice adalah service yang menangani semua operasi autentikasi (login, register, google sign-in)
   // - sudah diimplementasikan di lib/services/auth_service.dart
-  late final AuthService _authService;
+  AuthServiceBase? _authService;
 
   // penjelasan variabel state:
   // - _errorMessage: menampilkan pesan error jika login gagal (email tidak terdaftar, password salah, dll)
@@ -65,13 +69,20 @@ class _LoginScreenState extends State<LoginScreen> {
     // - harus selalu panggil super.dispose() di akhir
     _emailController.dispose();
     _passwordController.dispose();
+    // dispose focus nodes
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    _authService = widget.authService ?? AuthService();
+    // Defer creation to when an operation is performed; allow tests to inject a fake AuthService
+    _authService = widget.authService;
+    // initialize focus nodes used for animated input styling
+    _emailFocusNode = FocusNode();
+    _passwordFocusNode = FocusNode();
   }
 
   // ========================================
@@ -98,7 +109,8 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final result = await _authService.signIn(email: email, password: password);
+      final auth = _authService ?? AuthService();
+      final result = await auth.signIn(email: email, password: password);
       if (!mounted) return;
       setState(() => _isLoading = false);
       if (result['success'] == true) {
@@ -128,10 +140,11 @@ class _LoginScreenState extends State<LoginScreen> {
     Widget targetScreen;
     if (role == 'customer') {
       targetScreen = widget.homeBuilder?.call(context) ?? const HomeScreen();
-    } else if (role == 'admin_owner') {
+    } else if (role == 'admin_owner' || role == 'owner' || role == 'admin') {
+      // Accept commonly used admin role variants in DB (admin_owner, owner, admin)
       targetScreen = widget.adminBuilder?.call(context) ?? const AdminDashboardScreen();
     } else {
-      setState(() => _errorMessage = 'role pengguna tidak valid.');
+      setState(() => _errorMessage = 'Role pengguna tidak valid: ${role ?? '<null>'}');
       return;
     }
 
@@ -195,7 +208,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _sendResetEmail(String email) async {
     setState(() => _isLoading = true);
     try {
-      final res = await _authService.sendPasswordResetEmail(email: email);
+      final auth = _authService ?? AuthService();
+      final res = await auth.sendPasswordResetEmail(email: email);
       if (!mounted) return;
       setState(() => _isLoading = false);
 
@@ -227,7 +241,8 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final result = await _authService.signInWithGoogle();
+      final auth = _authService ?? AuthService();
+      final result = await auth.signInWithGoogle();
 
       if (!mounted) return;
       setState(() => _isLoading = false);
@@ -236,8 +251,26 @@ class _LoginScreenState extends State<LoginScreen> {
         _navigateByRole(result['role']);
       } else {
         final message = result['message'] ?? 'google sign-in gagal.';
-  _showSnackbar(message, const Color(0xFFD32F2F));
+        // Show a helpful snackbar and allow retry for recoverable auth errors (recaptcha/credential)
+        final isRecaptcha = message.toLowerCase().contains('recaptcha') || message.toLowerCase().contains('captcha');
+        final isCredential = message.toLowerCase().contains('credential') || message.toLowerCase().contains('oauth') || message.toLowerCase().contains('developer_error');
+        _showSnackbar(message, const Color(0xFFD32F2F));
         setState(() => _errorMessage = message);
+
+        if (isRecaptcha || isCredential) {
+          // Allow quick retry via snackbar action
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$message'),
+              backgroundColor: const Color(0xFFD32F2F),
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: _signInWithGoogle,
+              ),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -245,7 +278,19 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = false;
         _errorMessage = 'terjadi kesalahan: $e';
       });
-  _showSnackbar('terjadi kesalahan: $e', const Color(0xFFD32F2F));
+      // If error string contains recaptcha or credential hints, provide a retry
+      final msg = e.toString().toLowerCase();
+      final shouldOfferRetry = msg.contains('recaptcha') || msg.contains('credential') || msg.contains('developer_error');
+      _showSnackbar('terjadi kesalahan: $e', const Color(0xFFD32F2F));
+      if (shouldOfferRetry) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Terjadi kesalahan autentikasi: $e'),
+            backgroundColor: const Color(0xFFD32F2F),
+            action: SnackBarAction(label: 'Retry', textColor: Colors.white, onPressed: _signInWithGoogle),
+          ),
+        );
+      }
     }
   }
 
@@ -284,6 +329,34 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         );
       },
+    );
+  }
+
+  // ========================================
+  // Troubleshoot dialog: helper for auth errors (recaptcha / google sign-in / SHA-1)
+  // ========================================
+  void _showAuthTroubleshootDialog() {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Troubleshoot Sign-in'),
+        content: const SingleChildScrollView(
+          child: ListBody(
+            children: [
+              Text('Jika Anda melihat pesan reCAPTCHA atau Developer Error, periksa langkah-langkah berikut:'),
+              SizedBox(height: 8),
+              Text('- Pastikan SHA-1 debug/release ditambahkan ke Firebase Console'),
+              Text('- Ganti google-services.json bila diperlukan dan rebuild aplikasi'),
+              Text('- Untuk masalah reCAPTCHA, coba login dengan email/password sebagai fallback'),
+              Text('- App Check dapat diabaikan pada development atau dikonfigurasi untuk production'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
+        ],
+      ),
     );
   }
 
@@ -341,32 +414,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   hintText: 'Email',
                   icon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
+                  focusNode: _emailFocusNode,
                 ),
                 const SizedBox(height: 16),
 
                 // Password with toggle
-                TextField(
+                _buildTextField(
                   controller: _passwordController,
+                  hintText: 'Password',
+                  icon: Icons.lock_outline,
                   obscureText: _obscurePassword,
-                  keyboardType: TextInputType.text,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Password',
-                    hintStyle: const TextStyle(color: kHintText),
-                    filled: true,
-                    fillColor: kDarkGrey,
-                    prefixIcon: const Icon(Icons.lock_outline, color: kHintText, size: 22),
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off, color: kHintText),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                    border: InputBorder.none,
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
-                    ),
-                    enabledBorder: InputBorder.none,
-                  ),
+                  focusNode: _passwordFocusNode,
                 ),
                 const SizedBox(height: 12),
 
@@ -384,7 +442,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (_errorMessage.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Text(_errorMessage, style: const TextStyle(color: Color(0xFFD32F2F)), textAlign: TextAlign.center),
+                    child: Column(
+                      children: [
+                        Text(_errorMessage, style: const TextStyle(color: Color(0xFFD32F2F)), textAlign: TextAlign.center),
+                        const SizedBox(height: 8),
+                        // Offer a Troubleshoot button for auth-specific errors
+                        if (_errorMessage.toLowerCase().contains('recaptcha') || _errorMessage.toLowerCase().contains('sha') || _errorMessage.toLowerCase().contains('developer_error'))
+                          TextButton(
+                            onPressed: () => _showAuthTroubleshootDialog(),
+                            child: const Text('Troubleshoot Sign-in', style: TextStyle(color: kBrownAccent)),
+                          ),
+                      ],
+                    ),
                   ),
 
                 // Sign In Button
@@ -519,6 +588,8 @@ class _LoginScreenState extends State<LoginScreen> {
     required String hintText,
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
+    FocusNode? focusNode,
+    bool obscureText = false,
   }) {
     // penjelasan:
     // - reusable widget untuk membuat input field dengan style yang konsisten
@@ -526,21 +597,35 @@ class _LoginScreenState extends State<LoginScreen> {
     // - hinttext: placeholder text saat field kosong
     // - icon: icon di sebelah kiri input
     // - keyboardtype: tipe keyboard yang muncul (email, number, text, dll)
-    
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: const TextStyle(color: kHintText),
-        filled: true,
-        fillColor: kDarkGrey,
-        prefixIcon: Icon(icon, color: kHintText, size: 22),
-        border: InputBorder.none,
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
+
+    final node = focusNode;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      decoration: BoxDecoration(
+        color: kDarkGrey,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: (node != null && node.hasFocus)
+            ? [BoxShadow(color: kBrownAccent.withValues(alpha: 0.12), blurRadius: 8, spreadRadius: 1)]
+            : null,
+      ),
+      child: TextField(
+        controller: controller,
+        focusNode: node,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: const TextStyle(color: kHintText),
+          filled: true,
+          fillColor: Colors.transparent,
+          prefixIcon: Icon(icon, color: kHintText, size: 22),
+          border: InputBorder.none,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
+          ),
         ),
       ),
     );

@@ -26,6 +26,7 @@ void main() {
   late MockCollectionReference<Map<String, dynamic>> mockCollection;
   late MockDocumentReference<Map<String, dynamic>> mockDocRef;
   late MockDocumentSnapshot<Map<String, dynamic>> mockDocSnapshot;
+  late MockCollectionReference<Map<String, dynamic>> mockAuditCollection;
 
   setUp(() {
     // 1. Inisialisasi Mock
@@ -33,14 +34,22 @@ void main() {
     mockFirestore = MockFirebaseFirestore();
     mockUserCredential = MockUserCredential();
     mockUser = MockUser();
-    mockCollection = MockCollectionReference();
-    mockDocRef = MockDocumentReference();
-    mockDocSnapshot = MockDocumentSnapshot();
+    mockCollection = MockCollectionReference<Map<String, dynamic>>();
+    mockDocRef = MockDocumentReference<Map<String, dynamic>>();
+    mockDocSnapshot = MockDocumentSnapshot<Map<String, dynamic>>();
+    mockAuditCollection = MockCollectionReference<Map<String, dynamic>>();
 
     // 2. Setup Chain Firestore (collection -> doc -> get)
     // Agar saat kode memanggil .collection('users').doc(...), mock kita yang merespons
     when(mockFirestore.collection('users')).thenReturn(mockCollection);
     when(mockCollection.doc(any)).thenReturn(mockDocRef);
+
+    // stub doc update future
+    when(mockDocRef.update(any)).thenAnswer((_) async {});
+
+    // stub audit collection add (best-effort)
+    when(mockFirestore.collection('login_audit')).thenReturn(mockAuditCollection);
+    when(mockAuditCollection.add(any)).thenAnswer((_) async => MockDocumentReference<Map<String, dynamic>>());
 
     // 3. Inject Mock ke dalam AuthService
     authService = AuthService(auth: mockAuth, firestore: mockFirestore);
@@ -115,6 +124,16 @@ void main() {
       // ASSERT
       expect(result['success'], true);
       expect(result['role'], 'customer');
+
+      // Should have updated last_login on user doc (audit write is best-effort)
+      verify(mockDocRef.update(any)).called(1);
+
+      // Audit write should have been attempted (best-effort)
+      final capturedAudit = verify(mockAuditCollection.add(captureAny)).captured;
+      expect(capturedAudit, isNotEmpty);
+      final auditArg = capturedAudit.first as Map<String, dynamic>;
+      expect(auditArg['uid'], uid);
+      expect(auditArg['event'], 'login');
     });
 
     // ==========================================
@@ -138,6 +157,9 @@ void main() {
       // ASSERT
       expect(result['success'], true);
       expect(result['role'], 'admin_owner');
+
+      // Should have updated last_login on user doc (audit write is best-effort)
+      verify(mockDocRef.update(any)).called(1);
     });
 
     // ==========================================
@@ -162,6 +184,16 @@ void main() {
       // ASSERT
       expect(result['success'], false);
       expect(result['message'], 'Data pengguna tidak ditemukan.');
+    });
+
+    test('TC-06: Menangani reCAPTCHA / recaptcha token kosong dengan pesan yang informatif', () async {
+      when(mockAuth.signInWithEmailAndPassword(email: email, password: password))
+          .thenThrow(FirebaseAuthException(code: 'auth-error', message: 'Logging in with empty reCAPTCHA token'));
+
+      final result = await authService.signIn(email: email, password: password);
+
+      expect(result['success'], false);
+      expect(result['message'].toString().toLowerCase(), contains('recaptcha'));
     });
   });
 }

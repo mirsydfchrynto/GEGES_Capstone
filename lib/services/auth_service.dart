@@ -1,18 +1,25 @@
 // lib/services/auth_service.dart
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart'; // Dibutuhkan oleh AuthService
+import 'package:flutter/foundation.dart'; // untuk defaultTargetPlatform
 import 'package:google_sign_in/google_sign_in.dart';
-// --- IMPORT BARU ---
-import 'package:geges_smartbarber/models/user_data.dart'; // Import Model Anda
+import 'package:geges_smartbarber/models/user_data.dart';
+import 'package:geges_smartbarber/services/session_service.dart';
 
-class AuthService {
+// Public interface so tests can inject a fake implementation without initializing Firebase
+abstract class AuthServiceBase {
+  Future<Map<String, dynamic>> signIn({required String email, required String password});
+  Future<Map<String, dynamic>> registerCustomer({required String email, required String password, required String name});
+  Future<Map<String, dynamic>> signInWithGoogle();
+  Future<Map<String, dynamic>> sendPasswordResetEmail({required String email});
+  Future<UserData?> getUserById(String uid);
+}
+
+class AuthService implements AuthServiceBase {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
 
-  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
-      : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+  // Constructor defined below (includes optional GoogleSignIn injection)
   User? get currentUser => _auth.currentUser;
 
   // ============================
@@ -21,6 +28,7 @@ class AuthService {
 
   /// Sign in with email & password.
   /// Returns map: { 'success': bool, 'role': 'customer'|'admin_owner', 'message': ... }
+  @override
   Future<Map<String, dynamic>> signIn({
     required String email,
     required String password,
@@ -40,6 +48,22 @@ class AuthService {
 
       final data = doc.data() as Map<String, dynamic>;
       final role = (data['role'] as String?) ?? 'customer';
+      // Persist session info (uid & token) for better UX across app restarts
+      try {
+        final current = _auth.currentUser;
+        if (current != null) {
+          final token = await current.getIdToken();
+          await SessionService().saveSession(uid: uid, idToken: token);
+        }
+      } catch (_) {}
+
+      // Record login audit (non-blocking)
+      try {
+        await _recordLoginAudit(uid);
+      } catch (e) {
+        debugPrint('Login audit failed: $e');
+      }
+
       return {'success': true, 'role': role};
     } on FirebaseAuthException catch (e) {
       return {
@@ -52,6 +76,12 @@ class AuthService {
   }
 
   String _mapAuthErrorMessage(FirebaseAuthException e) {
+    final msg = (e.message ?? '').toLowerCase();
+    // Map common FirebaseAuth error codes/messages to friendly Indonesian strings
+    if (msg.contains('recaptcha') || msg.contains('reCAPTCHA'.toLowerCase()) || msg.contains('captcha') ) {
+      return 'Verifikasi reCAPTCHA gagal atau token kosong. Periksa konfigurasi Firebase Auth reCAPTCHA dan koneksi jaringan. Untuk debugging, coba sign-in dengan email/password.';
+    }
+
     switch (e.code) {
       case 'user-not-found':
         return 'Email tidak ditemukan.';
@@ -59,6 +89,8 @@ class AuthService {
         return 'Password salah.';
       case 'invalid-email':
         return 'Format email salah.';
+      case 'invalid-credential':
+        return 'Credential tidak valid atau kadaluwarsa. Coba lagi atau periksa konfigurasi Google Sign-In (SHA-1).';
       case 'too-many-requests':
         return 'Terlalu banyak percobaan login. Coba lagi nanti.';
       case 'network-request-failed':
@@ -69,6 +101,7 @@ class AuthService {
   }
 
   /// Register customer (email/password).
+  @override
   Future<Map<String, dynamic>> registerCustomer({
     required String email,
     required String password,
@@ -95,10 +128,19 @@ class AuthService {
       // Opsional: kirim verifikasi email
       await userCredential.user?.sendEmailVerification();
 
+      // Save session after register to improve UX
+      try {
+        final current = _auth.currentUser;
+        if (current != null) {
+          final token = await current.getIdToken();
+          await SessionService().saveSession(uid: uid, idToken: token);
+        }
+      } catch (_) {}
+
       return {
         'success': true,
         'message': 'Registrasi berhasil. Silakan verifikasi email Anda.',
-      };
+      }; 
     } on FirebaseAuthException catch (e) {
       return {'success': false, 'message': e.message ?? 'Registrasi gagal'};
     } catch (e) {
@@ -112,9 +154,17 @@ class AuthService {
   // ============================
   // GOOGLE SIGN IN
   // ============================
+  final GoogleSignIn? _googleSignIn;
+
+  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore, GoogleSignIn? googleSignIn})
+      : _auth = auth ?? FirebaseAuth.instance,
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _googleSignIn = googleSignIn;
+
+  @override
   Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
-      final googleSignIn = GoogleSignIn(scopes: <String>['email', 'profile']);
+      final googleSignIn = _googleSignIn ?? GoogleSignIn(scopes: <String>['email', 'profile']);
 
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
@@ -165,6 +215,14 @@ class AuthService {
       }
       final role = (raw['role'] as String?) ?? 'customer';
 
+      try {
+        final current = _auth.currentUser;
+        if (current != null) {
+          final token = await current.getIdToken();
+          await SessionService().saveSession(uid: uid, idToken: token);
+        }
+      } catch (_) {}
+
       return {'success': true, 'role': role};
     } on FirebaseAuthException catch (e) {
       return {
@@ -197,6 +255,7 @@ class AuthService {
   // ============================
 
   /// Kirim link reset password
+  @override
   Future<Map<String, dynamic>> sendPasswordResetEmail({
     required String email,
   }) async {
@@ -223,6 +282,7 @@ class AuthService {
   // --- PERBAIKAN DI SINI ---
   // Mengganti 'getUserByIdRaw' (Map) menjadi 'getUserById' (Model)
   // Ini akan digunakan oleh AdminDashboard untuk menampilkan nama customer
+  @override
   Future<UserData?> getUserById(String uid) async {
     try {
       if (uid.isEmpty) return null;
@@ -240,6 +300,8 @@ class AuthService {
     }
   }
   // --- AKHIR PERBAIKAN ---
+
+
 
   // ============================
   // UPDATE PROFILE & REAUTH
@@ -270,6 +332,32 @@ class AuthService {
       idToken: googleAuth.idToken,
     );
     await _auth.currentUser!.reauthenticateWithCredential(credential);
+  }
+
+  // Helper: Record login audit and update user.last_login
+  Future<void> _recordLoginAudit(String uid) async {
+    // Best-effort: write a concise audit document and update the user's last_login
+    final platform = defaultTargetPlatform.toString();
+
+    try {
+      await _firestore.collection('login_audit').add({
+        'uid': uid,
+        'event': 'login',
+        'platform': platform,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      // non-fatal: log and continue to attempt updating last_login
+      debugPrint('Login audit add failed (continuing): $e');
+    }
+
+    // update last_login on user document
+    try {
+      await _firestore.collection('users').doc(uid).update({'last_login': FieldValue.serverTimestamp()});
+    } catch (e) {
+      // non-fatal if update fails (e.g., permission rules); log and continue
+      debugPrint('Failed to update last_login for $uid: $e');
+    }
   }
 
   /// Update profile dengan handling untuk requires-recent-login
@@ -384,6 +472,7 @@ class AuthService {
   // ============================
 
   Future<void> signOut() async {
+    final currentUid = _auth.currentUser?.uid;
     try {
       // Sign out from Firebase
       await _auth.signOut();
@@ -394,6 +483,23 @@ class AuthService {
       } catch (_) {}
     } catch (e) {
       debugPrint('Sign out error: $e');
+    } finally {
+      // Record logout audit (best-effort)
+      try {
+        if (currentUid != null) {
+          await _firestore.collection('login_audit').add({
+            'uid': currentUid,
+            'event': 'logout',
+            'platform': defaultTargetPlatform.toString(),
+            'created_at': FieldValue.serverTimestamp(),
+          });
+        }
+      } catch (e) {
+        debugPrint('Logout audit failed: $e');
+      }
+
+      // Clear persisted session data
+      await SessionService().clearSession();
     }
   }
 
