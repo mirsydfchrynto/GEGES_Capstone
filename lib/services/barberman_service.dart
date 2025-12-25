@@ -6,8 +6,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/models/barberman.dart';
 
 class BarbermanService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
   final String _collection = 'barbermen';
+
+  BarbermanService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   // -----------------------
   // FETCH SINGLE BARBERMAN
@@ -16,7 +19,10 @@ class BarbermanService {
   /// Mengambil data Barberman berdasarkan ID-nya.
   Future<Barberman?> getBarbermanById(String barbermanId) async {
     try {
-      final doc = await _firestore.collection(_collection).doc(barbermanId).get();
+      final doc = await _firestore
+          .collection(_collection)
+          .doc(barbermanId)
+          .get();
 
       if (doc.exists && doc.data() != null) {
         return Barberman.fromFirestore(doc);
@@ -40,14 +46,16 @@ class BarbermanService {
     // yang menyimpan ID barbershop tempat barberman itu bekerja.
     return _firestore
         .collection(_collection)
-        .where('barbershop_id', isEqualTo: barbershopId) 
+        .where('barbershop_id', isEqualTo: barbershopId)
         // Anda mungkin ingin menambahkan orderBy untuk sorting
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return Barberman.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            return Barberman.fromFirestore(
+              doc as DocumentSnapshot<Map<String, dynamic>>,
+            );
+          }).toList();
+        });
   }
 
   // -----------------------
@@ -63,7 +71,10 @@ class BarbermanService {
         await _firestore.collection(_collection).add(barberman.toJson());
       } else {
         // Update existing
-        await _firestore.collection(_collection).doc(barberman.id).update(barberman.toJson());
+        await _firestore
+            .collection(_collection)
+            .doc(barberman.id)
+            .update(barberman.toJson());
       }
     } catch (e) {
       // ignore: avoid_print
@@ -73,13 +84,67 @@ class BarbermanService {
   }
 
   // -----------------------
+  // BULK OFF-DAY HELPERS
+  // -----------------------
+
+  /// Apply an off-day (dayName) to all barbermen in a barbershop.
+  /// Returns a map of docId -> previous offDays list so the caller can revert if needed.
+  Future<Map<String, List<String>>> applyOffDayToAll(
+    String barbershopId,
+    String dayName,
+  ) async {
+    final result = <String, List<String>>{};
+    final docs = await _firestore
+        .collection(_collection)
+        .where('barbershop_id', isEqualTo: barbershopId)
+        .get();
+    if (docs.docs.isEmpty) return result;
+
+    final batch = _firestore.batch();
+    for (final d in docs.docs) {
+      final data = d.data();
+      final existing = (data['offDays'] is List)
+          ? List<String>.from(data['offDays'])
+          : <String>[];
+      result[d.id] = List<String>.from(existing);
+      if (!existing.contains(dayName)) {
+        final newList = List<String>.from(existing)..add(dayName);
+        batch.update(d.reference, {'offDays': newList});
+      }
+    }
+
+    if (result.isEmpty) return result;
+    await batch.commit();
+    return result;
+  }
+
+  /// Revert off-days using the previous map returned by [applyOffDayToAll].
+  Future<void> revertOffDayByPrevious(
+    Map<String, List<String>> previous,
+  ) async {
+    if (previous.isEmpty) return;
+    final batch = _firestore.batch();
+    for (final entry in previous.entries) {
+      final docRef = _firestore.collection(_collection).doc(entry.key);
+      batch.update(docRef, {'offDays': entry.value});
+    }
+    await batch.commit();
+  }
+
+  // -----------------------
   // BOOKING MANAGEMENT
   // -----------------------
 
   /// Membuat permintaan booking baru.
-  Future<void> createBookingRequest(String barbermanId, Map<String, dynamic> bookingData) async {
+  Future<void> createBookingRequest(
+    String barbermanId,
+    Map<String, dynamic> bookingData,
+  ) async {
     try {
-      final bookingCollection = _firestore.collection('barbermen').doc(barbermanId).collection('bookings');
+      final bookingCollection = _firestore
+          .collection('barbermen')
+          .doc(barbermanId)
+          .collection('bookings');
       await bookingCollection.add({
         ...bookingData,
         'status': 'waiting',
@@ -93,9 +158,17 @@ class BarbermanService {
   }
 
   /// Mengupdate status booking berdasarkan ID booking.
-  Future<void> updateBookingStatus(String barbermanId, String bookingId, String status) async {
+  Future<void> updateBookingStatus(
+    String barbermanId,
+    String bookingId,
+    String status,
+  ) async {
     try {
-      final bookingDoc = _firestore.collection('barbermen').doc(barbermanId).collection('bookings').doc(bookingId);
+      final bookingDoc = _firestore
+          .collection('barbermen')
+          .doc(barbermanId)
+          .collection('bookings')
+          .doc(bookingId);
       await bookingDoc.update({'status': status});
     } catch (e) {
       // ignore: avoid_print
@@ -107,8 +180,13 @@ class BarbermanService {
   /// Membatalkan booking yang belum dibayar secara otomatis.
   Future<void> cancelUnpaidBookings(String barbermanId) async {
     try {
-      final bookingCollection = _firestore.collection('barbermen').doc(barbermanId).collection('bookings');
-      final unpaidBookings = await bookingCollection.where('status', isEqualTo: 'waiting').get();
+      final bookingCollection = _firestore
+          .collection('barbermen')
+          .doc(barbermanId)
+          .collection('bookings');
+      final unpaidBookings = await bookingCollection
+          .where('status', isEqualTo: 'waiting')
+          .get();
 
       for (final doc in unpaidBookings.docs) {
         await doc.reference.update({'status': 'cancelled'});

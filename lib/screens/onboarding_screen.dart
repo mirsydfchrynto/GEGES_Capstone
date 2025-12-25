@@ -28,7 +28,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // - initialpage 0 berarti mulai dari halaman pertama (index 0)
   // - pagecontroller juga bisa detect page scroll & programmatically navigate
   final PageController _pageController = PageController(initialPage: 0);
-  
+
   // penjelasan current page state:
   // - _currentPage menyimpan halaman mana yang sedang ditampilkan
   // - di-update saat user swipe atau tekan tombol next
@@ -44,25 +44,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     {
       "image": "assets/images/onboarding_clock.png",
       "title": "Say Goodbye to Long Waits",
-      "subtitle": "Book your spot in advance with GEGES and arrive just in time for your haircut."
+      "subtitle":
+          "Book your spot in advance with GEGES and arrive just in time for your haircut.",
     },
     {
       "image": "assets/images/onboarding_pin.png",
       "title": "Find Nearby Barbers",
-      "subtitle": "Discover the best barbershops in your area with ratings and reviews from real customers."
+      "subtitle":
+          "Discover the best barbershops in your area with ratings and reviews from real customers.",
     },
     {
       "image": "assets/images/onboarding_bot.png",
       "title": "Smart Assistant",
-      "subtitle": "Get personalized recommendations and instant booking help through our AI chatbot."
-    }
+      "subtitle":
+          "Get personalized recommendations and instant booking help through our AI chatbot.",
+    },
   ];
 
   // penjelasan warna tema:
   // - kBrownAccent adalah warna coklat utama dari design system
   // - digunakan untuk tombol, highlight, & indicator dots yang aktif
   static const Color kBrownAccent = Color(0xFFC3A47B);
-  
+
   // ========================================
   // navigasi ke login screen
   // ========================================
@@ -72,7 +75,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // - navigasi ke loginscreen dengan pushreplacement
     // - pushreplacement = ganti halaman ini dengan login screen (jangan push ke stack)
     // - mounted check untuk memastikan widget masih ada di memory sebelum navigate
-    
+
     if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -87,7 +90,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // - scaffold = layout dasar dengan body
     // - stack = tata letak untuk menempatkan widget di atas widget lain
     // - positioned = menempatkan widget di posisi absolut (top, left, right, bottom)
-    
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -122,7 +125,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 return _buildPageContent(_onboardingData[index]);
               },
             ),
-            
+
             // penjelasan positioned skip button:
             // - positioned = menempatkan widget di posisi absolut (top, right, dll)
             // - top 10, right 24 = di atas kanan layar
@@ -139,7 +142,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
             ),
-            
+
             // penjelasan positioned kontrol navigasi:
             // - positioned = menempatkan di atas kanan layar
             // - bottom 40, left 24, right 24 = di bawah, full width
@@ -160,7 +163,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     children: _buildPageIndicator(),
                   ),
                   const SizedBox(height: 40.0),
-                  
+
                   // penjelasan next/get started button:
                   // - sizedbox width double.infinity = full width
                   // - elevated button untuk tombol dengan latar
@@ -200,8 +203,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         // penjelasan conditional button label:
                         // - jika di halaman terakhir, label "get started"
                         // - jika tidak, label "next"
-                        _currentPage == _onboardingData.length - 1 
-                            ? 'Get Started' 
+                        _currentPage == _onboardingData.length - 1
+                            ? 'Get Started'
                             : 'Next',
                         style: const TextStyle(
                           color: Colors.black,
@@ -230,7 +233,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // - column = vertical layout
     // - mainalignment center = konten di tengah layar
     // - crossalignment center = konten di tengah horizontal
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 40.0),
       child: Column(
@@ -255,13 +258,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Image.asset(
                 data['image']!,
                 color: kBrownAccent,
-                errorBuilder: (_, __, ___) =>
-                    Icon(Icons.image_not_supported, color: kBrownAccent, size: 80),
+                errorBuilder: (_, __, ___) => Icon(
+                  Icons.image_not_supported,
+                  color: kBrownAccent,
+                  size: 80,
+                ),
               ),
             ),
           ),
           const SizedBox(height: 60.0),
-          
+
           // penjelasan judul:
           // - text untuk menampilkan judul halaman
           // - textalign center = judul di tengah
@@ -277,7 +283,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
           const SizedBox(height: 16.0),
-          
+
           // penjelasan subtitle:
           // - text untuk menampilkan deskripsi halaman
           // - textalign center = subtitle di tengah
@@ -306,7 +312,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // - setiap halaman punya 1 dot
     // - dot yang aktif (_currentpage) lebih panjang & warna coklat
     // - dot yang tidak aktif lebih pendek & warna abu-abu
-    
+
     List<Widget> list = [];
     for (int i = 0; i < _onboardingData.length; i++) {
       // penjelasan logic:
@@ -327,7 +333,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // - isactive false = dot tidak aktif (pendek, abu-abu)
     // - animatedcontainer = container yang bisa di-animate
     // - duration 150ms = lama animasi transisi
-    
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       margin: const EdgeInsets.symmetric(horizontal: 6.0),

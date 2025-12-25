@@ -25,7 +25,10 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
 
   // Base URL is configurable via `--dart-define=STYLE_SCAN_BASE_URL=http://your.vps:5000`
   // Fallback: http://0.0.0.0:5000 (use this only for local testing)
-  final String _baseUrl = const String.fromEnvironment('STYLE_SCAN_BASE_URL', defaultValue: 'http://0.0.0.0:5000');
+  final String _baseUrl = const String.fromEnvironment(
+    'STYLE_SCAN_BASE_URL',
+    defaultValue: 'http://0.0.0.0:5000',
+  );
   late final StyleScanService _service = StyleScanService(baseUrl: _baseUrl);
 
   // --- Permission Helpers ---
@@ -43,21 +46,26 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
       permission = Permission.camera;
     } else {
       // Untuk Android 13+ lebih baik menggunakan photos, atau storage untuk yang lebih lama
-      permission = Platform.isAndroid ? Permission.photos : Permission.photos; 
+      permission = Platform.isAndroid ? Permission.photos : Permission.photos;
     }
-    
+
     if (!(await _ensurePermission(permission))) {
-      _showSnack('Akses ${source == ImageSource.camera ? 'Kamera' : 'Galeri'} ditolak.');
+      _showSnack(
+        'Akses ${source == ImageSource.camera ? 'Kamera' : 'Galeri'} ditolak.',
+      );
       return;
     }
 
     try {
-      final XFile? f = await _picker.pickImage(source: source, imageQuality: 85);
+      final XFile? f = await _picker.pickImage(
+        source: source,
+        imageQuality: 85,
+      );
       if (f != null) {
         setState(() {
           _pickedImage = File(f.path);
           // Di sini nanti Anda akan memanggil fungsi AI processing
-          // _processImage(_pickedImage!); 
+          // _processImage(_pickedImage!);
           _scanResult = null;
         });
         // Start scan after UI updates
@@ -122,27 +130,33 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
       ],
     );
   }
-  
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          
           const Icon(Icons.style, color: kBrownAccent, size: 80),
           const SizedBox(height: 20),
           const Text(
             'Scan Gaya Rambut AI',
-            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 10),
-          
+
           const SizedBox(height: 40),
-          
+
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -169,15 +183,32 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
   Widget _buildResultView() {
     // Tampilan hasil setelah gambar dipilih
     // Use API results when available, otherwise fall back to previous placeholders
-    final detections = _scanResult != null && _scanResult!['data'] != null && _scanResult!['data']['detections'] is List
-        ? List<Map<String, dynamic>>.from((_scanResult!['data']['detections'] as List).map((e) => Map<String, dynamic>.from(e as Map)))
+    final detections =
+        _scanResult != null &&
+            _scanResult!['data'] != null &&
+            _scanResult!['data']['detections'] is List
+        ? List<Map<String, dynamic>>.from(
+            (_scanResult!['data']['detections'] as List).map(
+              (e) => Map<String, dynamic>.from(e as Map),
+            ),
+          )
         : null;
 
-    final Map<String, dynamic>? first = (detections != null && detections.isNotEmpty) ? detections[0] : null;
+    final Map<String, dynamic>? first =
+        (detections != null && detections.isNotEmpty) ? detections[0] : null;
 
-    final detectedName = first != null ? (first['class_name'] ?? first['class_id'] ?? 'Unknown') : 'Taper Fade Klasik';
-    final detectedConfidence = first != null && first['confidence'] != null ? '${((first['confidence'] as num) * 100).toStringAsFixed(0)}%' : '85%';
-    final faceShape = _scanResult != null && _scanResult!['data'] != null && _scanResult!['data']['face_shape'] != null ? _scanResult!['data']['face_shape'].toString() : 'Oval';
+    final detectedName = first != null
+        ? (first['class_name'] ?? first['class_id'] ?? 'Unknown')
+        : 'Taper Fade Klasik';
+    final detectedConfidence = first != null && first['confidence'] != null
+        ? '${((first['confidence'] as num) * 100).toStringAsFixed(0)}%'
+        : '85%';
+    final faceShape =
+        _scanResult != null &&
+            _scanResult!['data'] != null &&
+            _scanResult!['data']['face_shape'] != null
+        ? _scanResult!['data']['face_shape'].toString()
+        : 'Oval';
     final description = _scanResult != null && _scanResult!['data'] != null
         ? 'Gaya ini terdeteksi sebagai $detectedName dengan tingkat kecocokan $detectedConfidence.'
         : 'Gaya ini cocok untuk Anda karena menonjolkan tekstur rambut atas dan rapi di sisi. Barbershop terdekat yang ahli dalam gaya ini adalah...';
@@ -191,7 +222,11 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
             children: [
               const Text(
                 'Hasil Scan Gaya',
-                style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.close, color: Colors.white, size: 30),
@@ -218,7 +253,16 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: Image.file(_pickedImage!, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const Center(child: Text("Error loading image", style: TextStyle(color: Colors.red)))),
+                  child: Image.file(
+                    _pickedImage!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Center(
+                      child: Text(
+                        "Error loading image",
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -228,21 +272,48 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Analisis AI:', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                    const Text(
+                      'Analisis AI:',
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
                     const SizedBox(height: 10),
                     Container(
                       padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(15)),
+                      decoration: BoxDecoration(
+                        color: kDarkGrey,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildAnalysisRow(Icons.cut, 'Gaya Terdeteksi:', detectedName),
-                          _buildAnalysisRow(Icons.local_offer, 'Kecocokan:', detectedConfidence),
-                          _buildAnalysisRow(Icons.face, 'Bentuk Wajah:', faceShape),
+                          _buildAnalysisRow(
+                            Icons.cut,
+                            'Gaya Terdeteksi:',
+                            detectedName,
+                          ),
+                          _buildAnalysisRow(
+                            Icons.local_offer,
+                            'Kecocokan:',
+                            detectedConfidence,
+                          ),
+                          _buildAnalysisRow(
+                            Icons.face,
+                            'Bentuk Wajah:',
+                            faceShape,
+                          ),
                           const Divider(color: Colors.white12, height: 25),
-                          const Text('Deskripsi:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Deskripsi:',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(height: 5),
-                          Text(description, style: const TextStyle(color: Colors.white70)),
+                          Text(
+                            description,
+                            style: const TextStyle(color: Colors.white70),
+                          ),
                         ],
                       ),
                     ),
@@ -255,14 +326,25 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
                         minimumSize: const Size(double.infinity, 55),
                         backgroundColor: kBrownAccent,
                         foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
                       ),
-                      child: const Text('Book Barbershop dengan Gaya Ini', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      child: const Text(
+                        'Book Barbershop dengan Gaya Ini',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     TextButton(
                       onPressed: () => _pickImage(ImageSource.camera),
-                      child: const Text('Scan Ulang / Ambil Gambar Baru', style: TextStyle(color: kBrownAccent)),
+                      child: const Text(
+                        'Scan Ulang / Ambil Gambar Baru',
+                        style: TextStyle(color: kBrownAccent),
+                      ),
                     ),
                   ],
                 ),
@@ -283,7 +365,13 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
           const SizedBox(width: 8),
           Text(label, style: const TextStyle(color: Colors.white)),
           const Spacer(),
-          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );

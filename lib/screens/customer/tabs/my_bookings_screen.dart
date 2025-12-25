@@ -28,7 +28,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   final String? _customerId = FirebaseAuth.instance.currentUser?.uid;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Map<String, String> _nameCache = {};
-  final GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
+  final GlobalKey<RefreshIndicatorState> _refreshKey =
+      GlobalKey<RefreshIndicatorState>();
 
   @override
   void initState() {
@@ -38,8 +39,14 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     // On screen init, trigger cancel checks for expired waiting / awaiting_payment
     if (_customerId != null) {
       // best-effort: cancel any expired requests (waiting) and expired awaiting payments
-      _queueService.cancelExpiredWaitingQueuesForCustomer(_customerId).then((c) => debugPrint('cancelled waiting: $c')).catchError((e) => debugPrint('cancelWaiting err: $e'));
-      _queueService.cancelExpiredAwaitingPaymentQueuesForCustomer(_customerId).then((c) => debugPrint('cancelled awaiting: $c')).catchError((e) => debugPrint('cancelAwaiting err: $e'));
+      _queueService
+          .cancelExpiredWaitingQueuesForCustomer(_customerId)
+          .then((c) => debugPrint('cancelled waiting: $c'))
+          .catchError((e) => debugPrint('cancelWaiting err: $e'));
+      _queueService
+          .cancelExpiredAwaitingPaymentQueuesForCustomer(_customerId)
+          .then((c) => debugPrint('cancelled awaiting: $c'))
+          .catchError((e) => debugPrint('cancelAwaiting err: $e'));
     }
   }
 
@@ -49,7 +56,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       try {
         await Future.wait([
           _queueService.cancelExpiredWaitingQueuesForCustomer(_customerId),
-          _queueService.cancelExpiredAwaitingPaymentQueuesForCustomer(_customerId),
+          _queueService.cancelExpiredAwaitingPaymentQueuesForCustomer(
+            _customerId,
+          ),
         ]);
       } catch (e) {
         debugPrint('Refresh error: $e');
@@ -69,7 +78,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       return _nameCache['bs_$barbershopId']!;
     }
     try {
-      final doc = await _firestore.collection('barbershops').doc(barbershopId).get();
+      final doc = await _firestore
+          .collection('barbershops')
+          .doc(barbershopId)
+          .get();
       final name = doc.data()?['name'] ?? 'Barbershop Dihapus';
       _nameCache['bs_$barbershopId'] = name;
       return name;
@@ -83,7 +95,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       return _nameCache['bm_$barbermanId']!;
     }
     try {
-      final doc = await _firestore.collection('barbermen').doc(barbermanId).get();
+      final doc = await _firestore
+          .collection('barbermen')
+          .doc(barbermanId)
+          .get();
       final name = doc.data()?['name'] ?? 'Barberman Dihapus';
       _nameCache['bm_$barbermanId'] = name;
       return name;
@@ -111,12 +126,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   }
 
   Future<String> _getBarbershopImage(String barbershopId) async {
-    const String defaultImage = 'https://cdn-icons-png.flaticon.com/512/706/706830.png';
+    const String defaultImage =
+        'https://cdn-icons-png.flaticon.com/512/706/706830.png';
     if (_nameCache.containsKey('img_$barbershopId')) {
       return _nameCache['img_$barbershopId']!;
     }
     try {
-      final doc = await _firestore.collection('barbershops').doc(barbershopId).get();
+      final doc = await _firestore
+          .collection('barbershops')
+          .doc(barbershopId)
+          .get();
       final image = doc.data()?['imageUrl'] ?? defaultImage;
       _nameCache['img_$barbershopId'] = image;
       return image;
@@ -132,13 +151,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     if (queue.status == QueueStatus.ongoing) return 'Sedang Dicukur';
 
     // Handle awaiting_payment state (admin confirmed, waiting for payment)
-    if (queue.requestStatus == RequestStatus.approved && queue.paymentDeadline != null) {
+    if (queue.requestStatus == RequestStatus.approved &&
+        queue.paymentDeadline != null) {
       // If belum upload bukti pembayaran
-      if (queue.paymentProofBase64 == null || queue.paymentProofBase64!.isEmpty) {
+      if (queue.paymentProofBase64 == null ||
+          queue.paymentProofBase64!.isEmpty) {
         return 'Menunggu Pembayaran';
       }
       // Sudah upload bukti, menunggu verifikasi admin
-      if (queue.paymentProofBase64 != null && queue.paymentProofBase64!.isNotEmpty && (queue.verifiedBy == null || queue.verifiedBy!.isEmpty)) {
+      if (queue.paymentProofBase64 != null &&
+          queue.paymentProofBase64!.isNotEmpty &&
+          (queue.verifiedBy == null || queue.verifiedBy!.isEmpty)) {
         return 'Pembayaran Dikirim';
       }
       // Sudah diverifikasi admin
@@ -152,7 +175,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       if (queue.verifiedBy != null && queue.verifiedBy!.isNotEmpty) {
         return 'Pembayaran Terverifikasi';
       }
-      if (queue.paymentProofBase64 != null && queue.paymentProofBase64!.isNotEmpty) {
+      if (queue.paymentProofBase64 != null &&
+          queue.paymentProofBase64!.isNotEmpty) {
         return 'Pembayaran Dikirim';
       }
       return 'Booked';
@@ -164,14 +188,20 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   }
 
   bool _isAwaitingPaymentForQueue(Queue q) {
-    return q.requestStatus == RequestStatus.approved && q.paymentDeadline != null && (q.paymentProofBase64 == null || q.paymentProofBase64!.isEmpty);
+    return q.requestStatus == RequestStatus.approved &&
+        q.paymentDeadline != null &&
+        (q.paymentProofBase64 == null || q.paymentProofBase64!.isEmpty);
   }
 
   Color _getColorForQueue(Queue q) {
     // Verified payments -> green
     if (q.verifiedBy != null && q.verifiedBy!.isNotEmpty) return Colors.green;
     // Proof uploaded and awaiting admin -> amber
-    if (q.requestStatus == RequestStatus.approved && q.paymentProofBase64 != null && q.paymentProofBase64!.isNotEmpty) return Colors.amber;
+    if (q.requestStatus == RequestStatus.approved &&
+        q.paymentProofBase64 != null &&
+        q.paymentProofBase64!.isNotEmpty) {
+      return Colors.amber;
+    }
     // Otherwise rely on status color
     return _getStatusColor(q.status);
   }
@@ -226,14 +256,20 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         backgroundColor: kSurface,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('My Bookings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+        title: const Text(
+          'My Bookings',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+        ),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
           indicatorColor: kBrownAccent,
           labelColor: kBrownAccent,
           unselectedLabelColor: kTextGrey,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
           tabs: const [
             Tab(text: 'Menunggu Konfirmasi'),
             Tab(text: 'Menunggu Pembayaran'),
@@ -256,30 +292,40 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             _buildBookingListWithStatuses(statuses: ['awaiting_payment']),
             _buildBookingListWithStatuses(statuses: ['booked']),
             _buildBookingListWithStatuses(statuses: ['ongoing']),
-            _buildBookingListWithStatuses(statuses: ['served', 'refund_pending']),
+            _buildBookingListWithStatuses(
+              statuses: ['served', 'refund_pending'],
+            ),
             _buildBookingListWithStatuses(statuses: ['cancelled']),
           ],
         ),
       ),
     );
   }
+
   Widget _buildBookingListWithStatuses({required List<String> statuses}) {
     if (_customerId == null) {
-      return const Center(child: Text('Anda harus login', style: TextStyle(color: kTextGrey)));
+      return const Center(
+        child: Text('Anda harus login', style: TextStyle(color: kTextGrey)),
+      );
     }
 
-    final Stream<List<Queue>> queueStream =
-        _queueService.streamQueuesForCustomer(_customerId, statusFilter: statuses);
+    final Stream<List<Queue>> queueStream = _queueService
+        .streamQueuesForCustomer(_customerId, statusFilter: statuses);
 
     return StreamBuilder<List<Queue>>(
       stream: queueStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: kBrownAccent));
+          return const Center(
+            child: CircularProgressIndicator(color: kBrownAccent),
+          );
         }
         if (snapshot.hasError) {
           return Center(
-            child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: const TextStyle(color: Colors.red),
+            ),
           );
         }
 
@@ -287,14 +333,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         if (filteredList.isEmpty) {
           // choose an empty state message based on first status
           final first = statuses.isNotEmpty ? statuses.first : '';
-          final isCompleted = (first == 'served' || first == 'cancelled' || first == 'refund_pending');
+          final isCompleted =
+              (first == 'served' ||
+              first == 'cancelled' ||
+              first == 'refund_pending');
           return _buildEmptyState(isCompleted);
         }
 
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: filteredList.length,
-          itemBuilder: (context, index) => _buildBookingCard(context, filteredList[index]),
+          itemBuilder: (context, index) =>
+              _buildBookingCard(context, filteredList[index]),
           physics: const AlwaysScrollableScrollPhysics(),
         );
       },
@@ -309,10 +359,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const SizedBox(height: 100),
-            Icon(isCompleted ? Icons.history : Icons.calendar_month, color: kTextGrey, size: 60),
+            Icon(
+              isCompleted ? Icons.history : Icons.calendar_month,
+              color: kTextGrey,
+              size: 60,
+            ),
             const SizedBox(height: 16),
             Text(
-              isCompleted ? 'Tidak ada riwayat booking.' : 'Anda tidak memiliki booking aktif.',
+              isCompleted
+                  ? 'Tidak ada riwayat booking.'
+                  : 'Anda tidak memiliki booking aktif.',
               style: const TextStyle(color: kTextGrey, fontSize: 16),
             ),
           ],
@@ -329,8 +385,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           return Container(
             height: 200,
             margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(12)),
-            child: const Center(child: CircularProgressIndicator(color: kBrownAccent)),
+            decoration: BoxDecoration(
+              color: kDarkGrey,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(color: kBrownAccent),
+            ),
           );
         }
 
@@ -343,7 +404,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.red),
             ),
-            child: Text('Error loading: ${queue.id}', style: const TextStyle(color: Colors.red)),
+            child: Text(
+              'Error loading: ${queue.id}',
+              style: const TextStyle(color: Colors.red),
+            ),
           );
         }
 
@@ -359,7 +423,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white12),
             ),
-              child: Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Image header
@@ -372,29 +436,45 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                       child: CachedNetworkImage(
                         imageUrl: details['image'] ?? '',
                         fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) =>
-                            const Icon(Icons.storefront, color: kTextGrey, size: 60),
+                        errorWidget: (_, __, ___) => const Icon(
+                          Icons.storefront,
+                          color: kTextGrey,
+                          size: 60,
+                        ),
                       ),
                     ),
                     Positioned(
                       top: 12,
                       right: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
                               _formatStatusForQueue(queue),
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             if (_isAwaitingPaymentForQueue(queue))
                               Padding(
                                 padding: const EdgeInsets.only(top: 4.0),
                                 child: Text(
                                   _formatRemaining(queue.paymentDeadline),
-                                  style: const TextStyle(color: Colors.white70, fontSize: 10),
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 10,
+                                  ),
                                 ),
                               ),
                           ],
@@ -411,21 +491,38 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                     children: [
                       Text(
                         details['barbershopName'] ?? 'Loading',
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 8),
-                      _buildDetailRow('Layanan', details['serviceName'] ?? 'Loading'),
+                      _buildDetailRow(
+                        'Layanan',
+                        details['serviceName'] ?? 'Loading',
+                      ),
                       const SizedBox(height: 6),
-                      _buildDetailRow('Barberman', details['barbermanName'] ?? 'Loading'),
+                      _buildDetailRow(
+                        'Barberman',
+                        details['barbermanName'] ?? 'Loading',
+                      ),
                       const SizedBox(height: 6),
-                      _buildDetailRow('Waktu', _formatTimestamp(queue.bookingTime)),
+                      _buildDetailRow(
+                        'Waktu',
+                        _formatTimestamp(queue.bookingTime),
+                      ),
                       if (queue.totalPrice != null) ...[
                         const SizedBox(height: 6),
                         _buildDetailRow(
                           'Total',
-                          NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(queue.totalPrice),
+                          NumberFormat.currency(
+                            locale: 'id_ID',
+                            symbol: 'Rp ',
+                            decimalDigits: 0,
+                          ).format(queue.totalPrice),
                         ),
                       ],
                     ],
@@ -457,7 +554,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     );
   }
 
-  void _showBookingDetail(BuildContext context, Queue queue, Map<String, dynamic> details) {
+  void _showBookingDetail(
+    BuildContext context,
+    Queue queue,
+    Map<String, dynamic> details,
+  ) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => BookingDetailScreen(queueId: queue.id)),

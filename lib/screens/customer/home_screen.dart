@@ -13,7 +13,7 @@ import 'package:geges_smartbarber/services/barbershop_service.dart';
 
 // Import Screens
 import 'package:geges_smartbarber/screens/customer/tabs/barbershop_detail_screen.dart';
-import 'package:geges_smartbarber/screens/customer/tabs/profile_screen.dart'; 
+import 'package:geges_smartbarber/screens/customer/tabs/profile_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/chat_assistant_screen.dart'; // CHATBOT
 import 'package:geges_smartbarber/screens/customer/tabs/stylescan_screen.dart'; // STYLESCA N BARU
 import 'package:geges_smartbarber/screens/customer/notifications_screen.dart'; // NOTIFIKASI
@@ -37,10 +37,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // List of Screens (sesuai urutan BottomNavigationBar)
   late final List<Widget> _widgetOptions = <Widget>[
-    _buildHomePageBody(),           // Index 0: Home
-    const StyleScanScreen(),        // Index 1: StyleScan
-    const ChatAssistantScreen(),    // Index 2: Chatbot
-    const ProfileScreen(),          // Index 3: Profile 
+    _buildHomePageBody(), // Index 0: Home
+    const StyleScanScreen(), // Index 1: StyleScan
+    const ChatAssistantScreen(), // Index 2: Chatbot
+    const ProfileScreen(), // Index 3: Profile
   ];
 
   @override
@@ -60,9 +60,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
     });
     // Pindah halaman tanpa animasi (instan)
-    _pageController.jumpToPage(index); 
+    _pageController.jumpToPage(index);
   }
-  
+
   // --- UTILITY WIDGETS ---
 
   Widget _buildHeader() {
@@ -71,20 +71,41 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(children: const [
-            Icon(Icons.location_on, color: Colors.white, size: 20),
-            SizedBox(width: 8),
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Lokasi Saya', style: TextStyle(color: Colors.white70, fontSize: 12)),
-              Text('Mejasem, Tegal', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-            ]),
-          ]),
+          Row(
+            children: const [
+              Icon(Icons.location_on, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Lokasi Saya',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                  Text(
+                    'Mejasem, Tegal',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
           IconButton(
-            icon: const Icon(Icons.notifications_none_outlined, color: Colors.white, size: 28),
+            icon: const Icon(
+              Icons.notifications_none_outlined,
+              color: Colors.white,
+              size: 28,
+            ),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(),
+                ),
               );
             },
             tooltip: 'Notifikasi',
@@ -104,9 +125,18 @@ class _HomeScreenState extends State<HomeScreen> {
           prefixIcon: const Icon(Icons.search, color: Color(0xFF6B6B6B)),
           filled: true,
           fillColor: kDarkGrey,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15.0), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15.0), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15.0), borderSide: const BorderSide(color: kBrownAccent, width: 1.5)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15.0),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15.0),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15.0),
+            borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
+          ),
         ),
       ),
     );
@@ -122,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
           fontSize: 35,
           fontFamily: 'Poppins',
           fontWeight: FontWeight.w800,
-          height: 0.7, 
+          height: 0.7,
         ),
         textHeightBehavior: const TextHeightBehavior(
           applyHeightToFirstAscent: false,
@@ -139,53 +169,138 @@ class _HomeScreenState extends State<HomeScreen> {
         future: _barbershopFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: kBrownAccent));
+            return const Center(
+              child: CircularProgressIndicator(color: kBrownAccent),
+            );
           }
-          if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          if (snapshot.hasError ||
+              !snapshot.hasData ||
+              snapshot.data!.isEmpty) {
             // Error handling/No Data
             return Container(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: const Center(child: Text("Gagal memuat barbershop atau tidak ada data.", style: TextStyle(color: Colors.white70))));
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: const Center(
+                child: Text(
+                  "Gagal memuat barbershop atau tidak ada data.",
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+            );
           }
           final barbershops = snapshot.data!;
-          return Column(children: barbershops.map((shop) => _buildBarbershopCard(context, shop)).toList());
+          return Column(
+            children: barbershops
+                .map((shop) => _buildBarbershopCard(context, shop))
+                .toList(),
+          );
         },
       ),
     );
   }
 
   Widget _buildBarbershopCard(BuildContext context, Barbershop shop) {
-     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => BarbershopDetailScreen(barbershop: shop))),
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BarbershopDetailScreen(barbershop: shop),
+        ),
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 20.0),
-        decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(20)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            child: SizedBox(height: 180, width: double.infinity, child: _buildImageFromPath(shop.imageUrl)),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Expanded(child: Text(shop.name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                const SizedBox(width: 16),
-                Row(children: [const Icon(Icons.star, color: kBrownAccent, size: 20), const SizedBox(width: 4), Text("${shop.rating} (133)", style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold))]),
-              ]),
-              const SizedBox(height: 8),
-              Text(shop.addres, style: const TextStyle(color: Colors.white70, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 16),
-              Wrap(spacing: 8.0, runSpacing: 8.0, children: shop.services.map((s) => _buildTagChip(s)).toList()),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => BarbershopDetailScreen(barbershop: shop))),
-                style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 55), backgroundColor: kBrownAccent, foregroundColor: Colors.black),
-                child: const Text('Book Now', style: TextStyle(fontWeight: FontWeight.bold)),
+        decoration: BoxDecoration(
+          color: kDarkGrey,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
               ),
-            ]),
-          ),
-        ]),
+              child: SizedBox(
+                height: 180,
+                width: double.infinity,
+                child: _buildImageFromPath(shop.imageUrl),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          shop.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: kBrownAccent, size: 20),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${shop.rating} (133)",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    shop.addres,
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    children: shop.services
+                        .map((s) => _buildTagChip(s))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            BarbershopDetailScreen(barbershop: shop),
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 55),
+                      backgroundColor: kBrownAccent,
+                      foregroundColor: Colors.black,
+                    ),
+                    child: const Text(
+                      'Book Now',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -197,7 +312,12 @@ class _HomeScreenState extends State<HomeScreen> {
         imageUrl: imgPath,
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(color: kDarkGrey),
-        errorWidget: (context, url, error) => Container(color: kDarkGrey, child: const Center(child: Icon(Icons.broken_image, color: Colors.white54, size: 48))),
+        errorWidget: (context, url, error) => Container(
+          color: kDarkGrey,
+          child: const Center(
+            child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
+          ),
+        ),
         fadeInDuration: Duration.zero,
         fadeOutDuration: Duration.zero,
         useOldImageOnUrlChange: true,
@@ -208,36 +328,53 @@ class _HomeScreenState extends State<HomeScreen> {
         imgPath,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
-          return Container(color: kDarkGrey, child: const Center(child: Icon(Icons.broken_image, color: Colors.white54, size: 48)));
+          return Container(
+            color: kDarkGrey,
+            child: const Center(
+              child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
+            ),
+          );
         },
       );
     }
   }
 
   Widget _buildTagChip(String label) {
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0), decoration: BoxDecoration(color: Colors.grey.shade800, borderRadius: BorderRadius.circular(30.0)), child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade800,
+        borderRadius: BorderRadius.circular(30.0),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(color: Colors.white, fontSize: 12),
+      ),
+    );
   }
 
   // Widget khusus untuk BODY Home Tab
   Widget _buildHomePageBody() {
     return SafeArea(
-        bottom: false,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 5),
-            _buildSearchBar(),
-            const SizedBox(height: 24),
-            PromoCarousel(barbershopService: _barbershopService), // Carousel diimpor
-            const SizedBox(height: 21),
-            _buildSectionTitle("Barbershops\nnear you"),
-            const SizedBox(height: 18),
-            _buildRecommendedList(),
-            const SizedBox(height: 30),
-          ],
-        ),
-      );
+      bottom: false,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 5),
+          _buildSearchBar(),
+          const SizedBox(height: 24),
+          PromoCarousel(
+            barbershopService: _barbershopService,
+          ), // Carousel diimpor
+          const SizedBox(height: 21),
+          _buildSectionTitle("Barbershops\nnear you"),
+          const SizedBox(height: 18),
+          _buildRecommendedList(),
+          const SizedBox(height: 30),
+        ],
+      ),
+    );
   }
 
   // --- WIDGET UTAMA (SCAFFOLD) ---
@@ -245,7 +382,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      
+
       // Menggunakan PageView untuk beralih antar tab
       body: PageView(
         controller: _pageController,
@@ -261,9 +398,18 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.camera_alt), label: 'StyleScan'), // Update Icon & Label
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble), label: 'Chatbot'), 
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.camera_alt),
+            label: 'StyleScan',
+          ), // Update Icon & Label
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble),
+            label: 'Chatbot',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            label: 'Profile',
+          ),
         ],
         type: BottomNavigationBarType.fixed,
         backgroundColor: kDarkGrey,
@@ -290,7 +436,8 @@ class PromoCarousel extends StatefulWidget {
   State<PromoCarousel> createState() => _PromoCarouselState();
 }
 
-class _PromoCarouselState extends State<PromoCarousel> with AutomaticKeepAliveClientMixin {
+class _PromoCarouselState extends State<PromoCarousel>
+    with AutomaticKeepAliveClientMixin {
   final PageController _controller = PageController(initialPage: 0);
   Timer? _timer;
   int _current = 0;
@@ -307,25 +454,28 @@ class _PromoCarouselState extends State<PromoCarousel> with AutomaticKeepAliveCl
   void initState() {
     super.initState();
 
-    _sub = widget.barbershopService.getPromoBanners().listen((data) {
-      final changed = !_listEqualsByUrl(_banners, data);
-      _banners = data;
+    _sub = widget.barbershopService.getPromoBanners().listen(
+      (data) {
+        final changed = !_listEqualsByUrl(_banners, data);
+        _banners = data;
 
-      if (mounted && changed) {
-        setState(() {
-          if (_current >= _banners.length) _current = 0;
-          if (_controller.hasClients) {
-            try {
-              _controller.jumpToPage(_current);
-            } catch (_) {}
-          }
-        });
-      }
+        if (mounted && changed) {
+          setState(() {
+            if (_current >= _banners.length) _current = 0;
+            if (_controller.hasClients) {
+              try {
+                _controller.jumpToPage(_current);
+              } catch (_) {}
+            }
+          });
+        }
 
-      _startAutoWhenAttached();
-    }, onError: (e) {
-      debugPrint("Promo stream error: $e");
-    });
+        _startAutoWhenAttached();
+      },
+      onError: (e) {
+        debugPrint("Promo stream error: $e");
+      },
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startAutoWhenAttached();
@@ -378,7 +528,11 @@ class _PromoCarouselState extends State<PromoCarousel> with AutomaticKeepAliveCl
 
       final next = (_current + 1) % _banners.length;
       try {
-        await _controller.animateToPage(next, duration: const Duration(milliseconds: 380), curve: Curves.easeInOut);
+        await _controller.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeInOut,
+        );
       } catch (e) {
         debugPrint("Auto animate error: $e");
       }
@@ -402,8 +556,13 @@ class _PromoCarouselState extends State<PromoCarousel> with AutomaticKeepAliveCl
         height: 160,
         width: double.infinity,
         margin: const EdgeInsets.symmetric(horizontal: 24.0),
-        decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(20)),
-        child: const Center(child: CircularProgressIndicator(color: kBrownAccent)),
+        decoration: BoxDecoration(
+          color: kDarkGrey,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(color: kBrownAccent),
+        ),
       );
     }
 
@@ -440,8 +599,17 @@ class _PromoCarouselState extends State<PromoCarousel> with AutomaticKeepAliveCl
                         CachedNetworkImage(
                           imageUrl: promo.imageUrl,
                           fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(color: kDarkGrey),
-                          errorWidget: (context, url, error) => Container(color: kDarkGrey, child: const Center(child: Icon(Icons.broken_image, color: Colors.white54))),
+                          placeholder: (context, url) =>
+                              Container(color: kDarkGrey),
+                          errorWidget: (context, url, error) => Container(
+                            color: kDarkGrey,
+                            child: const Center(
+                              child: Icon(
+                                Icons.broken_image,
+                                color: Colors.white54,
+                              ),
+                            ),
+                          ),
                           fadeInDuration: Duration.zero,
                           fadeOutDuration: Duration.zero,
                           useOldImageOnUrlChange: true,
@@ -453,9 +621,28 @@ class _PromoCarouselState extends State<PromoCarousel> with AutomaticKeepAliveCl
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(promo.title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, shadows: [Shadow(blurRadius: 8.0, color: Colors.black45)])),
+                              Text(
+                                promo.title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 8.0,
+                                      color: Colors.black45,
+                                    ),
+                                  ],
+                                ),
+                              ),
                               const SizedBox(height: 8),
-                              Text(promo.subtitle, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                              Text(
+                                promo.subtitle,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ],
                           ),
                         ),

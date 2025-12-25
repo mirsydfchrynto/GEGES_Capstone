@@ -9,7 +9,10 @@ void main() {
 
       expect(emailRegex.hasMatch('user@example.com'), true);
       expect(emailRegex.hasMatch('user.name@example.co.uk'), true);
-      expect(emailRegex.hasMatch('user+tag@example.com'), false); // + tidak di pattern
+      expect(
+        emailRegex.hasMatch('user+tag@example.com'),
+        false,
+      ); // + tidak di pattern
     });
 
     test('TC-VALIDATION-02: Email format validation - invalid emails', () {
@@ -81,7 +84,12 @@ void main() {
       final hasLower = password.contains(RegExp(r'[a-z]'));
       final hasDigit = password.contains(RegExp(r'[0-9]'));
       final hasSpecial = password.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
-      int score = [hasUpper, hasLower, hasDigit, hasSpecial].where((b) => b).length;
+      int score = [
+        hasUpper,
+        hasLower,
+        hasDigit,
+        hasSpecial,
+      ].where((b) => b).length;
       if (score <= 2) return 'Sedang';
       if (score >= 3) return 'Kuat';
       return 'Lemah';
@@ -96,11 +104,17 @@ void main() {
     });
 
     test('TC-STRENGTH-03: Strong password (3+ types)', () {
-      expect(getPasswordStrength('Abc123!'), 'Kuat'); // upper, lower, digit, special
+      expect(
+        getPasswordStrength('Abc123!'),
+        'Kuat',
+      ); // upper, lower, digit, special
     });
 
     test('TC-STRENGTH-04: Strong password without special', () {
-      expect(getPasswordStrength('Abc123'), 'Kuat'); // upper, lower, digit (3 types)
+      expect(
+        getPasswordStrength('Abc123'),
+        'Kuat',
+      ); // upper, lower, digit (3 types)
     });
   });
 }

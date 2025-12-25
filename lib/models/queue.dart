@@ -3,9 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// ============================================================================
 /// FILE: queue.dart (MODEL QUEUE - BOOKING & REQUEST BOOKING)
 /// ============================================================================
-/// 
+///
 /// ALUR BOOKING FLOW BARU (PHASE 3):
-/// 
+///
 /// 1. CUSTOMER REQUEST BOOKING
 ///    - Customer memilih barbershop, service, tanggal & jam
 ///    - Status: 'waiting' (menunggu approval dari admin)
@@ -156,40 +156,49 @@ extension RequestStatusExtension on RequestStatus {
 // - final berarti property tidak bisa diubah setelah dibuat (immutable)
 class Queue {
   // penjelasan property:
-  final String id;                          // id unik dari database
-  final String barbershopId;                // id barbershop yang dipilih
-  final String customerId;                  // id customer yang booking
-  final String barbermanId;                 // id barber yang akan melayani
+  final String id; // id unik dari database
+  final String barbershopId; // id barbershop yang dipilih
+  final String customerId; // id customer yang booking
+  final String barbermanId; // id barber yang akan melayani
 
-  final Timestamp bookingTime;              // waktu booking dibuat
-  final Timestamp? startTime;               // waktu barber mulai (nullable = bisa null)
-  final Timestamp? finishTime;              // waktu barber selesai
+  final Timestamp bookingTime; // waktu booking dibuat
+  final Timestamp? startTime; // waktu barber mulai (nullable = bisa null)
+  final Timestamp? finishTime; // waktu barber selesai
 
-  final int? actualDuration;                // durasi sebenarnya (berapa lama diproses)
-  final int? estimatedDuration;             // durasi estimasi awal
+  final int? actualDuration; // durasi sebenarnya (berapa lama diproses)
+  final int? estimatedDuration; // durasi estimasi awal
 
-  final List<String>? serviceIds;           // list id layanan yang dipilih (bisa 1 atau lebih)
-  final String? serviceId;                  // fallback untuk 1 layanan (model lama)
-  final int? totalPrice;                    // total harga semua layanan
+  final List<String>?
+  serviceIds; // list id layanan yang dipilih (bisa 1 atau lebih)
+  final String? serviceId; // fallback untuk 1 layanan (model lama)
+  final int? totalPrice; // total harga semua layanan
+  // barber selection fee (Rp)
+  final int? barberSelectionFee; // tambahan bila user memilih barber berbayar
+  final bool? paidBarberSelection; // apakah barber dipilih dengan opsi berbayar
 
-  final QueueStatus status;                 // status booking (waiting/booked/ongoing/served/cancelled)
-  
+  final QueueStatus
+  status; // status booking (waiting/booked/ongoing/served/cancelled)
+
   // ============ NEW FIELDS FOR BOOKING FLOW ============
-  final RequestStatus requestStatus;        // status approval dari admin (pending/approved/rejected)
-  final Timestamp? paymentDeadline;         // kapan window pembayaran harus selesai (1 jam dari approve)
-  final String? paymentMethod;              // 'manual' atau 'digital' (future use)
-  final String? rejectionReason;            // alasan jika admin reject request atau payment
-  final String? verifiedBy;                 // userId admin yang verify payment
+  final RequestStatus
+  requestStatus; // status approval dari admin (pending/approved/rejected)
+  final Timestamp?
+  paymentDeadline; // kapan window pembayaran harus selesai (1 jam dari approve)
+  final String? paymentMethod; // 'manual' atau 'digital' (future use)
+  final String?
+  rejectionReason; // alasan jika admin reject request atau payment
+  final String? verifiedBy; // userId admin yang verify payment
   // ====================================================
 
-  final Timestamp? createdAt;               // waktu record dibuat
-  final String? paymentProofBase64;         // bukti pembayaran dalam bentuk base64
-  
+  final Timestamp? createdAt; // waktu record dibuat
+  final String? paymentProofBase64; // bukti pembayaran dalam bentuk base64
+  final String?
+  paymentProofUrl; // bukti pembayaran sebagai URL (jika diupload via admin anti-dup service)
   // ============ REFUND FIELDS ============
-  final bool? isRefunded;                   // apakah booking sudah di-refund
-  final Timestamp? refundedAt;              // waktu refund diproses
-  final String? refundReason;               // alasan refund (cancelled, rejected, etc)
-  final String? refundedBy;                 // admin uid yang process refund
+  final bool? isRefunded; // apakah booking sudah di-refund
+  final Timestamp? refundedAt; // waktu refund diproses
+  final String? refundReason; // alasan refund (cancelled, rejected, etc)
+  final String? refundedBy; // admin uid yang process refund
   // ======================================
 
   // penjelasan constructor:
@@ -209,6 +218,8 @@ class Queue {
     this.serviceIds,
     this.serviceId,
     this.totalPrice,
+    this.barberSelectionFee,
+    this.paidBarberSelection,
     required this.status,
     required this.requestStatus,
     this.paymentDeadline,
@@ -217,6 +228,7 @@ class Queue {
     this.verifiedBy,
     this.createdAt,
     this.paymentProofBase64,
+    this.paymentProofUrl,
     this.isRefunded,
     this.refundedAt,
     this.refundReason,
@@ -262,46 +274,76 @@ class Queue {
       customerId: readString(data['customer_id'] ?? data['customerId']),
       barbermanId: readString(data['barberman_id'] ?? data['barbermanId']),
       // bookingtime adalah timestamp (waktu). cast as Timestamp, jika tidak ada gunakan waktu sekarang
-      bookingTime: (data['booking_time'] as Timestamp?) ??
+      bookingTime:
+          (data['booking_time'] as Timestamp?) ??
           (data['bookingTime'] as Timestamp?) ??
           Timestamp.now(),
-      startTime: (data['start_time'] as Timestamp?) ??
+      startTime:
+          (data['start_time'] as Timestamp?) ??
           (data['startTime'] as Timestamp?),
-      finishTime: (data['finish_time'] as Timestamp?) ??
+      finishTime:
+          (data['finish_time'] as Timestamp?) ??
           (data['finishTime'] as Timestamp?),
       // durasi adalah number, cast ke int menggunakan toInt()
-      actualDuration: (data['actual_duration'] as num?)?.toInt() ??
+      actualDuration:
+          (data['actual_duration'] as num?)?.toInt() ??
           (data['actualDuration'] as num?)?.toInt(),
-      estimatedDuration: (data['estimated_duration'] as num?)?.toInt() ??
+      estimatedDuration:
+          (data['estimated_duration'] as num?)?.toInt() ??
           (data['estimatedDuration'] as num?)?.toInt(),
       serviceIds: readStringList(data['service_ids'] ?? data['serviceIds']),
       serviceId: readString(data['service_id'] ?? data['serviceId']),
-      totalPrice: (data['total_price'] as num?)?.toInt() ??
+      totalPrice:
+          (data['total_price'] as num?)?.toInt() ??
           (data['totalPrice'] as num?)?.toInt(),
-      // konversi string status menjadi enum menggunakan .fromString()
+      // NEW: barber selection fee & flag
+      barberSelectionFee:
+          (data['barber_selection_fee'] as num?)?.toInt() ??
+          (data['barberSelectionFee'] as num?)?.toInt(),
+      paidBarberSelection:
+          (data['paid_barber_selection'] as bool?) ??
+          (data['paidBarberSelection'] as bool?) ??
+          false,
+      // konversi string status menjadi enum menjadi enum menggunakan .fromString()
       status: QueueStatusExtension.fromString(readString(data['status'])),
       // NEW: request status tracking (default: pending jika tidak ada)
       requestStatus: RequestStatusExtension.fromString(
-        readString(data['request_status'] ?? data['requestStatus'] ?? 'pending'),
+        readString(
+          data['request_status'] ?? data['requestStatus'] ?? 'pending',
+        ),
       ),
       // NEW: payment deadline tracking
-      paymentDeadline: (data['payment_deadline'] as Timestamp?) ??
+      paymentDeadline:
+          (data['payment_deadline'] as Timestamp?) ??
           (data['paymentDeadline'] as Timestamp?),
       // NEW: payment method tracking (manual/digital)
-      paymentMethod: readString(data['payment_method'] ?? data['paymentMethod']),
+      paymentMethod: readString(
+        data['payment_method'] ?? data['paymentMethod'],
+      ),
       // NEW: rejection reason dari admin
-      rejectionReason: readString(data['rejection_reason'] ?? data['rejectionReason']),
+      rejectionReason: readString(
+        data['rejection_reason'] ?? data['rejectionReason'],
+      ),
       // NEW: admin yang verify payment
       verifiedBy: readString(data['verified_by'] ?? data['verifiedBy']),
-      createdAt: (data['created_at'] as Timestamp?) ??
+      createdAt:
+          (data['created_at'] as Timestamp?) ??
           (data['createdAt'] as Timestamp?),
-      paymentProofBase64:
-          readString(data['payment_proof_base64'] ?? data['paymentProofBase64']),
+      paymentProofBase64: readString(
+        data['payment_proof_base64'] ?? data['paymentProofBase64'],
+      ),
+      paymentProofUrl: readString(
+        (data['payment'] is Map)
+            ? (data['payment']['proofUrl'] ?? data['payment']['proof_url'])
+            : data['payment_proof_url'],
+      ),
       // NEW: refund fields
-      isRefunded: (data['is_refunded'] as bool?) ??
+      isRefunded:
+          (data['is_refunded'] as bool?) ??
           (data['isRefunded'] as bool?) ??
           false,
-      refundedAt: (data['refunded_at'] as Timestamp?) ??
+      refundedAt:
+          (data['refunded_at'] as Timestamp?) ??
           (data['refundedAt'] as Timestamp?),
       refundReason: readString(data['refund_reason'] ?? data['refundReason']),
       refundedBy: readString(data['refunded_by'] ?? data['refundedBy']),
@@ -327,7 +369,9 @@ class Queue {
       'service_ids': serviceIds,
       'service_id': serviceId,
       'total_price': totalPrice,
-      'status': status.value,  // ubah enum jadi string
+      'barber_selection_fee': barberSelectionFee,
+      'paid_barber_selection': paidBarberSelection,
+      'status': status.value, // ubah enum jadi string
       // NEW: request status tracking
       'request_status': requestStatus.value,
       'payment_deadline': paymentDeadline,
@@ -363,6 +407,8 @@ class Queue {
     List<String>? serviceIds,
     String? serviceId,
     int? totalPrice,
+    int? barberSelectionFee,
+    bool? paidBarberSelection,
     QueueStatus? status,
     RequestStatus? requestStatus,
     Timestamp? paymentDeadline,
@@ -371,6 +417,7 @@ class Queue {
     String? verifiedBy,
     Timestamp? createdAt,
     String? paymentProofBase64,
+    String? paymentProofUrl,
     bool? isRefunded,
     Timestamp? refundedAt,
     String? refundReason,
@@ -389,6 +436,8 @@ class Queue {
       serviceIds: serviceIds ?? this.serviceIds,
       serviceId: serviceId ?? this.serviceId,
       totalPrice: totalPrice ?? this.totalPrice,
+      barberSelectionFee: barberSelectionFee ?? this.barberSelectionFee,
+      paidBarberSelection: paidBarberSelection ?? this.paidBarberSelection,
       status: status ?? this.status,
       requestStatus: requestStatus ?? this.requestStatus,
       paymentDeadline: paymentDeadline ?? this.paymentDeadline,
@@ -397,6 +446,7 @@ class Queue {
       verifiedBy: verifiedBy ?? this.verifiedBy,
       createdAt: createdAt ?? this.createdAt,
       paymentProofBase64: paymentProofBase64 ?? this.paymentProofBase64,
+      paymentProofUrl: paymentProofUrl ?? this.paymentProofUrl,
       isRefunded: isRefunded ?? this.isRefunded,
       refundedAt: refundedAt ?? this.refundedAt,
       refundReason: refundReason ?? this.refundReason,

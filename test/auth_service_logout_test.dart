@@ -10,7 +10,9 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
 
     // Stub platform channel used by flutter_secure_storage so tests don't hit native plugin
-    const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    const channel = MethodChannel(
+      'plugins.it_nomads.com/flutter_secure_storage',
+    );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall call) async => null);
 
@@ -22,8 +24,12 @@ void main() {
     // arrange
     when(mockAuth.currentUser).thenReturn(mockUser);
     when(mockUser.uid).thenReturn('u123');
-    when(mockFirestore.collection('login_audit')).thenReturn(mockAuditCollection);
-    when(mockAuditCollection.add(any)).thenAnswer((_) async => MockDocumentReference<Map<String, dynamic>>());
+    when(
+      mockFirestore.collection('login_audit'),
+    ).thenReturn(mockAuditCollection);
+    when(
+      mockAuditCollection.add(any),
+    ).thenAnswer((_) async => MockDocumentReference<Map<String, dynamic>>());
     when(mockAuth.signOut()).thenAnswer((_) async {});
 
     final authService = AuthService(auth: mockAuth, firestore: mockFirestore);

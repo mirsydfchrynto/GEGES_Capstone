@@ -47,7 +47,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       // AND customer hasn't uploaded payment proof yet.
       return _queue!.requestStatus == RequestStatus.approved &&
           _queue!.paymentDeadline != null &&
-          (_queue!.paymentProofBase64 == null || _queue!.paymentProofBase64!.isEmpty);
+          (_queue!.paymentProofBase64 == null ||
+              _queue!.paymentProofBase64!.isEmpty);
     } catch (_) {
       return false;
     }
@@ -76,11 +77,25 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   Future<void> _fetchRelatedNames() async {
     try {
       final fs = FirebaseFirestore.instance;
-      final barbershopF = fs.collection('barbershops').doc(_queue!.barbershopId).get();
-      final barbermanF = fs.collection('barbermen').doc(_queue!.barbermanId).get();
-      final serviceDocsF = Future.wait((_queue!.serviceIds ?? []).map((id) => fs.collection('services').doc(id).get()));
+      final barbershopF = fs
+          .collection('barbershops')
+          .doc(_queue!.barbershopId)
+          .get();
+      final barbermanF = fs
+          .collection('barbermen')
+          .doc(_queue!.barbermanId)
+          .get();
+      final serviceDocsF = Future.wait(
+        (_queue!.serviceIds ?? []).map(
+          (id) => fs.collection('services').doc(id).get(),
+        ),
+      );
 
-      final results = await Future.wait([barbershopF, barbermanF, serviceDocsF]);
+      final results = await Future.wait([
+        barbershopF,
+        barbermanF,
+        serviceDocsF,
+      ]);
 
       final barbershopDoc = results[0] as DocumentSnapshot;
       final barbermanDoc = results[1] as DocumentSnapshot;
@@ -91,7 +106,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         final bmData = barbermanDoc.data() as Map<String, dynamic>?;
         _barbershopName = bsData?['name'] as String? ?? 'Barbershop';
         _barbermanName = bmData?['name'] as String? ?? 'Barberman';
-        final names = serviceDocs.where((d) => d.exists).map((d) => (d.data() as Map<String, dynamic>?)?['name'] as String? ?? '').where((s) => s.isNotEmpty).toList();
+        final names = serviceDocs
+            .where((d) => d.exists)
+            .map(
+              (d) =>
+                  (d.data() as Map<String, dynamic>?)?['name'] as String? ?? '',
+            )
+            .where((s) => s.isNotEmpty)
+            .toList();
         if (names.isEmpty) {
           _servicesLabel = 'Layanan Tidak Tersedia';
         } else if (names.length == 1) {
@@ -109,7 +131,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     _countdownTimer?.cancel();
     // Don't start countdown if there's no deadline or proof already uploaded
     if (_queue?.paymentDeadline == null) return;
-    if (_queue?.paymentProofBase64 != null && _queue!.paymentProofBase64!.isNotEmpty) {
+    if (_queue?.paymentProofBase64 != null &&
+        _queue!.paymentProofBase64!.isNotEmpty) {
       // Proof uploaded: treat as payment action completed — remove countdown
       setState(() => _remainingTime = Duration.zero);
       return;
@@ -147,7 +170,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     });
   }
 
-  String _formatTimestamp(Timestamp ts) => DateFormat('EEE, d MMM HH:mm').format(ts.toDate());
+  String _formatTimestamp(Timestamp ts) =>
+      DateFormat('EEE, d MMM HH:mm').format(ts.toDate());
 
   Future<void> _showCancellationDialog(BuildContext context) async {
     final TextEditingController reasonCtrl = TextEditingController();
@@ -158,10 +182,15 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         content: TextField(
           controller: reasonCtrl,
           maxLines: 3,
-          decoration: const InputDecoration(hintText: 'Jelaskan alasan pembatalan (wajib)'),
+          decoration: const InputDecoration(
+            hintText: 'Jelaskan alasan pembatalan (wajib)',
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.of(c).pop(false),
+            child: const Text('Batal'),
+          ),
           ElevatedButton(
             onPressed: () {
               if (reasonCtrl.text.trim().isEmpty) return;
@@ -178,14 +207,21 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       // ignore: use_build_context_synchronously
       final messenger = ScaffoldMessenger.of(this.context);
       try {
-        await _queueService.customerRequestCancellation(_queue!.id, reason: reason);
+        await _queueService.customerRequestCancellation(
+          _queue!.id,
+          reason: reason,
+        );
         if (!mounted) return;
-        messenger.showSnackBar(const SnackBar(content: Text('Permintaan pembatalan terkirim')));
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Permintaan pembatalan terkirim')),
+        );
         // reload queue to reflect new status
         await _load();
       } catch (e) {
         if (!mounted) return;
-        messenger.showSnackBar(SnackBar(content: Text('Gagal mengirim permintaan: $e')));
+        messenger.showSnackBar(
+          SnackBar(content: Text('Gagal mengirim permintaan: $e')),
+        );
       }
     }
   }
@@ -220,241 +256,418 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: kBrownAccent))
           : _queue == null
-              ? const Center(child: Text('Booking tidak ditemukan', style: TextStyle(color: Colors.white)))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Detail Card
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(12)),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Status: ${_queue!.status.name.replaceAll('_', ' ')}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 8),
-                            Text('Waktu: ${_formatTimestamp(_queue!.bookingTime)}', style: const TextStyle(color: kTextGrey)),
-                            const SizedBox(height: 8),
-                            Text('Barbershop: ${_barbershopName ?? _queue!.barbershopId}', style: const TextStyle(color: Colors.white)),
-                            const SizedBox(height: 6),
-                            Text('Layanan: ${_servicesLabel ?? 'Loading...'}', style: const TextStyle(color: kTextGrey)),
-                            const SizedBox(height: 6),
-                            Text('Barberman: ${_barbermanName ?? _queue!.barbermanId}', style: const TextStyle(color: kTextGrey)),
-                            const SizedBox(height: 8),
-                            if (_queue!.estimatedDuration != null) Text('Durasi: ${_queue!.estimatedDuration} menit', style: const TextStyle(color: kTextGrey)),
-                            const SizedBox(height: 8),
-                            if (_queue!.totalPrice != null) Text('Total: Rp ${_queue!.totalPrice}', style: const TextStyle(color: kBrownAccent)),
-                            const SizedBox(height: 12),
-                            // Show payment proof state if present
-                            if (_queue!.paymentProofBase64 != null && _queue!.paymentProofBase64!.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  const Icon(Icons.check_circle, color: Colors.green),
-                                  const SizedBox(width: 8),
-                                  const Expanded(child: Text('Bukti pembayaran telah terunggah — menunggu verifikasi oleh admin', style: TextStyle(color: Colors.green))),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              GestureDetector(
-                                onTap: () {
-                                  // show full preview dialog
-                                  try {
-                                    final bytes = base64Decode(_queue!.paymentProofBase64!);
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) => Dialog(
-                                        backgroundColor: Colors.transparent,
-                                        child: InteractiveViewer(
-                                          child: Image.memory(bytes),
-                                        ),
-                                      ),
-                                    );
-                                  } catch (_) {}
-                                },
-                                child: SizedBox(
-                                  height: 140,
-                                  child: ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.memory(base64Decode(_queue!.paymentProofBase64!))),
-                                ),
-                              ),
-                            ],
-                            // Show cancellation details
-                            if (_queue!.status == QueueStatus.cancelled) ...[
-                              const SizedBox(height: 12),
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withValues(alpha: 0.15),
-                                  border: Border.all(color: Colors.red, width: 1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('❌ Booking Dibatalkan', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14)),
-                                    if (_queue!.rejectionReason != null && _queue!.rejectionReason!.isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Text('Alasan: ${_queue!.rejectionReason}', style: const TextStyle(color: kTextGrey, fontSize: 12)),
-                                    ],
-                                    if (_queue!.refundReason != null && _queue!.refundReason!.isNotEmpty) ...[
-                                      const SizedBox(height: 6),
-                                      Text('Refund: ${_queue!.refundReason}', style: const TextStyle(color: Colors.orange, fontSize: 12)),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                            // Show refund information when cancelled & refunded
-                            if (_queue!.status == QueueStatus.cancelled && _queue!.isRefunded == true) ...[
-                              const SizedBox(height: 8),
-                              const Text('💰 Refund Diproses', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600)),
-                              if (_queue!.refundedAt != null) ...[
-                                const SizedBox(height: 4),
-                                Text('Tanggal refund: ${_formatTimestamp(_queue!.refundedAt!)}', style: const TextStyle(color: kTextGrey, fontSize: 12)),
-                              ],
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Countdown Timer (only while customer still must pay)
-                      if (_isAwaitingPayment && _queue!.paymentDeadline != null)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: _getCountdownColor().withValues(alpha: 0.15),
-                            border: Border.all(color: _getCountdownColor(), width: 2),
-                            borderRadius: BorderRadius.circular(12),
+          ? const Center(
+              child: Text(
+                'Booking tidak ditemukan',
+                style: TextStyle(color: Colors.white),
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Detail Card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: kDarkGrey,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Status: ${_queue!.status.name.replaceAll('_', ' ')}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                           ),
-                          child: Column(
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Waktu: ${_formatTimestamp(_queue!.bookingTime)}',
+                          style: const TextStyle(color: kTextGrey),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Barbershop: ${_barbershopName ?? _queue!.barbershopId}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Layanan: ${_servicesLabel ?? 'Loading...'}',
+                          style: const TextStyle(color: kTextGrey),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Barberman: ${_barbermanName ?? _queue!.barbermanId}',
+                          style: const TextStyle(color: kTextGrey),
+                        ),
+                        const SizedBox(height: 8),
+                        if (_queue!.estimatedDuration != null)
+                          Text(
+                            'Durasi: ${_queue!.estimatedDuration} menit',
+                            style: const TextStyle(color: kTextGrey),
+                          ),
+                        const SizedBox(height: 8),
+                        if (_queue!.totalPrice != null)
+                          Text(
+                            'Total: Rp ${_queue!.totalPrice}',
+                            style: const TextStyle(color: kBrownAccent),
+                          ),
+                        if ((_queue!.barberSelectionFee ?? 0) > 0)
+                          const SizedBox(height: 4),
+                        if ((_queue!.barberSelectionFee ?? 0) > 0)
+                          Text(
+                            'Biaya pilih barber: Rp ${_queue!.barberSelectionFee}',
+                            style: const TextStyle(
+                              color: Colors.orangeAccent,
+                              fontSize: 12,
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+                        // Show payment proof state if present
+                        if (_queue!.paymentProofBase64 != null &&
+                            _queue!.paymentProofBase64!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
                             children: [
-                              Text('SISA WAKTU PEMBAYARAN', style: TextStyle(color: _getCountdownColor(), fontWeight: FontWeight.bold, fontSize: 12)),
-                              const SizedBox(height: 8),
-                              Text(
-                                _formatCountdown(_remainingTime),
-                                style: TextStyle(color: _getCountdownColor(), fontSize: 32, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Batas: ${DateFormat('EEE, d MMM HH:mm').format(_queue!.paymentDeadline!.toDate())}',
-                                style: const TextStyle(color: kTextGrey, fontSize: 11),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'Bukti pembayaran telah terunggah — menunggu verifikasi oleh admin',
+                                  style: TextStyle(color: Colors.green),
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                      const SizedBox(height: 16),
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: () {
+                              // show full preview dialog
+                              try {
+                                final bytes = base64Decode(
+                                  _queue!.paymentProofBase64!,
+                                );
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => Dialog(
+                                    backgroundColor: Colors.transparent,
+                                    child: InteractiveViewer(
+                                      child: Image.memory(bytes),
+                                    ),
+                                  ),
+                                );
+                              } catch (_) {}
+                            },
+                            child: SizedBox(
+                              height: 140,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.memory(
+                                  base64Decode(_queue!.paymentProofBase64!),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                        // Show cancellation details
+                        if (_queue!.status == QueueStatus.cancelled) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.15),
+                              border: Border.all(color: Colors.red, width: 1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '❌ Booking Dibatalkan',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if (_queue!.rejectionReason != null &&
+                                    _queue!.rejectionReason!.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Alasan: ${_queue!.rejectionReason}',
+                                    style: const TextStyle(
+                                      color: kTextGrey,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                                if (_queue!.refundReason != null &&
+                                    _queue!.refundReason!.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Refund: ${_queue!.refundReason}',
+                                    style: const TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                        // Show refund information when cancelled & refunded
+                        if (_queue!.status == QueueStatus.cancelled &&
+                            _queue!.isRefunded == true) ...[
+                          const SizedBox(height: 8),
+                          const Text(
+                            '💰 Refund Diproses',
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (_queue!.refundedAt != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Tanggal refund: ${_formatTimestamp(_queue!.refundedAt!)}',
+                              style: const TextStyle(
+                                color: kTextGrey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-                      // Payment / Proof actions (customer)
-                      if (_queue!.requestStatus == RequestStatus.approved) ...[
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // If no proof yet, allow pay
-                            if (_isAwaitingPayment)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.push(
+                  // Countdown Timer (only while customer still must pay)
+                  if (_isAwaitingPayment && _queue!.paymentDeadline != null)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _getCountdownColor().withValues(alpha: 0.15),
+                        border: Border.all(
+                          color: _getCountdownColor(),
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'SISA WAKTU PEMBAYARAN',
+                            style: TextStyle(
+                              color: _getCountdownColor(),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _formatCountdown(_remainingTime),
+                            style: TextStyle(
+                              color: _getCountdownColor(),
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Batas: ${DateFormat('EEE, d MMM HH:mm').format(_queue!.paymentDeadline!.toDate())}',
+                            style: const TextStyle(
+                              color: kTextGrey,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+
+                  // Payment / Proof actions (customer)
+                  if (_queue!.requestStatus == RequestStatus.approved) ...[
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // If no proof yet, allow pay
+                        if (_isAwaitingPayment)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (c) => PaymentScreen(
+                                        orderId: _queue!.id,
+                                        totalPrice: _queue!.totalPrice ?? 0,
+                                        barbershopId: _queue!.barbershopId,
+                                        barbermanId: _queue!.barbermanId,
+                                        bookingTime: _queue!.bookingTime
+                                            .toDate(),
+                                        serviceIds: _queue!.serviceIds,
+                                        paymentDeadline: _queue!.paymentDeadline
+                                            ?.toDate(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  minimumSize: const Size.fromHeight(48),
+                                ),
+                                child: const Text(
+                                  'Bayar Sekarang',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // Allow customer to cancel the order while still awaiting payment
+                              OutlinedButton(
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool?>(
+                                    context: context,
+                                    builder: (c) => AlertDialog(
+                                      title: const Text('Batalkan Pesanan'),
+                                      content: const Text(
+                                        'Apakah Anda yakin ingin membatalkan pesanan ini?',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.of(c).pop(false),
+                                          child: const Text('Batal'),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.of(c).pop(true),
+                                          child: const Text('Ya, Batalkan'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (!mounted) return;
+
+                                  if (confirm == true) {
+                                    try {
+                                      await _queueService.cancelQueue(
+                                        _queue!.id,
+                                        reason: 'Cancelled by customer',
+                                      );
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(
+                                        // ignore: use_build_context_synchronously
                                         context,
-                                        MaterialPageRoute(
-                                          builder: (c) => PaymentScreen(
-                                            orderId: _queue!.id,
-                                            totalPrice: _queue!.totalPrice ?? 0,
-                                            barbershopId: _queue!.barbershopId,
-                                            barbermanId: _queue!.barbermanId,
-                                            bookingTime: _queue!.bookingTime.toDate(),
-                                            serviceIds: _queue!.serviceIds,
-                                            paymentDeadline: _queue!.paymentDeadline?.toDate(),
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Pesanan dibatalkan'),
+                                        ),
+                                      );
+                                      await _load();
+                                    } catch (e) {
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(
+                                        // ignore: use_build_context_synchronously
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Gagal membatalkan: $e',
                                           ),
                                         ),
                                       );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      minimumSize: const Size.fromHeight(48),
-                                    ),
-                                    child: const Text('Bayar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                    }
+                                  }
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Colors.red),
+                                  minimumSize: const Size.fromHeight(48),
+                                ),
+                                child: const Text(
+                                  'Batalkan Pesanan',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red,
                                   ),
-
-                                  const SizedBox(height: 12),
-
-                                  // Allow customer to cancel the order while still awaiting payment
-                                  OutlinedButton(
-                                    onPressed: () async {
-                                      final confirm = await showDialog<bool?>(
-                                        context: context,
-                                        builder: (c) => AlertDialog(
-                                          title: const Text('Batalkan Pesanan'),
-                                          content: const Text('Apakah Anda yakin ingin membatalkan pesanan ini?'),
-                                          actions: [
-                                            TextButton(onPressed: () => Navigator.of(c).pop(false), child: const Text('Batal')),
-                                            ElevatedButton(onPressed: () => Navigator.of(c).pop(true), child: const Text('Ya, Batalkan')),
-                                          ],
-                                        ),
-                                      );
-
-                                      if (!mounted) return;
-
-                                      if (confirm == true) {
-                                        try {
-                                          await _queueService.cancelQueue(_queue!.id, reason: 'Cancelled by customer');
-                                          if (!mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pesanan dibatalkan')));
-                                          await _load();
-                                        } catch (e) {
-                                          if (!mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal membatalkan: $e')));
-                                        }
-                                      }
-                                    },
-                                    style: OutlinedButton.styleFrom(
-                                      side: const BorderSide(color: Colors.red),
-                                      minimumSize: const Size.fromHeight(48),
-                                    ),
-                                    child: const Text('Batalkan Pesanan', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red)),
-                                  ),
-                                ],
-                              ),
-
-                            // Allow customer to request cancellation when proof uploaded or already booked
-                            if ((_queue!.paymentProofBase64 != null && _queue!.paymentProofBase64!.isNotEmpty) || _queue!.status == QueueStatus.booked)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 12.0),
-                                child: OutlinedButton(
-                                  onPressed: () => _showCancellationDialog(context),
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(color: Colors.orange),
-                                    minimumSize: const Size.fromHeight(48),
-                                  ),
-                                  child: const Text('Minta Pembatalan / Refund', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.orange)),
                                 ),
                               ),
-                          ],
-                        ),
-                      ],
-
-                      // Action button for cancelled bookings: offer to create new booking
-                      if (_queue!.status == QueueStatus.cancelled)
-                        ElevatedButton(
-                          onPressed: () {
-                            // Go back to booking screen to create new booking
-                            Navigator.of(context).pop();
-                            Navigator.of(context).pop(); // back to my_bookings or home
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueAccent,
-                            minimumSize: const Size.fromHeight(48),
+                            ],
                           ),
-                          child: const Text('Buat Booking Baru', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+
+                        // Allow refund only when payment is verified/processed or the service already started/completed
+                        if (((_queue!.paymentProofBase64 != null &&
+                                    _queue!.paymentProofBase64!.isNotEmpty) &&
+                                (_queue!.verifiedBy != null &&
+                                    _queue!.verifiedBy!.isNotEmpty)) ||
+                            _queue!.status == QueueStatus.ongoing ||
+                            _queue!.status == QueueStatus.served ||
+                            (_queue!.isRefunded == true))
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: OutlinedButton(
+                              onPressed: () => _showCancellationDialog(context),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.orange),
+                                minimumSize: const Size.fromHeight(48),
+                              ),
+                              child: const Text(
+                                'Minta Pembatalan / Refund',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+
+                  // Action button for cancelled bookings: offer to create new booking
+                  if (_queue!.status == QueueStatus.cancelled)
+                    ElevatedButton(
+                      onPressed: () {
+                        // Go back to booking screen to create new booking
+                        Navigator.of(context).pop();
+                        Navigator.of(
+                          context,
+                        ).pop(); // back to my_bookings or home
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      child: const Text(
+                        'Buat Booking Baru',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
     );
   }
 }

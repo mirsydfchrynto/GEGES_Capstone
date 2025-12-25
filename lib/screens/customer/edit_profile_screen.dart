@@ -48,12 +48,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: kDarkGrey,
-          title: const Text('Konfirmasi Password', style: TextStyle(color: Colors.white)),
+          title: const Text(
+            'Konfirmasi Password',
+            style: TextStyle(color: Colors.white),
+          ),
           content: TextField(
             autofocus: true,
             obscureText: true,
             style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(hintText: 'Masukkan password Anda'),
+            decoration: const InputDecoration(
+              hintText: 'Masukkan password Anda',
+            ),
             onChanged: (v) => password = v,
           ),
           actions: [
@@ -127,17 +132,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 if (mounted) Navigator.pop(context, updatedData);
               }
             } else {
-              _showSnackbar(retry['message'] ?? 'Re-auth gagal.', const Color(0xFFD32F2F));
+              _showSnackbar(
+                retry['message'] ?? 'Re-auth gagal.',
+                const Color(0xFFD32F2F),
+              );
             }
           } else {
-            _showSnackbar('Password diperlukan untuk meng-update email.', const Color(0xFFD32F2F));
+            _showSnackbar(
+              'Password diperlukan untuk meng-update email.',
+              const Color(0xFFD32F2F),
+            );
           }
         } else {
-          _showSnackbar(result['message'] ?? 'Gagal memperbarui profil.', const Color(0xFFD32F2F));
+          _showSnackbar(
+            result['message'] ?? 'Gagal memperbarui profil.',
+            const Color(0xFFD32F2F),
+          );
         }
       }
     } catch (e) {
-  _showSnackbar('Terjadi kesalahan: $e', const Color(0xFFD32F2F));
+      _showSnackbar('Terjadi kesalahan: $e', const Color(0xFFD32F2F));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -148,7 +162,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: kDarkGrey,
-        title: const Text('Verifikasi Email Baru', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Verifikasi Email Baru',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Kami telah mengirimkan link verifikasi ke:\n\n$newEmail\n\n'
           'Silakan buka email tersebut dan klik link verifikasi sebelum login kembali.',
@@ -162,7 +179,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             onPressed: () {
               Navigator.of(context).pop();
-              _showSnackbar('Email verifikasi telah dikirim ke $newEmail', kBrownAccent);
+              _showSnackbar(
+                'Email verifikasi telah dikirim ke $newEmail',
+                kBrownAccent,
+              );
               Navigator.pop(context); // Tutup layar edit
             },
             child: const Text('Oke'),
@@ -175,25 +195,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _changePassword() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-  _showSnackbar('Masukkan email Anda untuk reset password.', const Color(0xFFD32F2F));
+      _showSnackbar(
+        'Masukkan email Anda untuk reset password.',
+        const Color(0xFFD32F2F),
+      );
       return;
     }
 
     setState(() => _isLoading = true);
     try {
       final result = await _authService.sendPasswordResetEmail(email: email);
-  _showSnackbar(result['message'], result['success'] ? kBrownAccent : const Color(0xFFD32F2F));
+      _showSnackbar(
+        result['message'],
+        result['success'] ? kBrownAccent : const Color(0xFFD32F2F),
+      );
     } catch (e) {
-  _showSnackbar('Gagal mengirim reset password: $e', const Color(0xFFD32F2F));
+      _showSnackbar(
+        'Gagal mengirim reset password: $e',
+        const Color(0xFFD32F2F),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   void _showSnackbar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: color),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message), backgroundColor: color));
   }
 
   @override
@@ -204,7 +233,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         backgroundColor: kSurface,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Edit Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -231,9 +263,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           border: Border.all(color: kSurface, width: 3),
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.camera_alt, color: Colors.black, size: 20),
+                          icon: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.black,
+                            size: 20,
+                          ),
                           onPressed: () {
-                            _showSnackbar('Fitur ganti foto belum diimplementasikan.', kBrownAccent);
+                            _showSnackbar(
+                              'Fitur ganti foto belum diimplementasikan.',
+                              kBrownAccent,
+                            );
                           },
                         ),
                       ),
@@ -246,7 +285,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 controller: _nameController,
                 label: 'Full Name',
                 icon: Icons.person_outline,
-                validator: (value) => value == null || value.isEmpty ? 'Nama tidak boleh kosong' : null,
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Nama tidak boleh kosong'
+                    : null,
               ),
               const SizedBox(height: 20),
               _buildTextField(
@@ -254,18 +295,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 label: 'Email Address',
                 icon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
-                validator: (value) =>
-                    value == null || !value.contains('@') ? 'Masukkan email yang valid' : null,
+                validator: (value) => value == null || !value.contains('@')
+                    ? 'Masukkan email yang valid'
+                    : null,
               ),
               const SizedBox(height: 20),
               OutlinedButton.icon(
                 onPressed: _isLoading ? null : _changePassword,
                 icon: const Icon(Icons.lock_outline, color: kBrownAccent),
-                label: const Text('Change Password', style: TextStyle(color: Colors.white)),
+                label: const Text(
+                  'Change Password',
+                  style: TextStyle(color: Colors.white),
+                ),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 15),
                   side: const BorderSide(color: kBrownAccent),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
                 ),
               ),
               const SizedBox(height: 40),
@@ -275,16 +322,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   minimumSize: const Size(double.infinity, 55),
                   backgroundColor: kBrownAccent,
                   foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
                 ),
                 child: _isLoading
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(color: Colors.black, strokeWidth: 3),
+                        child: CircularProgressIndicator(
+                          color: Colors.black,
+                          strokeWidth: 3,
+                        ),
                       )
-                    : const Text('SAVE CHANGES',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    : const Text(
+                        'SAVE CHANGES',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
               ),
             ],
           ),

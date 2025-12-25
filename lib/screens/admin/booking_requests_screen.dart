@@ -69,7 +69,10 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
       final docs = await Future.wait(
         serviceIds.map((id) => _firestore.collection('services').doc(id).get()),
       );
-      final names = docs.where((d) => d.exists).map((d) => d.data()?['name'] as String? ?? 'S').toList();
+      final names = docs
+          .where((d) => d.exists)
+          .map((d) => d.data()?['name'] as String? ?? 'S')
+          .toList();
       if (names.isEmpty) return 'Layanan';
       return names.length == 1 ? names[0] : '${names[0]} +${names.length - 1}';
     } catch (_) {
@@ -78,7 +81,8 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
   }
 
   Future<String> _getBarbershopImage(String id) async {
-    const String defaultImage = 'https://cdn-icons-png.flaticon.com/512/706/706830.png';
+    const String defaultImage =
+        'https://cdn-icons-png.flaticon.com/512/706/706830.png';
     if (_nameCache.containsKey('img_$id')) return _nameCache['img_$id']!;
     try {
       final doc = await _firestore.collection('barbershops').doc(id).get();
@@ -115,26 +119,42 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
         backgroundColor: kSurface,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Booking Requests', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
+        title: const Text(
+          'Booking Requests',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+        ),
       ),
       body: StreamBuilder<List<Queue>>(
         stream: _queueService.streamAllQueues(statusFilter: ['waiting']),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: kBrownAccent));
+            return const Center(
+              child: CircularProgressIndicator(color: kBrownAccent),
+            );
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+            return Center(
+              child: Text(
+                'Error: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
           }
 
           final requests = snapshot.data ?? [];
           if (requests.isEmpty) {
             return const Center(
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.inbox, color: kTextGrey, size: 60),
-                SizedBox(height: 16),
-                Text('Tidak ada booking pending', style: TextStyle(color: kTextGrey))
-              ]),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inbox, color: kTextGrey, size: 60),
+                  SizedBox(height: 16),
+                  Text(
+                    'Tidak ada booking pending',
+                    style: TextStyle(color: kTextGrey),
+                  ),
+                ],
+              ),
             );
           }
 
@@ -158,8 +178,13 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
           return Container(
             height: 160,
             margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(12)),
-            child: const Center(child: CircularProgressIndicator(color: kBrownAccent)),
+            decoration: BoxDecoration(
+              color: kDarkGrey,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(color: kBrownAccent),
+            ),
           );
         }
 
@@ -168,7 +193,11 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
           onTap: () => _showDetail(context, q, d),
           child: Container(
             margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white12)),
+            decoration: BoxDecoration(
+              color: kDarkGrey,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white12),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -178,21 +207,115 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
                       height: 130,
                       width: double.infinity,
                       color: Colors.grey[900],
-                      child: CachedNetworkImage(imageUrl: d['image'], fit: BoxFit.cover, errorWidget: (_, __, ___) => const Icon(Icons.storefront, color: kTextGrey)),
+                      child: CachedNetworkImage(
+                        imageUrl: d['image'],
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) =>
+                            const Icon(Icons.storefront, color: kTextGrey),
+                      ),
                     ),
-                    Positioned(top: 8, right: 8, child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(16)), child: const Text('PENDING', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))))
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Text(
+                          'PENDING',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 Padding(
                   padding: const EdgeInsets.all(10),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(d['shop'], style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 3),
-                    Row(children: [const Icon(Icons.person, size: 11, color: kTextGrey), const SizedBox(width: 3), Expanded(child: Text(d['customer'], style: const TextStyle(color: kTextGrey, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis))]),
-                    const SizedBox(height: 2),
-                    Row(children: [const Icon(Icons.access_time, size: 11, color: kTextGrey), const SizedBox(width: 3), Text(_formatTs(q.bookingTime), style: const TextStyle(color: kTextGrey, fontSize: 10))]),
-                    if (q.totalPrice != null) ...[const SizedBox(height: 2), Row(children: [const Icon(Icons.money, size: 11, color: kBrownAccent), const SizedBox(width: 3), Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(q.totalPrice), style: const TextStyle(color: kBrownAccent, fontSize: 10, fontWeight: FontWeight.bold))])]
-                  ]),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        d['shop'],
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          const Icon(Icons.person, size: 11, color: kTextGrey),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              d['customer'],
+                              style: const TextStyle(
+                                color: kTextGrey,
+                                fontSize: 10,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.access_time,
+                            size: 11,
+                            color: kTextGrey,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            _formatTs(q.bookingTime),
+                            style: const TextStyle(
+                              color: kTextGrey,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (q.totalPrice != null) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.money,
+                              size: 11,
+                              color: kBrownAccent,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              NumberFormat.currency(
+                                locale: 'id_ID',
+                                symbol: 'Rp ',
+                                decimalDigits: 0,
+                              ).format(q.totalPrice),
+                              style: const TextStyle(
+                                color: kBrownAccent,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -208,19 +331,45 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
       context: context,
       backgroundColor: kDarkGrey,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (c) => Container(
-        padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(c).viewInsets.bottom + 20),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(c).viewInsets.bottom + 20,
+        ),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Details', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), GestureDetector(onTap: () => Navigator.pop(c), child: const Icon(Icons.close, color: Colors.white))]),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Details',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(c),
+                    child: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -230,13 +379,36 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
                     _row('Barber', d['barber']),
                     _row('Service', d['service']),
                     _row('Time', _formatTs(q.bookingTime)),
-                    if (q.estimatedDuration != null) _row('Duration', '${q.estimatedDuration} min'),
-                    if (q.totalPrice != null) _row('Price', NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(q.totalPrice), kBrownAccent),
+                    if (q.estimatedDuration != null)
+                      _row('Duration', '${q.estimatedDuration} min'),
+                    if (q.totalPrice != null)
+                      _row(
+                        'Price',
+                        NumberFormat.currency(
+                          locale: 'id_ID',
+                          symbol: 'Rp ',
+                          decimalDigits: 0,
+                        ).format(q.totalPrice),
+                        kBrownAccent,
+                      ),
+                    if ((q.barberSelectionFee ?? 0) > 0)
+                      _row(
+                        'Barber Fee',
+                        NumberFormat.currency(
+                          locale: 'id_ID',
+                          symbol: 'Rp ',
+                          decimalDigits: 0,
+                        ).format(q.barberSelectionFee),
+                        Colors.orangeAccent,
+                      ),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
-              const Text('Notes (optional)', style: TextStyle(color: Colors.white70, fontSize: 11)),
+              const Text(
+                'Notes (optional)',
+                style: TextStyle(color: Colors.white70, fontSize: 11),
+              ),
               const SizedBox(height: 6),
               TextField(
                 controller: noteCtrl,
@@ -244,10 +416,16 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
                 maxLines: 2,
                 decoration: InputDecoration(
                   hintText: 'E.g. Barberman busy, conflict schedule',
-                  hintStyle: const TextStyle(color: Colors.white54, fontSize: 11),
+                  hintStyle: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11,
+                  ),
                   filled: true,
                   fillColor: Colors.black26,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -261,15 +439,27 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
                         try {
                           await _queueService.adminRejectRequest(
                             q.id,
-                            rejectionReason: noteCtrl.text.trim().isEmpty ? 'Rejected' : noteCtrl.text.trim(),
+                            rejectionReason: noteCtrl.text.trim().isEmpty
+                                ? 'Rejected'
+                                : noteCtrl.text.trim(),
                           );
                           navigator.pop();
-                          messenger.showSnackBar(const SnackBar(content: Text('Request rejected'), backgroundColor: Colors.red));
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Request rejected'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
                         } catch (e) {
-                          messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Error: $e')),
+                          );
                         }
                       },
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red, minimumSize: const Size.fromHeight(44)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        minimumSize: const Size.fromHeight(44),
+                      ),
                       child: const Text('Reject'),
                     ),
                   ),
@@ -282,19 +472,31 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
                           context: c,
                           builder: (dctx) => AlertDialog(
                             backgroundColor: kDarkGrey,
-                            title: const Text('Informasi Flow Pembayaran', style: TextStyle(color: Colors.white)),
+                            title: const Text(
+                              'Informasi Flow Pembayaran',
+                              style: TextStyle(color: Colors.white),
+                            ),
                             content: const Text(
                               'Booking kini dibuat langsung sebagai "Menunggu Pembayaran" (awaiting_payment) dan slot otomatis dikunci saat booking dibuat.\n\n'
                               'Admin tidak perlu lagi melakukan konfirmasi request. Gunakan menu "Verifikasi Pembayaran" untuk memeriksa bukti pembayaran dan menyetujui booking (menjadi booked).',
                               style: TextStyle(color: Colors.white70),
                             ),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(dctx), child: const Text('Tutup')),
+                              TextButton(
+                                onPressed: () => Navigator.pop(dctx),
+                                child: const Text('Tutup'),
+                              ),
                               TextButton(
                                 onPressed: () {
                                   Navigator.pop(dctx);
                                   Navigator.pop(c);
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentVerificationScreen()));
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const PaymentVerificationScreen(),
+                                    ),
+                                  );
                                 },
                                 child: const Text('Buka Verifikasi Pembayaran'),
                               ),
@@ -302,7 +504,10 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
                           ),
                         );
                       },
-                      style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, minimumSize: const Size.fromHeight(44)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kBrownAccent,
+                        minimumSize: const Size.fromHeight(44),
+                      ),
                       child: const Text('Info'),
                     ),
                   ),
@@ -316,8 +521,25 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
   }
 
   Widget _row(String label, String val, [Color? color]) {
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: const TextStyle(color: kTextGrey, fontSize: 12)), Text(val, style: TextStyle(color: color ?? Colors.white, fontSize: 12, fontWeight: FontWeight.w600))]));
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: kTextGrey, fontSize: 12)),
+          Text(
+            val,
+            style: TextStyle(
+              color: color ?? Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  String _formatTs(Timestamp ts) => DateFormat('EEE d MMM HH:mm').format(ts.toDate());
+  String _formatTs(Timestamp ts) =>
+      DateFormat('EEE d MMM HH:mm').format(ts.toDate());
 }

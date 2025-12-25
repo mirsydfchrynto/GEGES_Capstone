@@ -12,10 +12,15 @@ class FakeAuthService implements AuthService {
   String? lastPassword;
   final Map<String, dynamic> response;
 
-  FakeAuthService({this.response = const {'success': true, 'role': 'customer'}});
+  FakeAuthService({
+    this.response = const {'success': true, 'role': 'customer'},
+  });
 
   @override
-  Future<Map<String, dynamic>> signIn({required String email, required String password}) async {
+  Future<Map<String, dynamic>> signIn({
+    required String email,
+    required String password,
+  }) async {
     signInCalled = true;
     lastEmail = email;
     lastPassword = password;
@@ -28,7 +33,11 @@ class FakeAuthService implements AuthService {
   }
 
   @override
-  Future<Map<String, dynamic>> registerCustomer({required String email, required String password, required String name}) {
+  Future<Map<String, dynamic>> registerCustomer({
+    required String email,
+    required String password,
+    required String name,
+  }) {
     throw UnimplementedError();
   }
 
@@ -54,12 +63,23 @@ class FakeAuthService implements AuthService {
   }
 
   @override
-  Future<Map<String, dynamic>> updateProfile({required String uid, required String newName, String? newEmail, String? currentPasswordForReauth, bool trySendVerification = true}) {
+  Future<Map<String, dynamic>> updateProfile({
+    required String uid,
+    required String newName,
+    String? newEmail,
+    String? currentPasswordForReauth,
+    bool trySendVerification = true,
+  }) {
     throw UnimplementedError();
   }
 
   @override
-  Future<Map<String, dynamic>> reauthAndUpdateProfile({required String uid, required String newName, String? newEmail, String? currentPassword}) {
+  Future<Map<String, dynamic>> reauthAndUpdateProfile({
+    required String uid,
+    required String newName,
+    String? newEmail,
+    String? currentPassword,
+  }) {
     throw UnimplementedError();
   }
 
@@ -78,7 +98,9 @@ class FakeAuthService implements AuthService {
 }
 
 void main() {
-  testWidgets('TC-BB-01: Show validation when fields empty', (WidgetTester tester) async {
+  testWidgets('TC-BB-01: Show validation when fields empty', (
+    WidgetTester tester,
+  ) async {
     final fake = FakeAuthService();
     await tester.pumpWidget(MaterialApp(home: LoginScreen(authService: fake)));
 
@@ -86,11 +108,16 @@ void main() {
     await tester.tap(find.text('Sign In'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('wajib diisi', findRichText: false), findsOneWidget);
+    expect(
+      find.textContaining('wajib diisi', findRichText: false),
+      findsOneWidget,
+    );
     expect(fake.signInCalled, false);
   });
 
-  testWidgets('TC-BB-02: Show validation for invalid email format', (WidgetTester tester) async {
+  testWidgets('TC-BB-02: Show validation for invalid email format', (
+    WidgetTester tester,
+  ) async {
     final fake = FakeAuthService();
     await tester.pumpWidget(MaterialApp(home: LoginScreen(authService: fake)));
 
@@ -103,15 +130,21 @@ void main() {
     expect(fake.signInCalled, false);
   });
 
-  testWidgets('TC-BB-06: Successful login navigates to HomeScreen', (WidgetTester tester) async {
-    final fake = FakeAuthService(response: {'success': true, 'role': 'customer'});
-    await tester.pumpWidget(MaterialApp(
-      home: LoginScreen(
-        authService: fake,
-        homeBuilder: (_) => const Text('HOME-TEST'),
-        adminBuilder: (_) => const Text('ADMIN-TEST'),
+  testWidgets('TC-BB-06: Successful login navigates to HomeScreen', (
+    WidgetTester tester,
+  ) async {
+    final fake = FakeAuthService(
+      response: {'success': true, 'role': 'customer'},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LoginScreen(
+          authService: fake,
+          homeBuilder: (_) => const Text('HOME-TEST'),
+          adminBuilder: (_) => const Text('ADMIN-TEST'),
+        ),
       ),
-    ));
+    );
 
     await tester.enterText(find.byType(TextField).first, 'esa@gmail.com');
     await tester.enterText(find.byType(TextField).at(1), '123456789');
@@ -122,15 +155,21 @@ void main() {
     expect(find.text('HOME-TEST'), findsOneWidget);
   });
 
-  testWidgets('TC-BB-07: Successful login navigates to AdminDashboard', (WidgetTester tester) async {
-    final fake = FakeAuthService(response: {'success': true, 'role': 'admin_owner'});
-    await tester.pumpWidget(MaterialApp(
-      home: LoginScreen(
-        authService: fake,
-        homeBuilder: (_) => const Text('HOME-TEST'),
-        adminBuilder: (_) => const Text('ADMIN-TEST'),
+  testWidgets('TC-BB-07: Successful login navigates to AdminDashboard', (
+    WidgetTester tester,
+  ) async {
+    final fake = FakeAuthService(
+      response: {'success': true, 'role': 'admin_owner'},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LoginScreen(
+          authService: fake,
+          homeBuilder: (_) => const Text('HOME-TEST'),
+          adminBuilder: (_) => const Text('ADMIN-TEST'),
+        ),
       ),
-    ));
+    );
 
     await tester.enterText(find.byType(TextField).first, 'admin@example.com');
     await tester.enterText(find.byType(TextField).at(1), 'adminpass');

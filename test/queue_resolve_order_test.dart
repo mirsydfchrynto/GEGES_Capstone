@@ -3,21 +3,27 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 
 void main() {
-  test('resolve returns queue when doc id exists and owned by customer', () async {
-    final fakeFs = FakeFirebaseFirestore();
+  test(
+    'resolve returns queue when doc id exists and owned by customer',
+    () async {
+      final fakeFs = FakeFirebaseFirestore();
 
-    await fakeFs.collection('queues').doc('q-doc-1').set({
-      'customer_id': 'user123',
-      'total_price': 30000,
-    });
+      await fakeFs.collection('queues').doc('q-doc-1').set({
+        'customer_id': 'user123',
+        'total_price': 30000,
+      });
 
-    final svc = QueueService(firestore: fakeFs);
-    final q = await svc.resolveQueueForCustomerByIdOrOrder('q-doc-1', 'user123');
+      final svc = QueueService(firestore: fakeFs);
+      final q = await svc.resolveQueueForCustomerByIdOrOrder(
+        'q-doc-1',
+        'user123',
+      );
 
-    expect(q, isNotNull);
-    expect(q!.id, 'q-doc-1');
-    expect(q.customerId, 'user123');
-  });
+      expect(q, isNotNull);
+      expect(q!.id, 'q-doc-1');
+      expect(q.customerId, 'user123');
+    },
+  );
 
   test('resolve falls back to order_id query when doc id missing', () async {
     final fakeFs = FakeFirebaseFirestore();
@@ -37,17 +43,23 @@ void main() {
     expect(q.totalPrice, 35000);
   });
 
-  test('resolve returns null when doc exists but not owned by customer', () async {
-    final fakeFs = FakeFirebaseFirestore();
+  test(
+    'resolve returns null when doc exists but not owned by customer',
+    () async {
+      final fakeFs = FakeFirebaseFirestore();
 
-    await fakeFs.collection('queues').doc('q-doc-2').set({
-      'customer_id': 'other',
-      'total_price': 25000,
-    });
+      await fakeFs.collection('queues').doc('q-doc-2').set({
+        'customer_id': 'other',
+        'total_price': 25000,
+      });
 
-    final svc = QueueService(firestore: fakeFs);
-    final q = await svc.resolveQueueForCustomerByIdOrOrder('q-doc-2', 'user123');
+      final svc = QueueService(firestore: fakeFs);
+      final q = await svc.resolveQueueForCustomerByIdOrOrder(
+        'q-doc-2',
+        'user123',
+      );
 
-    expect(q, isNull);
-  });
+      expect(q, isNull);
+    },
+  );
 }

@@ -6,12 +6,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 // - final property berarti tidak bisa diubah setelah object dibuat
 class Service {
   // penjelasan property:
-  final String id;                    // id unik dari firebase
-  final String name;                  // nama layanan (contoh: "potong rambut panjang")
-  final String description;           // deskripsi detail layanan
-  final double price;                 // harga layanan (Rp)
-  final int defaultDuration;          // durasi estimasi (menit, contoh: 30)
-  final bool isActive;                // apakah service masih aktif/bisa dipesan
+  final String id; // id unik dari firebase
+  final String name; // nama layanan (contoh: "potong rambut panjang")
+  final String description; // deskripsi detail layanan
+  final double price; // harga layanan (Rp)
+  final int defaultDuration; // durasi estimasi (menit, contoh: 30)
+  final bool isActive; // apakah service masih aktif/bisa dipesan
 
   // penjelasan constructor:
   // - semua parameter required = harus diberikan
@@ -31,25 +31,28 @@ class Service {
   // - penting untuk handle berbagai format field name (snake_case vs camelCase)
   factory Service.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
-    
+
     // helper: convert duration dari firebase (bisa int atau num)
     // coba field 'default_duration' dulu, jika tidak ada coba 'defaultDuration'
     // jika keduanya tidak ada, gunakan default 30 menit
-    final duration = (data['default_duration'] as num?)?.toInt() ??
-                     (data['defaultDuration'] as num?)?.toInt() ??
-                     30;
-    
+    final duration =
+        (data['default_duration'] as num?)?.toInt() ??
+        (data['defaultDuration'] as num?)?.toInt() ??
+        30;
+
     // helper: convert price ke double
     // default 0.0 jika tidak ada
     final price = (data['price'] as num?)?.toDouble() ?? 0.0;
-    
+
     // helper: isactive default true jika tidak ada
     final isActive = data['isActive'] as bool? ?? true;
 
     return Service(
-      id: doc.id,  // id dari firebase dokumen
+      id: doc.id, // id dari firebase dokumen
       name: data['name'] as String? ?? 'Service Unknown',
-      description: data['description'] as String? ?? '',  // jika tidak ada, gunakan empty string
+      description:
+          data['description'] as String? ??
+          '', // jika tidak ada, gunakan empty string
       price: price,
       defaultDuration: duration,
       isActive: isActive,

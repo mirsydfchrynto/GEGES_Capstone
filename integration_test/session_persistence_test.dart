@@ -15,51 +15,58 @@ void main() {
     // For CI/CD, ensure Firebase emulator is running or skip these tests in CI
 
     testWidgets(
-        'TC-SESSION-01: App starts and shows correct initial screen (LoginScreen or HomeScreen)',
-        (WidgetTester tester) async {
-      // ============================================
-      // Test Objective:
-      // Verify that AuthGate correctly routes user based on session state
-      //
-      // Steps:
-      // 1. App starts
-      // 2. AuthGate checks for persisted session
-      // 3. Shows LoginScreen if no session, or HomeScreen/Dashboard if session exists
-      // ============================================
+      'TC-SESSION-01: App starts and shows correct initial screen (LoginScreen or HomeScreen)',
+      (WidgetTester tester) async {
+        // ============================================
+        // Test Objective:
+        // Verify that AuthGate correctly routes user based on session state
+        //
+        // Steps:
+        // 1. App starts
+        // 2. AuthGate checks for persisted session
+        // 3. Shows LoginScreen if no session, or HomeScreen/Dashboard if session exists
+        // ============================================
 
-      // Step 1: Build app
-      app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 3));
+        // Step 1: Build app
+        app.main();
+        await tester.pumpAndSettle(const Duration(seconds: 3));
 
-      // Step 2: Verify app displays expected initial UI
-      // Should show either LoginScreen (if no session) or home screen (if logged in)
-      final isLoginScreen =
-          find.text('Welcome to GEGES').evaluate().isNotEmpty ||
-              find.text('Sign In').evaluate().isNotEmpty;
+        // Step 2: Verify app displays expected initial UI
+        // Should show either LoginScreen (if no session) or home screen (if logged in)
+        final isLoginScreen =
+            find.text('Welcome to GEGES').evaluate().isNotEmpty ||
+            find.text('Sign In').evaluate().isNotEmpty;
 
-      final isHomeScreen = find.text('Your Bookings').evaluate().isNotEmpty ||
-          find.text('Bookings').evaluate().isNotEmpty ||
-          find.text('Home').evaluate().isNotEmpty;
+        final isHomeScreen =
+            find.text('Your Bookings').evaluate().isNotEmpty ||
+            find.text('Bookings').evaluate().isNotEmpty ||
+            find.text('Home').evaluate().isNotEmpty;
 
-      final isAdminScreen =
-          find.text('Admin Dashboard').evaluate().isNotEmpty ||
-              find.text('Dashboard').evaluate().isNotEmpty;
+        final isAdminScreen =
+            find.text('Admin Dashboard').evaluate().isNotEmpty ||
+            find.text('Dashboard').evaluate().isNotEmpty;
 
-      // At least one of these should be true
-      expect((isLoginScreen || isHomeScreen || isAdminScreen), isTrue,
+        // At least one of these should be true
+        expect(
+          (isLoginScreen || isHomeScreen || isAdminScreen),
+          isTrue,
           reason:
-              'App should display LoginScreen, HomeScreen, or AdminDashboard on startup');
+              'App should display LoginScreen, HomeScreen, or AdminDashboard on startup',
+        );
 
-      // Verify MaterialApp exists
-      expect(find.byType(MaterialApp).evaluate().isNotEmpty, isTrue);
+        // Verify MaterialApp exists
+        expect(find.byType(MaterialApp).evaluate().isNotEmpty, isTrue);
 
-      // Success
-      print(
-          '✅ TC-SESSION-01 Passed: App startup routing works correctly (session state verified)');
-    });
+        // Success
+        debugPrint(
+          '✅ TC-SESSION-01 Passed: App startup routing works correctly (session state verified)',
+        );
+      },
+    );
 
-    testWidgets('TC-SESSION-02: LoginScreen displays with correct UI elements',
-        (WidgetTester tester) async {
+    testWidgets('TC-SESSION-02: LoginScreen displays with correct UI elements', (
+      WidgetTester tester,
+    ) async {
       // ============================================
       // Test Objective:
       // Verify LoginScreen displays all necessary UI elements for user login
@@ -75,22 +82,32 @@ void main() {
       // If not already on LoginScreen, this test serves as documentation
       // that LoginScreen exists and has expected elements
       try {
-        expect(find.byType(TextField).evaluate().length >= 2, true,
-            reason: 'LoginScreen should have at least email and password fields');
+        expect(
+          find.byType(TextField).evaluate().length >= 2,
+          true,
+          reason: 'LoginScreen should have at least email and password fields',
+        );
 
-        expect(find.text('Sign In').evaluate().isNotEmpty, true,
-            reason: 'LoginScreen should have Sign In button');
+        expect(
+          find.text('Sign In').evaluate().isNotEmpty,
+          true,
+          reason: 'LoginScreen should have Sign In button',
+        );
 
-        print('✅ TC-SESSION-02 Passed: LoginScreen has required UI elements');
+        debugPrint(
+          '✅ TC-SESSION-02 Passed: LoginScreen has required UI elements',
+        );
       } catch (e) {
         // If on home screen (already logged in from previous test), that's OK
-        print('⚠️ TC-SESSION-02: Skipped (user already logged in from prior state)');
+        debugPrint(
+          '⚠️ TC-SESSION-02: Skipped (user already logged in from prior state)',
+        );
       }
     });
 
-    testWidgets(
-        'TC-SESSION-03: AuthGate correctly handles screen transitions',
-        (WidgetTester tester) async {
+    testWidgets('TC-SESSION-03: AuthGate correctly handles screen transitions', (
+      WidgetTester tester,
+    ) async {
       // ============================================
       // Test Objective:
       // Verify AuthGate widget exists and handles route transitions
@@ -106,20 +123,23 @@ void main() {
       // Verify the app is responsive to navigation
       // Find navigation-related widgets
       expect(
-          find.byType(Navigator).evaluate().isNotEmpty ||
-              find.byType(Scaffold).evaluate().isNotEmpty,
-          true,
-          reason: 'App should have navigation structure');
+        find.byType(Navigator).evaluate().isNotEmpty ||
+            find.byType(Scaffold).evaluate().isNotEmpty,
+        true,
+        reason: 'App should have navigation structure',
+      );
 
       // Verify main widget tree is properly initialized
       expect(find.byType(MaterialApp).evaluate().isNotEmpty, true);
 
-      print(
-          '✅ TC-SESSION-03 Passed: AuthGate correctly initializes and routes user');
+      debugPrint(
+        '✅ TC-SESSION-03 Passed: AuthGate correctly initializes and routes user',
+      );
     });
 
-    testWidgets('TC-SESSION-04: App handles rapid navigation and UI updates',
-        (WidgetTester tester) async {
+    testWidgets('TC-SESSION-04: App handles rapid navigation and UI updates', (
+      WidgetTester tester,
+    ) async {
       // ============================================
       // Test Objective:
       // Verify app handles rapid UI updates without crashes
@@ -141,10 +161,15 @@ void main() {
       await tester.pumpAndSettle();
 
       // If we get here without exceptions, test passed
-      expect(find.byType(MaterialApp).evaluate().isNotEmpty, true,
-          reason: 'App should still be responsive after rapid updates');
+      expect(
+        find.byType(MaterialApp).evaluate().isNotEmpty,
+        true,
+        reason: 'App should still be responsive after rapid updates',
+      );
 
-      print('✅ TC-SESSION-04 Passed: App handles rapid updates without crashing');
+      debugPrint(
+        '✅ TC-SESSION-04 Passed: App handles rapid updates without crashing',
+      );
     });
   });
 }

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/models/barberman.dart';
+
 // penjelasan class barberman_leave:
 // - menyimpan record cuti/libur untuk satu barberman
 // - bisa untuk cuti tahunan, cuti sakit, atau libur khusus
@@ -34,7 +35,9 @@ class BarbermanLeave {
     required this.usedDays,
   });
 
-  factory BarbermanLeave.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory BarbermanLeave.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data() ?? {};
     final typeStr = data['type'] as String? ?? 'annual';
     LeaveType leaveType;
@@ -48,8 +51,14 @@ class BarbermanLeave {
     }
     return BarbermanLeave(
       id: doc.id,
-      barbermanId: data['barbermanId'] as String? ?? data['barberman_id'] as String? ?? '',
-      barbershopId: data['barbershopId'] as String? ?? data['barbershop_id'] as String? ?? '',
+      barbermanId:
+          data['barbermanId'] as String? ??
+          data['barberman_id'] as String? ??
+          '',
+      barbershopId:
+          data['barbershopId'] as String? ??
+          data['barbershop_id'] as String? ??
+          '',
       startDate: data['startDate'] as Timestamp? ?? Timestamp.now(),
       endDate: data['endDate'] as Timestamp? ?? Timestamp.now(),
       type: leaveType,

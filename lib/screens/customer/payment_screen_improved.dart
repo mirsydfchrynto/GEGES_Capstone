@@ -31,7 +31,7 @@ class PaymentScreenImproved extends StatefulWidget {
 
 class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
   late BookingAntiDuplicateService _antiDupService;
-  
+
   bool _isSubmitting = false;
   String? _proofUrl;
   bool _proofLocked = false;
@@ -57,21 +57,21 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
         .doc(widget.bookingId)
         .snapshots()
         .listen((snapshot) {
-      if (!snapshot.exists) return;
+          if (!snapshot.exists) return;
 
-      final data = snapshot.data() ?? {};
-      final payment = Map<String, dynamic>.from(data['payment'] ?? {});
+          final data = snapshot.data() ?? {};
+          final payment = Map<String, dynamic>.from(data['payment'] ?? {});
 
-      setState(() {
-        _proofUrl = payment['proofUrl'] as String?;
-        _proofLocked = payment['proofLocked'] as bool? ?? false;
-        _verificationStatus = payment['verificationStatus'] as String?;
+          setState(() {
+            _proofUrl = payment['proofUrl'] as String?;
+            _proofLocked = payment['proofLocked'] as bool? ?? false;
+            _verificationStatus = payment['verificationStatus'] as String?;
 
-        if (payment['deadlineAt'] is Timestamp) {
-          _paymentDeadline = (payment['deadlineAt'] as Timestamp).toDate();
-        }
-      });
-    });
+            if (payment['deadlineAt'] is Timestamp) {
+              _paymentDeadline = (payment['deadlineAt'] as Timestamp).toDate();
+            }
+          });
+        });
   }
 
   void _startCountdown() {
@@ -82,7 +82,7 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
         setState(() {
           _timeRemaining = remaining.isNegative ? Duration.zero : remaining;
         });
-        
+
         if (_timeRemaining.inSeconds > 0) {
           _startCountdown();
         }
@@ -112,8 +112,10 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
       );
 
       if (mounted) {
-        _showSuccess('Bukti pembayaran berhasil dikirim!\nMenunggu verifikasi admin...');
-        
+        _showSuccess(
+          'Bukti pembayaran berhasil dikirim!\nMenunggu verifikasi admin...',
+        );
+
         // Snapshot listener akan otomatis update UI
         setState(() => _proofLocked = true);
       }
@@ -128,15 +130,15 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
   void _showSuccess(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.green),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
   }
 
   String _formatDuration(Duration d) {
@@ -146,8 +148,11 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
   }
 
   String _formatCurrency(int amount) {
-    return NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)
-        .format(amount);
+    return NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    ).format(amount);
   }
 
   @override
@@ -168,7 +173,10 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ========== HEADER INFORMASI ==========
-            _buildInfoCard('Total Pembayaran', _formatCurrency(widget.totalPrice)),
+            _buildInfoCard(
+              'Total Pembayaran',
+              _formatCurrency(widget.totalPrice),
+            ),
 
             const SizedBox(height: 20),
 
@@ -206,18 +214,25 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isPending ? 'Pembayaran Dikirim' : 'Pembayaran Diverifikasi',
+                            isPending
+                                ? 'Pembayaran Dikirim'
+                                : 'Pembayaran Diverifikasi',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: isPending ? Colors.orange[700] : Colors.green[700],
+                              color: isPending
+                                  ? Colors.orange[700]
+                                  : Colors.green[700],
                             ),
                           ),
                           Text(
                             isPending
                                 ? 'Menunggu verifikasi admin...'
                                 : 'Pembayaran sudah dikonfirmasi',
-                            style: const TextStyle(fontSize: 12, color: Colors.black54),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
                           ),
                         ],
                       ),
@@ -256,7 +271,9 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
               child: ElevatedButton.icon(
                 onPressed: _isSubmitting || _proofLocked || isTimeExpired
                     ? null
-                    : () => _submitProof('https://example.com/proof'), // TODO: get real proof URL
+                    : () => _submitProof(
+                        'https://example.com/proof',
+                      ), // TODO: get real proof URL
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amber[700],
                   disabledBackgroundColor: Colors.grey,
@@ -274,8 +291,13 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
                 label: Text(
                   _isSubmitting
                       ? 'Mengirim...'
-                      : (_proofLocked ? 'Bukti Sudah Dikirim' : 'Kirim Bukti Pembayaran'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      : (_proofLocked
+                            ? 'Bukti Sudah Dikirim'
+                            : 'Kirim Bukti Pembayaran'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -319,7 +341,10 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
           const SizedBox(height: 8),
           Text(
             value,
@@ -409,8 +434,14 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );

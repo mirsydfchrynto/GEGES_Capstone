@@ -4,20 +4,37 @@ import 'package:geges_smartbarber/screens/register_screen.dart';
 import 'utils/fakes.dart';
 
 void main() {
-  testWidgets('TC-REGISTER-01: Successful registration navigates to Login', (WidgetTester tester) async {
-    final fakeSuccess = FakeAuthServiceSpy(registerResponseOverride: {'success': true, 'message': 'Registrasi berhasil. Silakan verifikasi email Anda.'});
+  testWidgets('TC-REGISTER-01: Successful registration navigates to Login', (
+    WidgetTester tester,
+  ) async {
+    final fakeSuccess = FakeAuthServiceSpy(
+      registerResponseOverride: {
+        'success': true,
+        'message': 'Registrasi berhasil. Silakan verifikasi email Anda.',
+      },
+    );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: RegisterScreen(authService: fakeSuccess),
-      ),
+      MaterialApp(home: RegisterScreen(authService: fakeSuccess)),
     );
 
     // Fill form
-    await tester.enterText(find.byKey(const Key('register_name')), 'Ivon'); // Username
-    await tester.enterText(find.byKey(const Key('register_email')), 'ivon@example.com'); // Email
-    await tester.enterText(find.byKey(const Key('register_password')), 'Password1!'); // Password
-    await tester.enterText(find.byKey(const Key('register_confirm_password')), 'Password1!'); // Confirm Password
+    await tester.enterText(
+      find.byKey(const Key('register_name')),
+      'Ivon',
+    ); // Username
+    await tester.enterText(
+      find.byKey(const Key('register_email')),
+      'ivon@example.com',
+    ); // Email
+    await tester.enterText(
+      find.byKey(const Key('register_password')),
+      'Password1!',
+    ); // Password
+    await tester.enterText(
+      find.byKey(const Key('register_confirm_password')),
+      'Password1!',
+    ); // Confirm Password
 
     final createBtn = find.byKey(const Key('register_create_btn'));
     await tester.ensureVisible(createBtn);
@@ -28,17 +45,25 @@ void main() {
     expect(find.text('Sign In'), findsOneWidget);
   });
 
-  testWidgets('TC-REGISTER-02: Failed registration shows error message', (WidgetTester tester) async {
-    final fakeFail = FakeAuthServiceSpy(registerResponseOverride: {'success': false, 'message': 'Email sudah terdaftar.'});
+  testWidgets('TC-REGISTER-02: Failed registration shows error message', (
+    WidgetTester tester,
+  ) async {
+    final fakeFail = FakeAuthServiceSpy(
+      registerResponseOverride: {
+        'success': false,
+        'message': 'Email sudah terdaftar.',
+      },
+    );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: RegisterScreen(authService: fakeFail),
-      ),
+      MaterialApp(home: RegisterScreen(authService: fakeFail)),
     );
 
     // Fill form
-    await tester.enterText(find.byType(TextField).at(0), 'Iv'); // invalid small name to trigger earlier validation
+    await tester.enterText(
+      find.byType(TextField).at(0),
+      'Iv',
+    ); // invalid small name to trigger earlier validation
     await tester.enterText(find.byType(TextField).at(1), 'ivon@example.com');
     await tester.enterText(find.byType(TextField).at(2), 'Password1!');
     await tester.enterText(find.byType(TextField).at(3), 'Password1!');

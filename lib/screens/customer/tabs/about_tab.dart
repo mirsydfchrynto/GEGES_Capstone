@@ -6,7 +6,7 @@ import 'package:geges_smartbarber/models/barbershop.dart';
 class AboutTab extends StatelessWidget {
   // Ambil data Barbershop yang sudah ada
   final Barbershop shop;
-  
+
   const AboutTab({super.key, required this.shop});
 
   // Warna Tema (sesuai main.dart)
@@ -23,7 +23,11 @@ class AboutTab extends StatelessWidget {
           // --- Bagian 1: Location (Sesuai about.png) ---
           const Text(
             'Location',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 16),
           // Placeholder Peta
@@ -43,7 +47,11 @@ class AboutTab extends StatelessWidget {
           // Alamat
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.location_on_outlined, color: kBrownAccent, size: 28),
+            leading: const Icon(
+              Icons.location_on_outlined,
+              color: kBrownAccent,
+              size: 28,
+            ),
             title: Text(
               shop.addres, // Ambil alamat dari data Barbershop
               style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -55,12 +63,20 @@ class AboutTab extends StatelessWidget {
           const SizedBox(height: 16),
           const Text(
             'Working Hours',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 16),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.access_time_outlined, color: kBrownAccent, size: 28),
+            leading: const Icon(
+              Icons.access_time_outlined,
+              color: kBrownAccent,
+              size: 28,
+            ),
             title: const Text(
               'Mon - Sun (09:00 AM - 21:00 PM)', // Data dummy sesuai desain
               style: TextStyle(color: Colors.white, fontSize: 14),
@@ -72,14 +88,19 @@ class AboutTab extends StatelessWidget {
           const SizedBox(height: 16),
           const Text(
             'Facilities',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 16),
           // Grid 3x2
           GridView.count(
             crossAxisCount: 3,
             shrinkWrap: true, // Wajib di dalam SingleChildScrollView
-            physics: const NeverScrollableScrollPhysics(), // Wajib di dalam SingleChildScrollView
+            physics:
+                const NeverScrollableScrollPhysics(), // Wajib di dalam SingleChildScrollView
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             children: [
@@ -102,17 +123,21 @@ class AboutTab extends StatelessWidget {
       decoration: BoxDecoration(
         color: kDarkGrey,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade800)
+        border: Border.all(color: Colors.grey.shade800),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, color: kBrownAccent, size: 32),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
         ],
       ),
     );
   }
 }
+
 // [ANDA BISA COPY PASTE SAMPAI SINI]

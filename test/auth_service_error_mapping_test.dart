@@ -18,28 +18,50 @@ class _FakeGoogleSignInReturnsNull extends GoogleSignIn {
   Future<GoogleSignInAccount?> signIn() async => null;
 }
 
-class _FakeFirebaseAuthThrowsInvalidCredential extends Fake implements FirebaseAuth {
+class _FakeFirebaseAuthThrowsInvalidCredential extends Fake
+    implements FirebaseAuth {
   @override
-  Future<UserCredential> signInWithEmailAndPassword({required String email, required String password}) {
-    throw FirebaseAuthException(code: 'invalid-credential', message: 'invalid credential');
+  Future<UserCredential> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) {
+    throw FirebaseAuthException(
+      code: 'invalid-credential',
+      message: 'invalid credential',
+    );
   }
 }
 
 class _NoOpFirebaseAuth extends Fake implements FirebaseAuth {}
+
 class _NoOpFirestore extends Fake implements FirebaseFirestore {}
 
 void main() {
-  test('signInWithGoogle maps ApiException: 10 to friendly SHA-1 message', () async {
-    final auth = AuthService(auth: _NoOpFirebaseAuth(), firestore: _NoOpFirestore(), googleSignIn: _FakeGoogleSignInThrows(Exception('ApiException: 10')));
-    final res = await auth.signInWithGoogle();
+  test(
+    'signInWithGoogle maps ApiException: 10 to friendly SHA-1 message',
+    () async {
+      final auth = AuthService(
+        auth: _NoOpFirebaseAuth(),
+        firestore: _NoOpFirestore(),
+        googleSignIn: _FakeGoogleSignInThrows(Exception('ApiException: 10')),
+      );
+      final res = await auth.signInWithGoogle();
 
-    expect(res['success'], isFalse);
-    expect((res['message'] as String).toLowerCase(), contains('sha-1'));
-    expect((res['message'] as String).toLowerCase(), contains('apiexception'));
-  });
+      expect(res['success'], isFalse);
+      expect((res['message'] as String).toLowerCase(), contains('sha-1'));
+      expect(
+        (res['message'] as String).toLowerCase(),
+        contains('apiexception'),
+      );
+    },
+  );
 
   test('signInWithGoogle returns cancelled message when user aborts', () async {
-    final auth = AuthService(auth: _NoOpFirebaseAuth(), firestore: _NoOpFirestore(), googleSignIn: _FakeGoogleSignInReturnsNull());
+    final auth = AuthService(
+      auth: _NoOpFirebaseAuth(),
+      firestore: _NoOpFirestore(),
+      googleSignIn: _FakeGoogleSignInReturnsNull(),
+    );
     final res = await auth.signInWithGoogle();
 
     expect(res['success'], isFalse);
@@ -52,6 +74,9 @@ void main() {
 
     final res = await auth.signIn(email: 'a@b.c', password: 'pw');
     expect(res['success'], isFalse);
-    expect((res['message'] as String).toLowerCase(), contains('credential tidak valid'));
+    expect(
+      (res['message'] as String).toLowerCase(),
+      contains('credential tidak valid'),
+    );
   });
 }

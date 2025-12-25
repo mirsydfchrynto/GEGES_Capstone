@@ -2,24 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 // Import model Barbershop dan screen Detail Anda yang sudah ada
-import 'package:geges_smartbarber/models/barbershop.dart'; 
-import 'package:geges_smartbarber/screens/customer/tabs/barbershop_detail_screen.dart'; 
+import 'package:geges_smartbarber/models/barbershop.dart';
+import 'package:geges_smartbarber/screens/customer/tabs/barbershop_detail_screen.dart';
 
 class FavoriteBarbershopsScreen extends StatefulWidget {
   const FavoriteBarbershopsScreen({super.key});
 
   @override
-  State<FavoriteBarbershopsScreen> createState() => _FavoriteBarbershopsScreenState();
+  State<FavoriteBarbershopsScreen> createState() =>
+      _FavoriteBarbershopsScreenState();
 }
 
 class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
   // Theme colors
-  static const Color kBrownAccent = Color(0xFFB9976E); 
-  static const Color kSurface = Color(0xFF1B1B1B); 
-  static const Color kCardColor = Color(0xFF2C2C2C); 
-  static const Color kTextGrey = Color(0xFFB0B0B0); 
-  static const Color kRedDanger = Color(0xFFDC3545); 
-  static const Color kTextBlack = Color(0xFF1B1B1B); 
+  static const Color kBrownAccent = Color(0xFFB9976E);
+  static const Color kSurface = Color(0xFF1B1B1B);
+  static const Color kCardColor = Color(0xFF2C2C2C);
+  static const Color kTextGrey = Color(0xFFB0B0B0);
+  static const Color kRedDanger = Color(0xFFDC3545);
+  static const Color kTextBlack = Color(0xFF1B1B1B);
 
   // Data dummy (ganti dengan FutureBuilder/StreamBuilder untuk data Firestore)
   final List<Barbershop> _favoriteBarbershops = [
@@ -27,7 +28,8 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
       id: 'febrian_id_1',
       name: 'Febrian Barbershop',
       addres: 'Mejasem Barat, Tegal',
-      imageUrl: 'https://images.unsplash.com/photo-1621607567117-91f7c006c9a3?q=80&w=300&h=180&fit=crop',
+      imageUrl:
+          'https://images.unsplash.com/photo-1621607567117-91f7c006c9a3?q=80&w=300&h=180&fit=crop',
       rating: 4.8,
       openHour: 9,
       closeHour: 21,
@@ -38,7 +40,8 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
       id: 'doels_id_2',
       name: 'Doels Barbershop',
       addres: 'Slawi, Tegal',
-      imageUrl: 'https://images.unsplash.com/photo-1600880292203-757bb62b2baf?q=80&w=300&h=180&fit=crop',
+      imageUrl:
+          'https://images.unsplash.com/photo-1600880292203-757bb62b2baf?q=80&w=300&h=180&fit=crop',
       rating: 4.5,
       openHour: 10,
       closeHour: 22,
@@ -66,10 +69,13 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
     return Scaffold(
       backgroundColor: kSurface,
       appBar: AppBar(
-        title: const Text('Favorite Barbershop', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Favorite Barbershop',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: kSurface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white), 
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _favoriteBarbershops.isEmpty
           ? Center(
@@ -100,24 +106,45 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
-             onTap: () {
-                // Navigasi ke detail barbershop
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BarbershopDetailScreen(barbershop: shop),
-                  ),
-                );
-              },
+            onTap: () {
+              // Navigasi ke detail barbershop
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      BarbershopDetailScreen(barbershop: shop),
+                ),
+              );
+            },
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
               child: CachedNetworkImage(
                 imageUrl: shop.imageUrl,
                 height: 180,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                placeholder: (context, url) => Container(color: kSurface, child: const Center(child: Icon(Icons.storefront, color: Colors.white54, size: 48))),
-                errorWidget: (context, url, error) => Container(color: kSurface, child: const Center(child: Icon(Icons.broken_image, color: Colors.white54, size: 48))),
+                placeholder: (context, url) => Container(
+                  color: kSurface,
+                  child: const Center(
+                    child: Icon(
+                      Icons.storefront,
+                      color: Colors.white54,
+                      size: 48,
+                    ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: kSurface,
+                  child: const Center(
+                    child: Icon(
+                      Icons.broken_image,
+                      color: Colors.white54,
+                      size: 48,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -132,14 +159,22 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
                     Expanded(
                       child: Text(
                         shop.name,
-                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     // Tombol untuk menghapus dari favorit
                     IconButton(
-                      icon: const Icon(Icons.favorite, color: kRedDanger, size: 28),
+                      icon: const Icon(
+                        Icons.favorite,
+                        color: kRedDanger,
+                        size: 28,
+                      ),
                       onPressed: () => _removeFromFavorites(shop),
                       tooltip: 'Hapus dari Favorit',
                     ),
@@ -158,8 +193,12 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
                     const Icon(Icons.star, color: kBrownAccent, size: 20),
                     const SizedBox(width: 4),
                     Text(
-                      shop.rating.toStringAsFixed(1), 
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      shop.rating.toStringAsFixed(1),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       " (133)", // Jumlah review (placeholder)
@@ -172,13 +211,14 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                       // Navigasi ke detail (untuk booking)
-                       Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BarbershopDetailScreen(barbershop: shop),
-                          ),
-                        );
+                      // Navigasi ke detail (untuk booking)
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              BarbershopDetailScreen(barbershop: shop),
+                        ),
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kBrownAccent,
@@ -191,7 +231,10 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
                     ),
                     child: const Text(
                       'Book Now',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),

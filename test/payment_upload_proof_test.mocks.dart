@@ -917,7 +917,7 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
           as _i6.Future<void>);
 
   @override
-  _i6.Future<void> finishService(String? queueId, _i5.Timestamp? startTime) =>
+  _i6.Future<void> finishService(String? queueId, [_i5.Timestamp? startTime]) =>
       (super.noSuchMethod(
             Invocation.method(#finishService, [queueId, startTime]),
             returnValue: _i6.Future<void>.value(),
@@ -1174,6 +1174,14 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
             returnValue: _i6.Future<_i9.Queue?>.value(),
           )
           as _i6.Future<_i9.Queue?>);
+
+  @override
+  _i6.Stream<_i9.Queue?> streamQueueById(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#streamQueueById, [id]),
+            returnValue: _i6.Stream<_i9.Queue?>.empty(),
+          )
+          as _i6.Stream<_i9.Queue?>);
 
   @override
   _i6.Future<_i9.Queue?> getQueueByIdForCustomer(

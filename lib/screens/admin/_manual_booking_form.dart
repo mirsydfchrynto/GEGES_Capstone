@@ -10,7 +10,11 @@ import 'package:geges_smartbarber/services/barbershop_service.dart';
 class ManualBookingForm extends StatefulWidget {
   final Barbershop barbershop;
   final QueueService queueService;
-  const ManualBookingForm({super.key, required this.barbershop, required this.queueService});
+  const ManualBookingForm({
+    super.key,
+    required this.barbershop,
+    required this.queueService,
+  });
 
   @override
   State<ManualBookingForm> createState() => ManualBookingFormState();
@@ -44,7 +48,9 @@ class ManualBookingFormState extends State<ManualBookingForm> {
       _barbermen = await _bs.getBarbermenByShop(widget.barbershop.id);
       final all = await _bs.getAllServices();
       final shopSet = widget.barbershop.services.toSet();
-      _services = shopSet.isEmpty ? all : all.where((s) => shopSet.contains(s.id)).toList();
+      _services = shopSet.isEmpty
+          ? all
+          : all.where((s) => shopSet.contains(s.id)).toList();
       if (_barbermen.isNotEmpty) {
         _selectedBarberman = _barbermen.first;
       }
@@ -57,28 +63,48 @@ class ManualBookingFormState extends State<ManualBookingForm> {
 
   Future<void> _pickDateTime() async {
     final now = DateTime.now();
-    final pickedDate = await showDatePicker(context: context, initialDate: now, firstDate: now, lastDate: now.add(const Duration(days: 30)));
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 30)),
+    );
     if (pickedDate == null) return;
     if (!mounted) return;
-    final pickedTime = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(now.add(const Duration(minutes: 15))));
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(minutes: 15))),
+    );
     if (pickedTime == null) return;
     setState(() {
-      _selectedDateTime = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+      _selectedDateTime = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      );
     });
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedDateTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih tanggal & waktu')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Pilih tanggal & waktu')));
       return;
     }
     if (_selectedServiceIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih minimal satu layanan')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih minimal satu layanan')),
+      );
       return;
     }
     if (_selectedBarberman == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih barberman')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Pilih barberman')));
       return;
     }
 
@@ -95,7 +121,8 @@ class ManualBookingFormState extends State<ManualBookingForm> {
 
       if (!isAvailable) throw Exception('Slot tidak tersedia - bentrok');
 
-      final manualCustomerId = 'manual_${DateTime.now().millisecondsSinceEpoch}';
+      final manualCustomerId =
+          'manual_${DateTime.now().millisecondsSinceEpoch}';
 
       final Map<String, dynamic> payload = {
         'barbershop_id': widget.barbershop.id,
@@ -113,10 +140,14 @@ class ManualBookingFormState extends State<ManualBookingForm> {
       await widget.queueService.createQueue(payload);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking manual berhasil dibuat')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Booking manual berhasil dibuat')),
+      );
       Navigator.of(context).pop();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal membuat booking: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal membuat booking: $e')));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -127,35 +158,105 @@ class ManualBookingFormState extends State<ManualBookingForm> {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('Tambah Booking Manual - ${widget.barbershop.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Form(
-            key: _formKey,
-            child: Column(children: [
-              TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: 'Nama Pelanggan'), validator: (v) => v == null || v.isEmpty ? 'Nama harus diisi' : null),
-              TextFormField(controller: _phoneCtrl, decoration: const InputDecoration(labelText: 'Nomor Telepon'), validator: (v) => v == null || v.isEmpty ? 'Nomor telepon harus diisi' : null),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<Barberman?>(initialValue: _selectedBarberman, items: _barbermen.map((b) => DropdownMenuItem(value: b, child: Text(b.name))).toList(), onChanged: (v) => setState(() { _selectedBarberman = v; }), decoration: const InputDecoration(labelText: 'Barberman')),
-              const SizedBox(height: 8),
-              Wrap(spacing: 8, children: _services.map((s) => FilterChip(label: Text(s.name), selected: _selectedServiceIds.contains(s.id), onSelected: (sel) {
-                setState(() {
-                  if (sel) {
-                    _selectedServiceIds.add(s.id);
-                  } else {
-                    _selectedServiceIds.remove(s.id);
-                  }
-                });
-              })).toList()),
-              const SizedBox(height: 8),
-              Row(children: [Expanded(child: Text(_selectedDateTime == null ? 'Belum memilih waktu' : _dtLabel.format(_selectedDateTime!))), TextButton(onPressed: _pickDateTime, child: const Text('Pilih Waktu'))]),
-              const SizedBox(height: 12),
-              TextFormField(controller: _notesCtrl, decoration: const InputDecoration(labelText: 'Catatan (opsional)')),
-              const SizedBox(height: 16),
-              ElevatedButton(onPressed: _submitting ? null : _submit, child: _submitting ? const CircularProgressIndicator() : const Text('Buat Booking'))
-            ]),
-          ),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Tambah Booking Manual - ${widget.barbershop.name}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _nameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Nama Pelanggan',
+                    ),
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Nama harus diisi' : null,
+                  ),
+                  TextFormField(
+                    controller: _phoneCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Nomor Telepon',
+                    ),
+                    validator: (v) => v == null || v.isEmpty
+                        ? 'Nomor telepon harus diisi'
+                        : null,
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<Barberman?>(
+                    initialValue: _selectedBarberman,
+                    items: _barbermen
+                        .map(
+                          (b) =>
+                              DropdownMenuItem(value: b, child: Text(b.name)),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() {
+                      _selectedBarberman = v;
+                    }),
+                    decoration: const InputDecoration(labelText: 'Barberman'),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: _services
+                        .map(
+                          (s) => FilterChip(
+                            label: Text(s.name),
+                            selected: _selectedServiceIds.contains(s.id),
+                            onSelected: (sel) {
+                              setState(() {
+                                if (sel) {
+                                  _selectedServiceIds.add(s.id);
+                                } else {
+                                  _selectedServiceIds.remove(s.id);
+                                }
+                              });
+                            },
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _selectedDateTime == null
+                              ? 'Belum memilih waktu'
+                              : _dtLabel.format(_selectedDateTime!),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _pickDateTime,
+                        child: const Text('Pilih Waktu'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _notesCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Catatan (opsional)',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _submitting ? null : _submit,
+                    child: _submitting
+                        ? const CircularProgressIndicator()
+                        : const Text('Buat Booking'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

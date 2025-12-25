@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import 'package:geges_smartbarber/services/notification_service.dart';
 import 'package:geges_smartbarber/services/app_navigator.dart';
+import 'package:geges_smartbarber/screens/admin/barber_shops_list_screen.dart';
 
 // ==========================================
 // file: lib/main.dart
@@ -25,14 +26,14 @@ void main() async {
   // - harus dijalankan sebelum await firebase initialization
   // - tanpa ini, firebase init bisa failed
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // penjelasan initializeDateFormatting:
   // - setup locale untuk menampilkan tanggal dalam bahasa indonesia
   // - 'id_ID' adalah kode untuk indonesian locale
   // - ini penting untuk booking date formatting (contoh: "17 Nov 2025" bukan "Nov 17, 2025")
   // - intl package menyediakan formatting utk berbagai bahasa
-  await initializeDateFormatting('id_ID', null); 
-  
+  await initializeDateFormatting('id_ID', null);
+
   // penjelasan firebase initialization:
   // - firebase adalah backend service untuk data & authentication
   // - initializeapp() menghubungkan aplikasi dengan firebase project
@@ -53,7 +54,7 @@ void main() async {
     // firebase initialization error (akan di-log via crashlytics nanti)
     rethrow;
   }
-  
+
   // penjelasan runApp:
   // - runApp() menjalankan aplikasi flutter
   // - MyApp() adalah root widget dari aplikasi
@@ -110,12 +111,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       debugPrint('Error running expiry checks: $e');
     }
   }
+
   // ========================================
   // warna tema aplikasi
   // ========================================
-  static const Color kBrownAccent = Color(0xFFC3A47B);      // warna coklat utama
-  static const Color kBlackBackground = Colors.black;        // warna latar aplikasi
-  static const Color kDarkGrey = Color(0xFF1E1E1E);          // warna abu-abu gelap untuk cards
+  static const Color kBrownAccent = Color(0xFFC3A47B); // warna coklat utama
+  static const Color kBlackBackground = Colors.black; // warna latar aplikasi
+  static const Color kDarkGrey = Color(
+    0xFF1E1E1E,
+  ); // warna abu-abu gelap untuk cards
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +135,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       navigatorKey: appNavigatorKey,
       title: 'GEGES SmartBarber',
       debugShowCheckedModeBanner: false,
+      // admin routes
+      routes: {
+        '/admin/barber-management': (_) => const BarberShopsListScreen(),
+      },
 
       // =====================================================
       // ========== KONFIGURASI TEMA APLIKASI ===========
@@ -144,13 +152,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         // - warna utama yang digunakan untuk button, highlight, icon tertentu
         // - warna ini akan "dominan" di aplikasi
         primaryColor: kBrownAccent,
-        
+
         // penjelasan scaffoldBackgroundColor:
         // - warna default background untuk semua scaffold di aplikasi
         // - scaffold adalah layout dasar dengan appbar, body, bottombar, dll
         // - ini mencegah setiap screen perlu set background color manual
         scaffoldBackgroundColor: kBlackBackground,
-        
+
         // ========== colorScheme ==========
         // penjelasan colorscheme:
         // - mendefinisikan palet warna lengkap yang digunakan di seluruh app
@@ -169,7 +177,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           // onsurface = warna text/icon di atas surface (default text color)
           onSurface: Colors.white,
         ),
-        
+
         // ========== elevatedButtonTheme ==========
         // penjelasan elevatedbutton:
         // - elevated button adalah tombol "terangkat" dengan background
@@ -193,10 +201,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             textStyle: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-            )
+            ),
           ),
         ),
-        
+
         // ========== inputDecorationTheme ==========
         // penjelasan input decoration:
         // - theme untuk style textfield (input box) di seluruh aplikasi
@@ -232,7 +240,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             // borderSide = garis dengan warna coklat & tebal 1.5
             borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 16,
+            horizontal: 16,
+          ),
           floatingLabelBehavior: FloatingLabelBehavior.never,
         ),
 
@@ -256,7 +267,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // - OnboardingScreen = layar pengenalan aplikasi untuk user baru
       // - jika user sudah pernah buka, bisa langsung ke LoginScreen
       // - (implementasi bisa menggunakan shared_preferences untuk check)
-      home: const AuthGate(), 
+      home: const AuthGate(),
     );
   }
 }

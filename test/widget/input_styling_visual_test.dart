@@ -14,65 +14,61 @@ void main() {
     const Color kDarkGrey = Color(0xFF1E1E1E);
     const Color kHintText = Color(0xFF6B6B6B);
 
-    testWidgets('TC-VISUAL-01: LoginScreen email field has rounded border (radius 20)',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: LoginScreen(),
-        ),
-      );
+    testWidgets(
+      'TC-VISUAL-01: LoginScreen email field has rounded border (radius 20)',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
-      // Find email TextField
-      final emailField = find.byType(TextField).first;
-      expect(emailField, findsOneWidget);
+        // Find email TextField
+        final emailField = find.byType(TextField).first;
+        expect(emailField, findsOneWidget);
 
-      // Verify TextField is wrapped in AnimatedContainer with border radius
-      final animatedContainers = find.byType(AnimatedContainer);
-      expect(animatedContainers, findsWidgets);
-    });
+        // Verify TextField is wrapped in AnimatedContainer with border radius
+        final animatedContainers = find.byType(AnimatedContainer);
+        expect(animatedContainers, findsWidgets);
+      },
+    );
 
-    testWidgets('TC-VISUAL-02: LoginScreen password field has rounded border (radius 20)',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: LoginScreen(),
-        ),
-      );
+    testWidgets(
+      'TC-VISUAL-02: LoginScreen password field has rounded border (radius 20)',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
-      // Find all TextFields (email + password)
-      final textFields = find.byType(TextField);
-      expect(textFields, findsWidgets);
+        // Find all TextFields (email + password)
+        final textFields = find.byType(TextField);
+        expect(textFields, findsWidgets);
 
-      // Get password field (second TextField)
-      final passwordField = textFields.at(1);
-      expect(passwordField, findsOneWidget);
+        // Get password field (second TextField)
+        final passwordField = textFields.at(1);
+        expect(passwordField, findsOneWidget);
 
-      // Verify AnimatedContainer styling
-      final animatedContainers = find.byType(AnimatedContainer);
-      var foundPasswordContainer = false;
+        // Verify AnimatedContainer styling
+        final animatedContainers = find.byType(AnimatedContainer);
+        var foundPasswordContainer = false;
 
-      for (var container in animatedContainers.evaluate()) {
-        final widget = container.widget as AnimatedContainer;
-        if (widget.decoration is BoxDecoration) {
-          final decoration = widget.decoration as BoxDecoration;
-          if (decoration.borderRadius == BorderRadius.circular(20)) {
-            foundPasswordContainer = true;
-            break;
+        for (var container in animatedContainers.evaluate()) {
+          final widget = container.widget as AnimatedContainer;
+          if (widget.decoration is BoxDecoration) {
+            final decoration = widget.decoration as BoxDecoration;
+            if (decoration.borderRadius == BorderRadius.circular(20)) {
+              foundPasswordContainer = true;
+              break;
+            }
           }
         }
-      }
 
-      expect(foundPasswordContainer, true,
-          reason: 'Password field should have rounded container');
-    });
+        expect(
+          foundPasswordContainer,
+          true,
+          reason: 'Password field should have rounded container',
+        );
+      },
+    );
 
-    testWidgets('TC-VISUAL-03: LoginScreen focused input styling',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: LoginScreen(),
-        ),
-      );
+    testWidgets('TC-VISUAL-03: LoginScreen focused input styling', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
       // Find email TextField
       final emailField = find.byType(TextField).first;
@@ -87,77 +83,76 @@ void main() {
       expect(animatedContainers, findsWidgets);
     });
 
-    testWidgets('TC-VISUAL-04: RegisterScreen name field styling matches LoginScreen',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: RegisterScreen(),
-        ),
-      );
+    testWidgets(
+      'TC-VISUAL-04: RegisterScreen name field styling matches LoginScreen',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
 
-      // Find name TextField (first input field)
-      final textFields = find.byType(TextField);
-      expect(textFields, findsWidgets);
+        // Find name TextField (first input field)
+        final textFields = find.byType(TextField);
+        expect(textFields, findsWidgets);
 
-      // Verify AnimatedContainer wrapping
-      final animatedContainers = find.byType(AnimatedContainer);
-      expect(animatedContainers, findsWidgets);
+        // Verify AnimatedContainer wrapping
+        final animatedContainers = find.byType(AnimatedContainer);
+        expect(animatedContainers, findsWidgets);
 
-      // Check first AnimatedContainer for register screen
-      var foundRoundedRegisterContainer = false;
-      for (var container in animatedContainers.evaluate()) {
-        final widget = container.widget as AnimatedContainer;
-        if (widget.decoration is BoxDecoration) {
-          final decoration = widget.decoration as BoxDecoration;
-          if (decoration.borderRadius == BorderRadius.circular(20)) {
-            foundRoundedRegisterContainer = true;
-            break;
-          }
-        }
-      }
-
-      expect(foundRoundedRegisterContainer, true,
-          reason: 'RegisterScreen inputs should have rounded styling');
-    });
-
-    testWidgets('TC-VISUAL-05: Input field colors match design (dark grey bg, brown accent focus)',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: LoginScreen(),
-        ),
-      );
-
-      // Verify AnimatedContainer colors
-      final animatedContainers = find.byType(AnimatedContainer);
-      var foundColorMatch = false;
-
-      for (var container in animatedContainers.evaluate()) {
-        final widget = container.widget as AnimatedContainer;
-        if (widget.decoration is BoxDecoration) {
-          final decoration = widget.decoration as BoxDecoration;
-          // Verify color is kDarkGrey
-          if (decoration.color == kDarkGrey) {
-            // Also check border radius
+        // Check first AnimatedContainer for register screen
+        var foundRoundedRegisterContainer = false;
+        for (var container in animatedContainers.evaluate()) {
+          final widget = container.widget as AnimatedContainer;
+          if (widget.decoration is BoxDecoration) {
+            final decoration = widget.decoration as BoxDecoration;
             if (decoration.borderRadius == BorderRadius.circular(20)) {
-              foundColorMatch = true;
+              foundRoundedRegisterContainer = true;
               break;
             }
           }
         }
-      }
 
-      expect(foundColorMatch, true,
-          reason: 'Input fields should have dark grey background');
-    });
+        expect(
+          foundRoundedRegisterContainer,
+          true,
+          reason: 'RegisterScreen inputs should have rounded styling',
+        );
+      },
+    );
 
-    testWidgets('TC-VISUAL-06: Focused border uses brown accent color',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: LoginScreen(),
-        ),
-      );
+    testWidgets(
+      'TC-VISUAL-05: Input field colors match design (dark grey bg, brown accent focus)',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+
+        // Verify AnimatedContainer colors
+        final animatedContainers = find.byType(AnimatedContainer);
+        var foundColorMatch = false;
+
+        for (var container in animatedContainers.evaluate()) {
+          final widget = container.widget as AnimatedContainer;
+          if (widget.decoration is BoxDecoration) {
+            final decoration = widget.decoration as BoxDecoration;
+            // Verify color is kDarkGrey
+            if (decoration.color == kDarkGrey) {
+              // Also check border radius
+              if (decoration.borderRadius == BorderRadius.circular(20)) {
+                foundColorMatch = true;
+                break;
+              }
+            }
+          }
+        }
+
+        expect(
+          foundColorMatch,
+          true,
+          reason: 'Input fields should have dark grey background',
+        );
+      },
+    );
+
+    testWidgets('TC-VISUAL-06: Focused border uses brown accent color', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
       // Find and focus email field
       final emailField = find.byType(TextField).first;
@@ -178,13 +173,10 @@ void main() {
       }
     });
 
-    testWidgets('TC-VISUAL-07: Hint text color is subtle (gray)',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: LoginScreen(),
-        ),
-      );
+    testWidgets('TC-VISUAL-07: Hint text color is subtle (gray)', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
       // Find email field
       final emailField = find.byType(TextField).first;

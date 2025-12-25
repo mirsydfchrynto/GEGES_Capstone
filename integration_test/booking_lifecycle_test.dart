@@ -6,7 +6,9 @@ import 'package:geges_smartbarber/services/queue_service.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('integration: booking -> immediate pay -> admin confirm flow', (WidgetTester tester) async {
+  testWidgets('integration: booking -> immediate pay -> admin confirm flow', (
+    WidgetTester tester,
+  ) async {
     final fakeFs = FakeFirebaseFirestore();
     final svc = QueueService(firestore: fakeFs);
 
@@ -20,7 +22,11 @@ void main() {
     });
 
     // 2) Customer submits payment proof
-    await svc.submitPaymentProofForQueue(queueId: qRef.id, userId: 'cust_integ', base64Proof: 'proofdata');
+    await svc.submitPaymentProofForQueue(
+      queueId: qRef.id,
+      userId: 'cust_integ',
+      base64Proof: 'proofdata',
+    );
 
     var after = await fakeFs.collection('queues').doc(qRef.id).get();
     var data = after.data()!;

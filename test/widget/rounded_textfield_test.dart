@@ -4,7 +4,9 @@ import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/screens/register_screen.dart';
 
 void main() {
-  testWidgets('Login TextField uses rounded focused border (radius 20)', (WidgetTester tester) async {
+  testWidgets('Login TextField uses rounded focused border (radius 20)', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(MaterialApp(home: LoginScreen()));
 
     final emailFinder = find.byType(TextField).first;
@@ -18,7 +20,9 @@ void main() {
     expect(obr.borderRadius, BorderRadius.circular(20));
   });
 
-  testWidgets('Register TextField uses rounded focused border (radius 20)', (WidgetTester tester) async {
+  testWidgets('Register TextField uses rounded focused border (radius 20)', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(MaterialApp(home: RegisterScreen()));
 
     final nameFinder = find.byKey(const Key('register_name'));

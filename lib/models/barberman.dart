@@ -4,7 +4,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Enum hari dalam seminggu
-enum DayOfWeek { monday, tuesday, wednesday, thursday, friday, saturday, sunday }
+enum DayOfWeek {
+  monday,
+  tuesday,
+  wednesday,
+  thursday,
+  friday,
+  saturday,
+  sunday,
+}
 
 // Enum tipe cuti
 enum LeaveType { weeklyOff, annual, sick, personal, other }
@@ -20,20 +28,20 @@ enum LeaveType { weeklyOff, annual, sick, personal, other }
 // - rating penting untuk rekomendasi barber terbaik
 class Barberman {
   // penjelasan property:
-  final String id;                  // id unik barber (dari firebase)
-  final String name;                // nama barber (contoh: "andi")
-  final String barbershopId;        // id barbershop tempat barber bekerja
-  final String? imageUrl;           // url foto barber (nullable, bisa tidak ada)
-  final double avgDuration;         // rata-rata durasi potong (menit)
-  final double rating;              // rating barber (0.0 - 5.0)
-  final bool isActive;              // apakah barber sedang aktif/bisa dipesan
-  final List<DayOfWeek>? offDays;   // hari libur mingguan
-  final int annualLeaveDays;        // sisa cuti tahunan
-  final bool onLeave;               // sedang cuti atau tidak
+  final String id; // id unik barber (dari firebase)
+  final String name; // nama barber (contoh: "andi")
+  final String barbershopId; // id barbershop tempat barber bekerja
+  final String? imageUrl; // url foto barber (nullable, bisa tidak ada)
+  final double avgDuration; // rata-rata durasi potong (menit)
+  final double rating; // rating barber (0.0 - 5.0)
+  final bool isActive; // apakah barber sedang aktif/bisa dipesan
+  final List<DayOfWeek>? offDays; // hari libur mingguan
+  final int annualLeaveDays; // sisa cuti tahunan
+  final bool onLeave; // sedang cuti atau tidak
 
-// Enum hari dalam seminggu
+  // Enum hari dalam seminggu
 
-// Enum tipe cuti
+  // Enum tipe cuti
   // penjelasan constructor:
   // - imageurl nullable (boleh null)
   // - sisanya required (harus diberikan)
@@ -56,7 +64,8 @@ class Barberman {
   factory Barberman.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
 
-    final avgDur = (data['avg_duration'] as num?)?.toDouble() ??
+    final avgDur =
+        (data['avg_duration'] as num?)?.toDouble() ??
         (data['avgDuration'] as num?)?.toDouble() ??
         30.0;
 
@@ -64,17 +73,22 @@ class Barberman {
     List<DayOfWeek>? offDays;
     if (data['offDays'] != null && data['offDays'] is List) {
       offDays = (data['offDays'] as List)
-          .map((e) => DayOfWeek.values.firstWhere(
-                (d) => d.name == e,
-                orElse: () => DayOfWeek.monday,
-              ))
+          .map(
+            (e) => DayOfWeek.values.firstWhere(
+              (d) => d.name == e,
+              orElse: () => DayOfWeek.monday,
+            ),
+          )
           .toList();
     }
 
     return Barberman(
       id: doc.id,
       name: (data['name'] as String?)?.trim() ?? 'Barberman Tidak Dikenal',
-      barbershopId: data['barbershop_id'] as String? ?? data['barbershopId'] as String? ?? '',
+      barbershopId:
+          data['barbershop_id'] as String? ??
+          data['barbershopId'] as String? ??
+          '',
       imageUrl: data['imageUrl'] as String?,
       avgDuration: avgDur,
       rating: (data['rating'] as num?)?.toDouble() ?? 5.0,
@@ -95,6 +109,10 @@ class Barberman {
       'avg_duration': avgDuration,
       'rating': rating,
       'isActive': isActive,
+      // Serialize offDays as list of string names
+      if (offDays != null) 'offDays': offDays!.map((d) => d.name).toList(),
+      'annualLeaveDays': annualLeaveDays,
+      'onLeave': onLeave,
     };
   }
 }

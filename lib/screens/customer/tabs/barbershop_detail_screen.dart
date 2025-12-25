@@ -15,7 +15,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 // ------------------
 
-
 class BarbershopDetailScreen extends StatefulWidget {
   final Barbershop barbershop;
   const BarbershopDetailScreen({super.key, required this.barbershop});
@@ -92,8 +91,9 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
       final userDoc = await _firestore.collection('users').doc(_userId).get();
       if (userDoc.exists) {
         // Asumsi Anda menyimpan favorit dalam array 'favoriteBarbershops'
-        final favorites =
-            List<String>.from(userDoc.data()?['favoriteBarbershops'] ?? []);
+        final favorites = List<String>.from(
+          userDoc.data()?['favoriteBarbershops'] ?? [],
+        );
         if (mounted) {
           setState(() {
             _isFavorite = favorites.contains(widget.barbershop.id);
@@ -133,26 +133,31 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
       if (_isFavorite) {
         // Hapus dari favorit
         await docRef.update({
-          'favoriteBarbershops':
-              FieldValue.arrayRemove([widget.barbershop.id])
+          'favoriteBarbershops': FieldValue.arrayRemove([widget.barbershop.id]),
         });
         if (mounted) setState(() => _isFavorite = false);
         _showSnackbar('Dihapus dari favorit', Colors.grey);
       } else {
         // Tambah ke favorit
         await docRef.update({
-          'favoriteBarbershops': FieldValue.arrayUnion([widget.barbershop.id])
+          'favoriteBarbershops': FieldValue.arrayUnion([widget.barbershop.id]),
         });
-        if (mounted) setState(() => _isFavorite = true);
+        if (mounted) {
+          setState(() => _isFavorite = true);
+        }
         _showSnackbar('Ditambahkan ke favorit', kBrownAccent);
       }
     } catch (e) {
       debugPrint("Error toggling favorite: $e");
       _showSnackbar('Gagal mengubah favorit', Colors.redAccent);
       // Opsional: Balikkan state jika gagal
-      if (mounted) setState(() => _isFavorite = !_isFavorite);
+      if (mounted) {
+        setState(() => _isFavorite = !_isFavorite);
+      }
     } finally {
-      if (mounted) setState(() => _isLoadingFavorite = false); // Selesai loading
+      if (mounted) {
+        setState(() => _isLoadingFavorite = false); // Selesai loading
+      }
     }
   }
 
@@ -179,8 +184,8 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (context) =>
-              AppointmentScreen(barbershop: widget.barbershop)),
+        builder: (context) => AppointmentScreen(barbershop: widget.barbershop),
+      ),
     );
   }
 
@@ -209,16 +214,18 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
                         // Tampilkan loading kecil
                         padding: EdgeInsets.all(18.0),
                         child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2)),
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        ),
                       )
                     : IconButton(
                         icon: Icon(
                           _isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color:
-                              _isFavorite ? Colors.redAccent : Colors.white,
+                          color: _isFavorite ? Colors.redAccent : Colors.white,
                         ),
                         onPressed: _toggleFavorite, // Panggil fungsi toggle
                       ),
@@ -236,8 +243,11 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
                   errorWidget: (context, url, error) => Container(
                     color: kDarkGrey,
                     child: const Center(
-                      child: Icon(Icons.broken_image,
-                          color: kBrownAccent, size: 50),
+                      child: Icon(
+                        Icons.broken_image,
+                        color: kBrownAccent,
+                        size: 50,
+                      ),
                     ),
                   ),
                 ),
@@ -282,9 +292,10 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0)
           .copyWith(
-              bottom: MediaQuery.of(context).padding.bottom +
-                  16.0 // Padding aman area bawah HP
-              ),
+            bottom:
+                MediaQuery.of(context).padding.bottom +
+                16.0, // Padding aman area bawah HP
+          ),
       decoration: const BoxDecoration(
         color: kDarkGrey,
         border: Border(top: BorderSide(color: Colors.white12, width: 1)),
@@ -301,9 +312,10 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
                 Text(
                   widget.barbershop.name,
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
@@ -316,24 +328,24 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
                       _isLoadingReviews
                           ? "${widget.barbershop.rating} (Loading...)"
                           : "${widget.barbershop.rating} ($_reviewCount Reviews)",
-                      style:
-                          const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
                     // ---------------------------------
                   ],
-                )
+                ),
               ],
             ),
           ),
-          
-          const SizedBox(width: 16), // Beri jarak
 
+          const SizedBox(width: 16), // Beri jarak
           // Tombol Kanan
           ElevatedButton(
             onPressed: _goToAppointment, // Navigasi ke Halaman Booking
             style: ElevatedButton.styleFrom(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
             ),
             child: const Text('Book Now'),
           ),

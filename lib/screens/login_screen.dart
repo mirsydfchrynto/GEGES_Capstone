@@ -22,7 +22,12 @@ class LoginScreen extends StatefulWidget {
   final AuthServiceBase? authService;
   final WidgetBuilder? homeBuilder;
   final WidgetBuilder? adminBuilder;
-  const LoginScreen({super.key, this.authService, this.homeBuilder, this.adminBuilder});
+  const LoginScreen({
+    super.key,
+    this.authService,
+    this.homeBuilder,
+    this.adminBuilder,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -35,11 +40,11 @@ class _LoginScreenState extends State<LoginScreen> {
   // - _passwordController untuk menangkap input password
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
+
   // Focus nodes for inputs (used to animate focused state)
   late final FocusNode _emailFocusNode;
   late final FocusNode _passwordFocusNode;
-  
+
   // penjelasan authservice:
   // - authservice adalah service yang menangani semua operasi autentikasi (login, register, google sign-in)
   // - sudah diimplementasikan di lib/services/auth_service.dart
@@ -51,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // - _obscurePassword: flag untuk menyembunyikan/menampilkan password (tombol mata)
   String _errorMessage = '';
   bool _isLoading = false;
-  bool _obscurePassword = true;
+  final bool _obscurePassword = true;
 
   // penjelasan warna tema:
   // - kBrownAccent: warna coklat utama dari design system
@@ -136,21 +141,24 @@ class _LoginScreenState extends State<LoginScreen> {
     // - jika customer, navigasi ke HomeScreen
     // - jika admin_owner, navigasi ke AdminDashboardScreen
     // - pushReplacement() berarti ganti layar ini dengan layar baru (jadi tidak bisa kembali ke login)
-    
+
     Widget targetScreen;
     if (role == 'customer') {
       targetScreen = widget.homeBuilder?.call(context) ?? const HomeScreen();
     } else if (role == 'admin_owner' || role == 'owner' || role == 'admin') {
       // Accept commonly used admin role variants in DB (admin_owner, owner, admin)
-      targetScreen = widget.adminBuilder?.call(context) ?? const AdminDashboardScreen();
+      targetScreen =
+          widget.adminBuilder?.call(context) ?? const AdminDashboardScreen();
     } else {
-      setState(() => _errorMessage = 'Role pengguna tidak valid: ${role ?? '<null>'}');
+      setState(
+        () => _errorMessage = 'Role pengguna tidak valid: ${role ?? '<null>'}',
+      );
       return;
     }
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => targetScreen),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (context) => targetScreen));
   }
 
   // ========================================
@@ -161,11 +169,12 @@ class _LoginScreenState extends State<LoginScreen> {
     // - fungsi ini dipanggil saat user tekan tombol "sign up"
     // - navigasi ke RegisterScreen dengan transisi 0 (instant, tidak ada animasi)
     // - kosongkan error message
-    
+
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation1, animation2) => const RegisterScreen(),
+        pageBuilder: (context, animation1, animation2) =>
+            const RegisterScreen(),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
@@ -181,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // - fungsi ini dipanggil saat user tekan "forgot password?"
     // - jika email field kosong, tanya email melalui dialog
     // - kirim link reset password ke email melalui firebase
-    
+
     final email = _emailController.text.trim();
 
     // penjelasan kondisi:
@@ -191,7 +200,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (email.isEmpty) {
       final typed = await _askForEmailDialog();
       if (typed == null || typed.trim().isEmpty) {
-  _showSnackbar('masukkan email untuk menerima link reset.', const Color(0xFFD32F2F));
+        _showSnackbar(
+          'masukkan email untuk menerima link reset.',
+          const Color(0xFFD32F2F),
+        );
         return;
       }
       await _sendResetEmail(typed.trim());
@@ -214,14 +226,20 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
 
       if (res['success'] == true) {
-        _showSnackbar('link reset password telah dikirim ke $email.', kBrownAccent);
+        _showSnackbar(
+          'link reset password telah dikirim ke $email.',
+          kBrownAccent,
+        );
       } else {
-  _showSnackbar(res['message'] ?? 'gagal mengirim link reset password.', const Color(0xFFD32F2F));
+        _showSnackbar(
+          res['message'] ?? 'gagal mengirim link reset password.',
+          const Color(0xFFD32F2F),
+        );
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-  _showSnackbar('terjadi kesalahan: $e', const Color(0xFFD32F2F));
+      _showSnackbar('terjadi kesalahan: $e', const Color(0xFFD32F2F));
     }
   }
 
@@ -234,7 +252,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // - panggil _authService.signInWithGoogle() untuk authenticate dengan google
     // - jika sukses, navigasi ke home atau admin berdasarkan role
     // - jika gagal, tampilkan error message
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -252,8 +270,13 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         final message = result['message'] ?? 'google sign-in gagal.';
         // Show a helpful snackbar and allow retry for recoverable auth errors (recaptcha/credential)
-        final isRecaptcha = message.toLowerCase().contains('recaptcha') || message.toLowerCase().contains('captcha');
-        final isCredential = message.toLowerCase().contains('credential') || message.toLowerCase().contains('oauth') || message.toLowerCase().contains('developer_error');
+        final isRecaptcha =
+            message.toLowerCase().contains('recaptcha') ||
+            message.toLowerCase().contains('captcha');
+        final isCredential =
+            message.toLowerCase().contains('credential') ||
+            message.toLowerCase().contains('oauth') ||
+            message.toLowerCase().contains('developer_error');
         _showSnackbar(message, const Color(0xFFD32F2F));
         setState(() => _errorMessage = message);
 
@@ -280,14 +303,21 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       // If error string contains recaptcha or credential hints, provide a retry
       final msg = e.toString().toLowerCase();
-      final shouldOfferRetry = msg.contains('recaptcha') || msg.contains('credential') || msg.contains('developer_error');
+      final shouldOfferRetry =
+          msg.contains('recaptcha') ||
+          msg.contains('credential') ||
+          msg.contains('developer_error');
       _showSnackbar('terjadi kesalahan: $e', const Color(0xFFD32F2F));
       if (shouldOfferRetry) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Terjadi kesalahan autentikasi: $e'),
             backgroundColor: const Color(0xFFD32F2F),
-            action: SnackBarAction(label: 'Retry', textColor: Colors.white, onPressed: _signInWithGoogle),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _signInWithGoogle,
+            ),
           ),
         );
       }
@@ -302,14 +332,17 @@ class _LoginScreenState extends State<LoginScreen> {
     // - dialog ini muncul saat user tekan "forgot password?" tanpa input email
     // - user bisa input email & tekan "kirim" atau tekan "batal"
     // - mengembalikan email yang diinput atau null jika dibatalkan
-    
+
     String typed = '';
     return showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: Colors.black,
-          title: const Text('reset password', style: TextStyle(color: Colors.white)),
+          title: const Text(
+            'reset password',
+            style: TextStyle(color: Colors.white),
+          ),
           content: TextField(
             keyboardType: TextInputType.emailAddress,
             style: const TextStyle(color: Colors.white),
@@ -322,7 +355,10 @@ class _LoginScreenState extends State<LoginScreen> {
               child: const Text('batal'),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kBrownAccent,
+                foregroundColor: Colors.black,
+              ),
               onPressed: () => Navigator.of(context).pop(typed),
               child: const Text('kirim'),
             ),
@@ -344,17 +380,30 @@ class _LoginScreenState extends State<LoginScreen> {
         content: const SingleChildScrollView(
           child: ListBody(
             children: [
-              Text('Jika Anda melihat pesan reCAPTCHA atau Developer Error, periksa langkah-langkah berikut:'),
+              Text(
+                'Jika Anda melihat pesan reCAPTCHA atau Developer Error, periksa langkah-langkah berikut:',
+              ),
               SizedBox(height: 8),
-              Text('- Pastikan SHA-1 debug/release ditambahkan ke Firebase Console'),
-              Text('- Ganti google-services.json bila diperlukan dan rebuild aplikasi'),
-              Text('- Untuk masalah reCAPTCHA, coba login dengan email/password sebagai fallback'),
-              Text('- App Check dapat diabaikan pada development atau dikonfigurasi untuk production'),
+              Text(
+                '- Pastikan SHA-1 debug/release ditambahkan ke Firebase Console',
+              ),
+              Text(
+                '- Ganti google-services.json bila diperlukan dan rebuild aplikasi',
+              ),
+              Text(
+                '- Untuk masalah reCAPTCHA, coba login dengan email/password sebagai fallback',
+              ),
+              Text(
+                '- App Check dapat diabaikan pada development atau dikonfigurasi untuk production',
+              ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup'),
+          ),
         ],
       ),
     );
@@ -368,9 +417,11 @@ class _LoginScreenState extends State<LoginScreen> {
     // - snackbar adalah notifikasi yang muncul di bawah layar
     // - mounted check untuk memastikan widget masih ada di memory
     // - backgroundColor color untuk warna snackbar (hijau sukses, merah error)
-    
+
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
   }
 
   @override
@@ -381,7 +432,10 @@ class _LoginScreenState extends State<LoginScreen> {
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 40.0,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -396,7 +450,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Text(
                   'Welcome to GEGES',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -433,7 +491,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: _forgotPassword,
-                    child: const Text('Forgot Password?', style: TextStyle(color: kBrownAccent)),
+                    child: const Text(
+                      'Forgot Password?',
+                      style: TextStyle(color: kBrownAccent),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -444,13 +505,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: const EdgeInsets.only(bottom: 16.0),
                     child: Column(
                       children: [
-                        Text(_errorMessage, style: const TextStyle(color: Color(0xFFD32F2F)), textAlign: TextAlign.center),
+                        Text(
+                          _errorMessage,
+                          style: const TextStyle(color: Color(0xFFD32F2F)),
+                          textAlign: TextAlign.center,
+                        ),
                         const SizedBox(height: 8),
                         // Offer a Troubleshoot button for auth-specific errors
-                        if (_errorMessage.toLowerCase().contains('recaptcha') || _errorMessage.toLowerCase().contains('sha') || _errorMessage.toLowerCase().contains('developer_error'))
+                        if (_errorMessage.toLowerCase().contains('recaptcha') ||
+                            _errorMessage.toLowerCase().contains('sha') ||
+                            _errorMessage.toLowerCase().contains(
+                              'developer_error',
+                            ))
                           TextButton(
                             onPressed: () => _showAuthTroubleshootDialog(),
-                            child: const Text('Troubleshoot Sign-in', style: TextStyle(color: kBrownAccent)),
+                            child: const Text(
+                              'Troubleshoot Sign-in',
+                              style: TextStyle(color: kBrownAccent),
+                            ),
                           ),
                       ],
                     ),
@@ -460,11 +532,22 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   height: 55,
                   child: _isLoading
-                      ? const Center(child: CircularProgressIndicator(color: kBrownAccent))
+                      ? const Center(
+                          child: CircularProgressIndicator(color: kBrownAccent),
+                        )
                       : ElevatedButton(
                           onPressed: _login,
-                          style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black),
-                          child: const Text('Sign In', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kBrownAccent,
+                            foregroundColor: Colors.black,
+                          ),
+                          child: const Text(
+                            'Sign In',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                 ),
                 const SizedBox(height: 32),
@@ -475,7 +558,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     Expanded(child: Divider(color: Colors.grey.shade800)),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Text('or', style: TextStyle(color: Colors.white70)),
+                      child: Text(
+                        'or',
+                        style: TextStyle(color: Colors.white70),
+                      ),
                     ),
                     Expanded(child: Divider(color: Colors.grey.shade800)),
                   ],
@@ -486,15 +572,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   height: 55,
                   child: _isLoading
-                      ? const Center(child: CircularProgressIndicator(color: kBrownAccent))
+                      ? const Center(
+                          child: CircularProgressIndicator(color: kBrownAccent),
+                        )
                       : ElevatedButton.icon(
                           onPressed: _signInWithGoogle,
                           icon: Image.asset(
                             'assets/images/google.png',
                             height: 24,
-                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.android, color: Colors.white, size: 24),
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  Icons.android,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
                           ),
-                          label: const Text('Continue with Google', style: TextStyle(fontSize: 16)),
+                          label: const Text(
+                            'Continue with Google',
+                            style: TextStyle(fontSize: 16),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: kDarkGrey,
                             foregroundColor: Colors.white,
@@ -516,14 +612,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       const TextSpan(text: 'By continuing, you agree to our\n'),
                       TextSpan(
                         text: 'Term of Services',
-                        style: const TextStyle(color: kBrownAccent, decoration: TextDecoration.underline),
-                        recognizer: TapGestureRecognizer()..onTap = () { /* TODO open link */ },
+                        style: const TextStyle(
+                          color: kBrownAccent,
+                          decoration: TextDecoration.underline,
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () {
+                            /* TODO open link */
+                          },
                       ),
                       const TextSpan(text: ' and '),
                       TextSpan(
                         text: 'Privacy Policy',
-                        style: const TextStyle(color: kBrownAccent, decoration: TextDecoration.underline),
-                        recognizer: TapGestureRecognizer()..onTap = () { /* TODO open link */ },
+                        style: const TextStyle(
+                          color: kBrownAccent,
+                          decoration: TextDecoration.underline,
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () {
+                            /* TODO open link */
+                          },
                       ),
                     ],
                   ),
@@ -539,15 +647,21 @@ class _LoginScreenState extends State<LoginScreen> {
   // ========================================
   // custom widget: tab untuk login/signup
   // ========================================
-  Widget _buildAuthTabs({required bool isLogin, required VoidCallback onSignUpTap}) {
+  Widget _buildAuthTabs({
+    required bool isLogin,
+    required VoidCallback onSignUpTap,
+  }) {
     // penjelasan:
     // - widget ini menampilkan 2 tab: "log in" dan "sign up"
     // - tab yang aktif memiliki background coklat
     // - tab yang tidak aktif transparan
     // - ontap callback dipanggil saat user tekan tab
-    
+
     return Container(
-      decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: kDarkGrey,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
           // penjelasan tab login:
@@ -557,8 +671,19 @@ class _LoginScreenState extends State<LoginScreen> {
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(color: kBrownAccent, borderRadius: BorderRadius.circular(12)),
-              child: const Text('Log in', textAlign: TextAlign.center, style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
+              decoration: BoxDecoration(
+                color: kBrownAccent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Log in',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ),
           ),
           // penjelasan tab signup:
@@ -570,8 +695,19 @@ class _LoginScreenState extends State<LoginScreen> {
               onTap: onSignUpTap,
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(color: Colors.transparent, borderRadius: BorderRadius.circular(12)),
-                child: const Text('Sign Up', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Sign Up',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
               ),
             ),
           ),
@@ -606,7 +742,13 @@ class _LoginScreenState extends State<LoginScreen> {
         color: kDarkGrey,
         borderRadius: BorderRadius.circular(20),
         boxShadow: (node != null && node.hasFocus)
-            ? [BoxShadow(color: kBrownAccent.withValues(alpha: 0.12), blurRadius: 8, spreadRadius: 1)]
+            ? [
+                BoxShadow(
+                  color: kBrownAccent.withValues(alpha: 0.12),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ]
             : null,
       ),
       child: TextField(

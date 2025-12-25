@@ -53,7 +53,11 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
 
   // Formatters
   final DateFormat _dtLabel = DateFormat('dd MMM yyyy, HH:mm', 'id_ID');
-  final NumberFormat _currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  final NumberFormat _currency = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
 
   @override
   void initState() {
@@ -66,19 +70,30 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
     try {
       // 1) fetch current admin user data (if exists)
       if (_currentUserData != null) {
-  final currentUid = FirebaseAuth.instance.currentUser?.uid;
-  if (currentUid != null) {
-    // cari barber dengan UID yang sama seperti akun login
-    final maybe = _barbermen.firstWhere(
-      (b) => b.id == currentUid,
-      orElse: () => _barbermen.isNotEmpty ? _barbermen.first : Barberman(id: '', name: '', barbershopId: '', avgDuration: 0.0, rating: 0.0, isActive: true),
-    );
-    _selectedBarberman = maybe.id.isNotEmpty ? maybe : null;
-  }
-}
+        final currentUid = FirebaseAuth.instance.currentUser?.uid;
+        if (currentUid != null) {
+          // cari barber dengan UID yang sama seperti akun login
+          final maybe = _barbermen.firstWhere(
+            (b) => b.id == currentUid,
+            orElse: () => _barbermen.isNotEmpty
+                ? _barbermen.first
+                : Barberman(
+                    id: '',
+                    name: '',
+                    barbershopId: '',
+                    avgDuration: 0.0,
+                    rating: 0.0,
+                    isActive: true,
+                  ),
+          );
+          _selectedBarberman = maybe.id.isNotEmpty ? maybe : null;
+        }
+      }
 
       // 2) fetch barbermen for this barbershop
-      _barbermen = await _barbershopService.getBarbermenByShop(widget.barbershop.id);
+      _barbermen = await _barbershopService.getBarbermenByShop(
+        widget.barbershop.id,
+      );
 
       // 3) fetch services for this barbershop (by service IDs list inside barbershop)
       final allServices = await _barbershopService.getAllServices();
@@ -88,7 +103,9 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
         // If barbershop.services empty, show all services as fallback
         _services = allServices;
       } else {
-        _services = allServices.where((s) => shopServiceIds.contains(s.id)).toList();
+        _services = allServices
+            .where((s) => shopServiceIds.contains(s.id))
+            .toList();
       }
 
       // 4) Auto select barberman if current user is linked to a barberman (user.barbershopId could be used)
@@ -97,8 +114,17 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
         final currentUid = FirebaseAuth.instance.currentUser?.uid;
         if (currentUid != null) {
           final maybe = _barbermen.firstWhere(
-            (b) => b.id == currentUid || b.id == (_currentUserData?.barbershopId ?? ''),
-            orElse: () => Barberman(id: '', name: '', barbershopId: '', avgDuration: 0.0, rating: 0.0, isActive: true),
+            (b) =>
+                b.id == currentUid ||
+                b.id == (_currentUserData?.barbershopId ?? ''),
+            orElse: () => Barberman(
+              id: '',
+              name: '',
+              barbershopId: '',
+              avgDuration: 0.0,
+              rating: 0.0,
+              isActive: true,
+            ),
           );
           if (maybe.id.isNotEmpty) {
             _selectedBarberman = maybe;
@@ -111,7 +137,7 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
 
       // ensure barbermen list only active ones
       _barbermen = _barbermen.where((b) => b.isActive).toList();
-    }catch (e, st) {
+    } catch (e, st) {
       debugPrint('Error initializing AddManualBookingScreen: $e\n$st');
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -141,9 +167,9 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
       firstDate: now,
       lastDate: now.add(const Duration(days: 30)),
       builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.dark(primary: kBrownAccent),
-        ),
+        data: Theme.of(
+          context,
+        ).copyWith(colorScheme: const ColorScheme.dark(primary: kBrownAccent)),
         child: child!,
       ),
     );
@@ -154,16 +180,22 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
       context: context,
       initialTime: TimeOfDay.fromDateTime(now.add(const Duration(minutes: 15))),
       builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.dark(primary: kBrownAccent),
-        ),
+        data: Theme.of(
+          context,
+        ).copyWith(colorScheme: const ColorScheme.dark(primary: kBrownAccent)),
         child: child!,
       ),
     );
     if (!mounted) return;
     if (pickedTime == null) return;
 
-    final dt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+    final dt = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
 
     final err = _validateDateTime(dt);
     if (err != null) {
@@ -180,7 +212,17 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
   int get _totalPrice {
     int total = 0;
     for (final id in _selectedServiceIds) {
-      final s = _services.firstWhere((e) => e.id == id, orElse: () => Service(id: '', name: '', description: '', price: 0.0, defaultDuration: 30, isActive: true));
+      final s = _services.firstWhere(
+        (e) => e.id == id,
+        orElse: () => Service(
+          id: '',
+          name: '',
+          description: '',
+          price: 0.0,
+          defaultDuration: 30,
+          isActive: true,
+        ),
+      );
       total += s.price.toInt();
     }
     return total;
@@ -189,7 +231,17 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
   int get _totalDuration {
     int total = 0;
     for (final id in _selectedServiceIds) {
-      final s = _services.firstWhere((e) => e.id == id, orElse: () => Service(id: '', name: '', description: '', price: 0.0, defaultDuration: 30, isActive: true));
+      final s = _services.firstWhere(
+        (e) => e.id == id,
+        orElse: () => Service(
+          id: '',
+          name: '',
+          description: '',
+          price: 0.0,
+          defaultDuration: 30,
+          isActive: true,
+        ),
+      );
       total += s.defaultDuration;
     }
     return total;
@@ -204,15 +256,21 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
     }
 
     if (_selectedServiceIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih minimal 1 layanan')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Pilih minimal 1 layanan')));
       return;
     }
     if (_selectedBarberman == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih barberman')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Pilih barberman')));
       return;
     }
     if (_selectedDateTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih tanggal & waktu')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Pilih tanggal & waktu')));
       return;
     }
 
@@ -220,7 +278,8 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
 
     try {
       // create a synthetic customer id for manual booking (unique per manual booking)
-      final manualCustomerId = 'manual_${DateTime.now().millisecondsSinceEpoch}';
+      final manualCustomerId =
+          'manual_${DateTime.now().millisecondsSinceEpoch}';
 
       // Validate slot availability before saving
       final slotOk = await QueueService().isSlotAvailable(
@@ -232,7 +291,12 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
 
       if (!slotOk) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Slot tidak tersedia — bentrok dengan booking lain'), backgroundColor: Colors.orangeAccent));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Slot tidak tersedia — bentrok dengan booking lain'),
+            backgroundColor: Colors.orangeAccent,
+          ),
+        );
         return;
       }
 
@@ -256,18 +320,32 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
       };
 
       if (mounted) {
-        setState(() { _saving = true; });
+        setState(() {
+          _saving = true;
+        });
       }
       await QueueService().createQueue(payload);
       if (mounted) {
-        setState(() { _saving = false; });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking manual berhasil disimpan'), backgroundColor: Colors.green));
+        setState(() {
+          _saving = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Booking manual berhasil disimpan'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.of(context).pop();
       }
     } catch (e) {
       debugPrint('Error creating manual booking: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal membuat booking manual: ${e.toString()}'), backgroundColor: Colors.redAccent));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal membuat booking manual: ${e.toString()}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
@@ -296,9 +374,13 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
         padding: const EdgeInsets.all(12),
         margin: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? const Color.fromRGBO(195,164,123,0.14) : const Color(0xFF161616),
+          color: selected
+              ? const Color.fromRGBO(195, 164, 123, 0.14)
+              : const Color(0xFF161616),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: selected ? kBrownAccent : Colors.grey.shade800),
+          border: Border.all(
+            color: selected ? kBrownAccent : Colors.grey.shade800,
+          ),
         ),
         child: Row(
           children: [
@@ -317,12 +399,23 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
               checkColor: Colors.black,
             ),
             const SizedBox(width: 8),
-            Expanded(child: Text(s.name, style: const TextStyle(color: Colors.white))),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(_currency.format(s.price), style: const TextStyle(color: Colors.white70)),
-              const SizedBox(height: 4),
-              Text('${s.defaultDuration} m', style: const TextStyle(color: Colors.white38, fontSize: 12)),
-            ])
+            Expanded(
+              child: Text(s.name, style: const TextStyle(color: Colors.white)),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _currency.format(s.price),
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${s.defaultDuration} m',
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -336,7 +429,10 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
       backgroundColor: kDarkSurface,
       appBar: AppBar(
         backgroundColor: kBrownAccent,
-        title: const Text('Add Manual Booking', style: TextStyle(color: Colors.black)),
+        title: const Text(
+          'Add Manual Booking',
+          style: TextStyle(color: Colors.black),
+        ),
         centerTitle: false,
       ),
       body: _loading
@@ -344,232 +440,475 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
           : SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const SizedBox(height: 8),
-                  const Text('Untuk pelanggan walk-in yang datang langsung ke barbershop', style: TextStyle(color: Colors.white70)),
-                  const SizedBox(height: 12),
-
-                  // Info Card
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: const Color(0xFF1A1A1A), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color.fromRGBO(195,164,123,0.18))),
-                    child: Row(children: const [
-                      Icon(Icons.check_circle_outline, color: Color(0xFFC3A47B)),
-                      SizedBox(width: 10),
-                      Expanded(child: Text('Booking manual akan langsung masuk ke antrean tanpa perlu konfirmasi pembayaran.', style: TextStyle(color: Colors.white70))),
-                    ]),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // Data Pelanggan
-                  Card(
-                    color: const Color(0xFF1B1B1B),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Row(children: const [Icon(Icons.person, color: kBrownAccent), SizedBox(width: 8), Text('Data Pelanggan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]),
-                        const SizedBox(height: 10),
-                        TextFormField(
-                          controller: _nameCtrl,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: 'Nama lengkap pelanggan',
-                            hintStyle: const TextStyle(color: Colors.white24),
-                            filled: true,
-                            fillColor: const Color(0xFF121212),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                          ),
-                          validator: (v) => v == null || v.trim().isEmpty ? 'Nama wajib diisi' : null,
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _phoneCtrl,
-                          style: const TextStyle(color: Colors.white),
-                          keyboardType: TextInputType.phone,
-                          decoration: InputDecoration(
-                            hintText: '08xxxxxxxxxx (opsional)',
-                            hintStyle: const TextStyle(color: Colors.white24),
-                            filled: true,
-                            fillColor: const Color(0xFF121212),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                          ),
-                        ),
-                      ]),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Untuk pelanggan walk-in yang datang langsung ke barbershop',
+                      style: TextStyle(color: Colors.white70),
                     ),
-                  ),
+                    const SizedBox(height: 12),
 
-                  const SizedBox(height: 18),
-
-                  // Pilih Barberman (either auto-selected or pick from list)
-                  Card(
-                    color: const Color(0xFF1B1B1B),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
+                    // Info Card
+                    Container(
                       padding: const EdgeInsets.all(14),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Row(children: const [Icon(Icons.person_search, color: kBrownAccent), SizedBox(width: 8), Text('Pilih Barberman', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]),
-                        const SizedBox(height: 10),
-                        if (_currentUserData != null && _selectedBarberman != null && _barbermen.any((b) => b.id == _selectedBarberman!.id))
-                          // auto-selected barber if current user is a barber
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(color: const Color(0xFF151515), borderRadius: BorderRadius.circular(8)),
-                            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                              Text(_selectedBarberman!.name, style: const TextStyle(color: Colors.white)),
-                              Text('~${_selectedBarberman!.avgDuration.toInt()} menit', style: const TextStyle(color: Colors.white70)),
-                            ]),
-                          )
-                        else
-                          Column(
-                            children: _barbermen.map((b) {
-                              final selected = _selectedBarberman?.id == b.id;
-                              return InkWell(
-                                onTap: () => setState(() => _selectedBarberman = b),
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(vertical: 6),
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: selected ? const Color.fromRGBO(195,164,123,0.13) : const Color(0xFF151515),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: selected ? kBrownAccent : Colors.grey.shade800),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1A1A),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color.fromRGBO(195, 164, 123, 0.18),
+                        ),
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(
+                            Icons.check_circle_outline,
+                            color: Color(0xFFC3A47B),
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Booking manual akan langsung masuk ke antrean tanpa perlu konfirmasi pembayaran.',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // Data Pelanggan
+                    Card(
+                      color: const Color(0xFF1B1B1B),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(Icons.person, color: kBrownAccent),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Data Pelanggan',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                                    Text(b.name, style: const TextStyle(color: Colors.white)),
-                                    Text('~${b.avgDuration.toInt()} m', style: const TextStyle(color: Colors.white70)),
-                                  ]),
                                 ),
-                              );
-                            }).toList(),
-                          ),
-                      ]),
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // Pilih Layanan
-                  Card(
-                    color: const Color(0xFF1B1B1B),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Row(children: const [Icon(Icons.content_cut, color: kBrownAccent), SizedBox(width: 8), Text('Pilih Layanan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]),
-                        const SizedBox(height: 10),
-                        if (_services.isEmpty)
-                          const Text('Belum ada layanan untuk barbershop ini', style: TextStyle(color: Colors.white54))
-                        else
-                          Column(children: _services.map((s) => _buildServiceTile(s)).toList()),
-                      ]),
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // Date & Time
-                  Card(
-                    color: const Color(0xFF1B1B1B),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Row(children: const [Icon(Icons.access_time, color: kBrownAccent), SizedBox(width: 8), Text('Tanggal & Waktu', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]),
-                        const SizedBox(height: 10),
-                        GestureDetector(
-                          onTap: _pickDateTime,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                            decoration: BoxDecoration(color: const Color(0xFF151515), borderRadius: BorderRadius.circular(8)),
-                            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                              Text(
-                                _selectedDateTime == null ? 'Pilih tanggal & waktu' : _dtLabel.format(_selectedDateTime!),
-                                style: const TextStyle(color: Colors.white70),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            TextFormField(
+                              controller: _nameCtrl,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: 'Nama lengkap pelanggan',
+                                hintStyle: const TextStyle(
+                                  color: Colors.white24,
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFF121212),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
+                                ),
                               ),
-                              const Icon(Icons.calendar_today, color: kBrownAccent),
-                            ]),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        if (_totalDuration > 0)
-                          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                            Text('Estimasi durasi', style: const TextStyle(color: Colors.white70)),
-                            Text('~$_totalDuration menit', style: const TextStyle(color: Colors.white)),
-                          ]),
-                      ]),
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // Notes
-                  TextFormField(
-                    controller: _notesCtrl,
-                    maxLines: 2,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Catatan (opsional)',
-                      hintStyle: const TextStyle(color: Colors.white24),
-                      filled: true,
-                      fillColor: const Color(0xFF151515),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // Total & Buttons
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: const Color(0xFF171717), borderRadius: BorderRadius.circular(12)),
-                    child: Column(children: [
-                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                        Row(children: const [Icon(Icons.attach_money, color: Colors.greenAccent), SizedBox(width: 8), Text('Total Pembayaran', style: TextStyle(color: Colors.white70))]),
-                        Text(totalLabel, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                      ]),
-                      const SizedBox(height: 12),
-                      Row(children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              // reset
-                              setState(() {
-                                _nameCtrl.clear();
-                                _phoneCtrl.clear();
-                                _notesCtrl.clear();
-                                _selectedServiceIds.clear();
-                                _selectedBarberman = null;
-                                _selectedDateTime = null;
-                              });
-                            },
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: Colors.grey.shade700),
-                              backgroundColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              validator: (v) => v == null || v.trim().isEmpty
+                                  ? 'Nama wajib diisi'
+                                  : null,
                             ),
-                            child: const Text('Reset Form', style: TextStyle(color: Colors.white70)),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _saving ? null : _onSubmit,
-                            icon: const Icon(Icons.add),
-                            label: _saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)) : const Text('booking', style: TextStyle(color: Colors.black)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: kBrownAccent,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _phoneCtrl,
+                              style: const TextStyle(color: Colors.white),
+                              keyboardType: TextInputType.phone,
+                              decoration: InputDecoration(
+                                hintText: '08xxxxxxxxxx (opsional)',
+                                hintStyle: const TextStyle(
+                                  color: Colors.white24,
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFF121212),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ])
-                    ]),
-                  ),
+                      ),
+                    ),
 
-                  const SizedBox(height: 30),
-                ]),
+                    const SizedBox(height: 18),
+
+                    // Pilih Barberman (either auto-selected or pick from list)
+                    Card(
+                      color: const Color(0xFF1B1B1B),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(Icons.person_search, color: kBrownAccent),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Pilih Barberman',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            if (_currentUserData != null &&
+                                _selectedBarberman != null &&
+                                _barbermen.any(
+                                  (b) => b.id == _selectedBarberman!.id,
+                                ))
+                              // auto-selected barber if current user is a barber
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF151515),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _selectedBarberman!.name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    Text(
+                                      '~${_selectedBarberman!.avgDuration.toInt()} menit',
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              Column(
+                                children: _barbermen.map((b) {
+                                  final selected =
+                                      _selectedBarberman?.id == b.id;
+                                  return InkWell(
+                                    onTap: () =>
+                                        setState(() => _selectedBarberman = b),
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(
+                                        vertical: 6,
+                                      ),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: selected
+                                            ? const Color.fromRGBO(
+                                                195,
+                                                164,
+                                                123,
+                                                0.13,
+                                              )
+                                            : const Color(0xFF151515),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: selected
+                                              ? kBrownAccent
+                                              : Colors.grey.shade800,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            b.name,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          Text(
+                                            '~${b.avgDuration.toInt()} m',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // Pilih Layanan
+                    Card(
+                      color: const Color(0xFF1B1B1B),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(Icons.content_cut, color: kBrownAccent),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Pilih Layanan',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            if (_services.isEmpty)
+                              const Text(
+                                'Belum ada layanan untuk barbershop ini',
+                                style: TextStyle(color: Colors.white54),
+                              )
+                            else
+                              Column(
+                                children: _services
+                                    .map((s) => _buildServiceTile(s))
+                                    .toList(),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // Date & Time
+                    Card(
+                      color: const Color(0xFF1B1B1B),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(Icons.access_time, color: kBrownAccent),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Tanggal & Waktu',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            GestureDetector(
+                              onTap: _pickDateTime,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF151515),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _selectedDateTime == null
+                                          ? 'Pilih tanggal & waktu'
+                                          : _dtLabel.format(_selectedDateTime!),
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.calendar_today,
+                                      color: kBrownAccent,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (_totalDuration > 0)
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Estimasi durasi',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                  Text(
+                                    '~$_totalDuration menit',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // Notes
+                    TextFormField(
+                      controller: _notesCtrl,
+                      maxLines: 2,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Catatan (opsional)',
+                        hintStyle: const TextStyle(color: Colors.white24),
+                        filled: true,
+                        fillColor: const Color(0xFF151515),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // Total & Buttons
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF171717),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: const [
+                                  Icon(
+                                    Icons.attach_money,
+                                    color: Colors.greenAccent,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Total Pembayaran',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                totalLabel,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    // reset
+                                    setState(() {
+                                      _nameCtrl.clear();
+                                      _phoneCtrl.clear();
+                                      _notesCtrl.clear();
+                                      _selectedServiceIds.clear();
+                                      _selectedBarberman = null;
+                                      _selectedDateTime = null;
+                                    });
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                      color: Colors.grey.shade700,
+                                    ),
+                                    backgroundColor: Colors.transparent,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Reset Form',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: _saving ? null : _onSubmit,
+                                  icon: const Icon(Icons.add),
+                                  label: _saving
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            color: Colors.black,
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Text(
+                                          'booking',
+                                          style: TextStyle(color: Colors.black),
+                                        ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: kBrownAccent,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+                  ],
+                ),
               ),
             ),
     );
@@ -577,4 +916,5 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
 }
 
 /// Convenience factory function to avoid import/name resolution edge-cases.
-Widget buildAddManualBookingScreen(Barbershop barbershop) => AddManualBookingScreen(barbershop: barbershop);
+Widget buildAddManualBookingScreen(Barbershop barbershop) =>
+    AddManualBookingScreen(barbershop: barbershop);

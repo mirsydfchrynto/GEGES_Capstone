@@ -4,7 +4,12 @@ import 'package:mockito/mockito.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 
-@GenerateMocks([FirebaseFirestore, CollectionReference, DocumentReference, DocumentSnapshot])
+@GenerateMocks([
+  FirebaseFirestore,
+  CollectionReference,
+  DocumentReference,
+  DocumentSnapshot,
+])
 import 'queue_service_admin_payment_test.mocks.dart';
 
 // A simple fake transaction object to drive runTransaction callbacks in tests.
@@ -14,7 +19,9 @@ class _FakeTx implements Transaction {
   _FakeTx(this.snap, this.ref);
 
   @override
-  Future<DocumentSnapshot<T>> get<T extends Object?>(DocumentReference<T> ref) async => snap as DocumentSnapshot<T>;
+  Future<DocumentSnapshot<T>> get<T extends Object?>(
+    DocumentReference<T> ref,
+  ) async => snap as DocumentSnapshot<T>;
 
   @override
   Transaction update(DocumentReference ref, Map<String, dynamic> data) {
@@ -24,7 +31,11 @@ class _FakeTx implements Transaction {
   }
 
   @override
-  Transaction set<T extends Object?>(DocumentReference<T> ref, T data, [SetOptions? options]) {
+  Transaction set<T extends Object?>(
+    DocumentReference<T> ref,
+    T data, [
+    SetOptions? options,
+  ]) {
     if (data is Map<String, dynamic>) {
       this.ref.set(data);
     }
@@ -54,26 +65,39 @@ void main() {
     when(mockQueuesColl.doc('q_pay')).thenReturn(mockQueueRef);
   });
 
-  test('adminConfirmPayment updates awaiting_payment to booked when proof exists', () async {
-    when(mockQueueRef.get()).thenAnswer((_) async => mockQueueSnap);
-    when(mockQueueSnap.data()).thenReturn({'status': 'awaiting_payment', 'payment_proof_base64': 'abc'});
-    when(mockQueueSnap.exists).thenReturn(true);
+  test(
+    'adminConfirmPayment updates awaiting_payment to booked when proof exists',
+    () async {
+      when(mockQueueRef.get()).thenAnswer((_) async => mockQueueSnap);
+      when(mockQueueSnap.data()).thenReturn({
+        'status': 'awaiting_payment',
+        'payment_proof_base64': 'abc',
+      });
+      when(mockQueueSnap.exists).thenReturn(true);
 
-    // stub runTransaction to call our closure with a fake tx that delegates to the mocked doc ref
-    when(mockFs.runTransaction(any, timeout: anyNamed('timeout'), maxAttempts: anyNamed('maxAttempts'))).thenAnswer((inv) async {
-      final cb = inv.positionalArguments[0] as dynamic;
+      // stub runTransaction to call our closure with a fake tx that delegates to the mocked doc ref
+      when(
+        mockFs.runTransaction(
+          any,
+          timeout: anyNamed('timeout'),
+          maxAttempts: anyNamed('maxAttempts'),
+        ),
+      ).thenAnswer((inv) async {
+        final cb = inv.positionalArguments[0] as dynamic;
         final tx = _FakeTx(mockQueueSnap, mockQueueRef);
 
-      await cb(tx);
-      return;
-    });
+        await cb(tx);
+        return;
+      });
 
-    final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs);
 
-    await svc.adminConfirmPayment('q_pay', adminUid: 'admin_1');
+      await svc.adminConfirmPayment('q_pay', adminUid: 'admin_1');
 
-    final captured = verify(mockQueueRef.update(captureAny)).captured.single as Map;
-    expect(captured['status'], 'booked');
-    expect(captured['payment_confirmed_by'], 'admin_1');
-  });
+      final captured =
+          verify(mockQueueRef.update(captureAny)).captured.single as Map;
+      expect(captured['status'], 'booked');
+      expect(captured['payment_confirmed_by'], 'admin_1');
+    },
+  );
 }

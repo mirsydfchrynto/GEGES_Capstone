@@ -1,0 +1,51 @@
+name: Integration E2E Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  android-integration:
+    name: Run integration tests on Android emulator
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Start Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          emulator-options: -no-window -no-audio
+
+      - name: Wait for emulator
+        run: flutter devices
+
+      - name: Run integration tests (E2E)
+        run: flutter test integration_test/payment_full_ui_e2e_test.dart -d emulator-5554 --no-color --reporter=json
+        env:
+          ADB_INSTALL_TIMEOUT: '20'
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: reports

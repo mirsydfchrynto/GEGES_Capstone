@@ -41,6 +41,16 @@ class _PaymentVerificationScreenImprovedState
         title: const Text('Verifikasi Pembayaran'),
         backgroundColor: Colors.black87,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            tooltip: 'Manage Barbers',
+            icon: const Icon(Icons.people_outline),
+            onPressed: () {
+              // Navigate to barber management screen
+              Navigator.of(context).pushNamed('/admin/barber-management');
+            },
+          ),
+        ],
       ),
       body: StreamBuilder<List<DocumentSnapshot>>(
         stream: _antiDupService.streamPaymentVerificationQueue(),
@@ -119,14 +129,20 @@ class _PaymentVerificationScreenImprovedState
                       if (userId != null)
                         Text(
                           'Customer: $userId',
-                          style: const TextStyle(fontSize: 11, color: Colors.black54),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.black54,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.orange[100],
                     border: Border.all(color: Colors.orange),
@@ -146,7 +162,10 @@ class _PaymentVerificationScreenImprovedState
             const SizedBox(height: 12),
 
             // Detail booking
-            _buildDetailRow('Total Pembayaran', 'Rp ${NumberFormat('#,###', 'id_ID').format(totalPrice)}'),
+            _buildDetailRow(
+              'Total Pembayaran',
+              'Rp ${NumberFormat('#,###', 'id_ID').format(totalPrice)}',
+            ),
             if (scheduledAt != null)
               _buildDetailRow(
                 'Jadwal Booking',
@@ -217,7 +236,10 @@ class _PaymentVerificationScreenImprovedState
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
           Expanded(
             child: Text(
               value,
@@ -251,8 +273,10 @@ class _PaymentVerificationScreenImprovedState
               CachedNetworkImage(
                 imageUrl: proofUrl,
                 fit: BoxFit.cover,
-                placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                errorWidget: (context, url, error) => const Center(child: Text('Gagal load gambar')),
+                placeholder: (context, url) =>
+                    const Center(child: CircularProgressIndicator()),
+                errorWidget: (context, url, error) =>
+                    const Center(child: Text('Gagal load gambar')),
               )
             else
               Center(
@@ -267,7 +291,11 @@ class _PaymentVerificationScreenImprovedState
                   color: Colors.black.withValues(alpha: 0.6),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.fullscreen, color: Colors.white, size: 16),
+                child: const Icon(
+                  Icons.fullscreen,
+                  color: Colors.white,
+                  size: 16,
+                ),
               ),
             ),
           ],
@@ -291,7 +319,14 @@ class _PaymentVerificationScreenImprovedState
               child: Container(
                 color: Colors.grey[900],
                 child: proofUrl.startsWith('http')
-                    ? CachedNetworkImage(imageUrl: proofUrl, fit: BoxFit.contain, placeholder: (c, u) => const Center(child: CircularProgressIndicator()), errorWidget: (c, u, e) => const Center(child: Text('Gambar tidak tersedia')))
+                    ? CachedNetworkImage(
+                        imageUrl: proofUrl,
+                        fit: BoxFit.contain,
+                        placeholder: (c, u) =>
+                            const Center(child: CircularProgressIndicator()),
+                        errorWidget: (c, u, e) =>
+                            const Center(child: Text('Gambar tidak tersedia')),
+                      )
                     : const Center(child: Text('Gambar tidak tersedia')),
               ),
             ),
@@ -321,7 +356,9 @@ class _PaymentVerificationScreenImprovedState
       }
     } catch (e) {
       if (mounted) {
-        _showError('Gagal terima: ${e.toString().replaceAll('Exception: ', '')}');
+        _showError(
+          'Gagal terima: ${e.toString().replaceAll('Exception: ', '')}',
+        );
       }
     }
   }
@@ -366,7 +403,11 @@ class _PaymentVerificationScreenImprovedState
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _handleReject(bookingId, reasonCtrl.text, allowReuploadCtrl.value);
+              _handleReject(
+                bookingId,
+                reasonCtrl.text,
+                allowReuploadCtrl.value,
+              );
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Tolak'),
@@ -396,24 +437,28 @@ class _PaymentVerificationScreenImprovedState
       );
 
       if (mounted) {
-        _showSuccess('Pembayaran ditolak${allowReupload ? ' — customer dapat upload ulang' : ''}');
+        _showSuccess(
+          'Pembayaran ditolak${allowReupload ? ' — customer dapat upload ulang' : ''}',
+        );
       }
     } catch (e) {
       if (mounted) {
-        _showError('Gagal tolak: ${e.toString().replaceAll('Exception: ', '')}');
+        _showError(
+          'Gagal tolak: ${e.toString().replaceAll('Exception: ', '')}',
+        );
       }
     }
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
   }
 
   void _showSuccess(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.green),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
   }
 }

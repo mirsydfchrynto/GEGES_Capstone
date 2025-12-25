@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Import semua model yang dibutuhkan
 import 'package:geges_smartbarber/models/barbershop.dart';
-import 'package:geges_smartbarber/models/barberman.dart'; 
+import 'package:geges_smartbarber/models/barberman.dart';
 import 'package:geges_smartbarber/models/service.dart';
 import 'package:geges_smartbarber/models/promo_banner.dart';
 
@@ -14,14 +14,21 @@ class BarbershopService {
   // -----------------------
   // BARBERSHOP FUNCTIONS
   // -----------------------
-  
+
   /// Mengambil semua barbershop untuk HomeScreen (Future)
   Future<List<Barbershop>> getAllBarbershops() async {
     try {
-      QuerySnapshot<Map<String, dynamic>> snapshot =
-          await _firestore.collection('barbershops').get();
+      QuerySnapshot<Map<String, dynamic>> snapshot = await _firestore
+          .collection('barbershops')
+          .get();
 
-      return snapshot.docs.map((doc) => Barbershop.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>)).toList();
+      return snapshot.docs
+          .map(
+            (doc) => Barbershop.fromFirestore(
+              doc as DocumentSnapshot<Map<String, dynamic>>,
+            ),
+          )
+          .toList();
     } catch (e) {
       // ignore: avoid_print
       print('Error getAllBarbershops: $e');
@@ -42,7 +49,11 @@ class BarbershopService {
           .get();
 
       return snapshot.docs
-          .map((doc) => Barberman.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>))
+          .map(
+            (doc) => Barberman.fromFirestore(
+              doc as DocumentSnapshot<Map<String, dynamic>>,
+            ),
+          )
           .toList();
     } catch (e) {
       // ignore: avoid_print
@@ -56,11 +67,12 @@ class BarbershopService {
     if (barbermanId.isEmpty) return null;
 
     try {
-      final doc =
-          await _firestore.collection('barbermen').doc(barbermanId).get();
+      final doc = await _firestore
+          .collection('barbermen')
+          .doc(barbermanId)
+          .get();
       if (!doc.exists) return null;
-      return Barberman.fromFirestore(
-          doc); // Pastikan cast aman
+      return Barberman.fromFirestore(doc); // Pastikan cast aman
     } catch (e) {
       // ignore: avoid_print
       print('Error getBarbermanById: $e');
@@ -75,10 +87,17 @@ class BarbershopService {
   /// Mengambil semua service (untuk AppointmentScreen)
   Future<List<Service>> getAllServices() async {
     try {
-      QuerySnapshot<Map<String, dynamic>> snapshot =
-          await _firestore.collection('services').get();
+      QuerySnapshot<Map<String, dynamic>> snapshot = await _firestore
+          .collection('services')
+          .get();
 
-      return snapshot.docs.map((doc) => Service.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>)).toList();
+      return snapshot.docs
+          .map(
+            (doc) => Service.fromFirestore(
+              doc as DocumentSnapshot<Map<String, dynamic>>,
+            ),
+          )
+          .toList();
     } catch (e) {
       // ignore: avoid_print
       print('Error getAllServices: $e');
@@ -96,8 +115,14 @@ class BarbershopService {
         .collection('promo_banners')
         .where('isActive', isEqualTo: true) // Hanya ambil promo yang aktif
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => PromoBanner.fromFirestore(doc as DocumentSnapshot<Map<String, dynamic>>))
-            .toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map(
+                (doc) => PromoBanner.fromFirestore(
+                  doc as DocumentSnapshot<Map<String, dynamic>>,
+                ),
+              )
+              .toList(),
+        );
   }
 }

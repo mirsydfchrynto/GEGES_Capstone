@@ -14,13 +14,22 @@ class FakeAuthServiceSuccess implements AuthServiceBase {
 
   // unused in these tests but required by the interface
   @override
-  Future<Map<String, dynamic>> registerCustomer({required String email, required String password, required String name}) async => {'success': false, 'message': 'not implemented'};
+  Future<Map<String, dynamic>> registerCustomer({
+    required String email,
+    required String password,
+    required String name,
+  }) async => {'success': false, 'message': 'not implemented'};
 
   @override
-  Future<Map<String, dynamic>> sendPasswordResetEmail({required String email}) async => {'success': false, 'message': 'not implemented'};
+  Future<Map<String, dynamic>> sendPasswordResetEmail({
+    required String email,
+  }) async => {'success': false, 'message': 'not implemented'};
 
   @override
-  Future<Map<String, dynamic>> signIn({required String email, required String password}) async => {'success': false, 'message': 'not implemented'};
+  Future<Map<String, dynamic>> signIn({
+    required String email,
+    required String password,
+  }) async => {'success': false, 'message': 'not implemented'};
 
   @override
   Future<UserData?> getUserById(String uid) async => null;
@@ -31,27 +40,39 @@ class FakeAuthServiceFailure implements AuthServiceBase {
   FakeAuthServiceFailure(this.message);
 
   @override
-  Future<Map<String, dynamic>> signInWithGoogle() async => {'success': false, 'message': message};
+  Future<Map<String, dynamic>> signInWithGoogle() async => {
+    'success': false,
+    'message': message,
+  };
 
   @override
-  Future<Map<String, dynamic>> registerCustomer({required String email, required String password, required String name}) async => {'success': false, 'message': 'not implemented'};
+  Future<Map<String, dynamic>> registerCustomer({
+    required String email,
+    required String password,
+    required String name,
+  }) async => {'success': false, 'message': 'not implemented'};
 
   @override
-  Future<Map<String, dynamic>> sendPasswordResetEmail({required String email}) async => {'success': false, 'message': 'not implemented'};
+  Future<Map<String, dynamic>> sendPasswordResetEmail({
+    required String email,
+  }) async => {'success': false, 'message': 'not implemented'};
 
   @override
-  Future<Map<String, dynamic>> signIn({required String email, required String password}) async => {'success': false, 'message': 'not implemented'};
+  Future<Map<String, dynamic>> signIn({
+    required String email,
+    required String password,
+  }) async => {'success': false, 'message': 'not implemented'};
 
   @override
   Future<UserData?> getUserById(String uid) async => null;
 }
 
 void main() {
-  testWidgets('TC-GOOGLE-01: Google sign-up success navigates to Login', (WidgetTester tester) async {
+  testWidgets('TC-GOOGLE-01: Google sign-up success navigates to Login', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: RegisterScreen(authService: FakeAuthServiceSuccess()),
-      ),
+      MaterialApp(home: RegisterScreen(authService: FakeAuthServiceSuccess())),
     );
 
     expect(find.byKey(const Key('register_google_btn')), findsOneWidget);
@@ -65,23 +86,28 @@ void main() {
     expect(find.text('Sign In'), findsOneWidget);
   });
 
-  testWidgets('TC-GOOGLE-02: Google sign-up failure shows error and Retry action', (WidgetTester tester) async {
-    const failMessage = 'Recaptcha check failed';
-    await tester.pumpWidget(
-      MaterialApp(
-        home: RegisterScreen(authService: FakeAuthServiceFailure(failMessage)),
-      ),
-    );
+  testWidgets(
+    'TC-GOOGLE-02: Google sign-up failure shows error and Retry action',
+    (WidgetTester tester) async {
+      const failMessage = 'Recaptcha check failed';
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RegisterScreen(
+            authService: FakeAuthServiceFailure(failMessage),
+          ),
+        ),
+      );
 
-    final googleBtn = find.byKey(const Key('register_google_btn'));
-    await tester.ensureVisible(googleBtn);
-    await tester.tap(googleBtn);
-    await tester.pumpAndSettle(); // show snackbar / error
+      final googleBtn = find.byKey(const Key('register_google_btn'));
+      await tester.ensureVisible(googleBtn);
+      await tester.tap(googleBtn);
+      await tester.pumpAndSettle(); // show snackbar / error
 
-    // Error message should be set in the UI (either as _errorMessage or in snackbar)
-    expect(find.textContaining('Recaptcha'), findsWidgets);
+      // Error message should be set in the UI (either as _errorMessage or in snackbar)
+      expect(find.textContaining('Recaptcha'), findsWidgets);
 
-    // Snackbar action 'Retry' should be present for this kind of error
-    expect(find.text('Retry'), findsOneWidget);
-  });
+      // Snackbar action 'Retry' should be present for this kind of error
+      expect(find.text('Retry'), findsOneWidget);
+    },
+  );
 }

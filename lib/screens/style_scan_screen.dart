@@ -20,7 +20,12 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
   final _service = StyleScanService(baseUrl: 'http://0.0.0.0:5000');
 
   Future<void> _pickImage() async {
-    final XFile? picked = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 1200, maxHeight: 1200, imageQuality: 85);
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      imageQuality: 85,
+    );
     if (picked == null) return;
     setState(() {
       _image = File(picked.path);
@@ -40,7 +45,9 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
       if (mounted) setState(() => _result = resp);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scan error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Scan error: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -54,16 +61,25 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Status: $status', style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(
+          'Status: $status',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         if (data != null) ...[
           Text('Count: ${data['count'] ?? 0}'),
           const SizedBox(height: 8),
           if (data['detections'] != null)
-            ...List<Widget>.from((data['detections'] as List).map((d) => Padding(
+            ...List<Widget>.from(
+              (data['detections'] as List).map(
+                (d) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Text('${d['class_name'] ?? d['class_id']} - ${(d['confidence'] ?? 0).toStringAsFixed(2)}'),
-                ))),
+                  child: Text(
+                    '${d['class_name'] ?? d['class_id']} - ${(d['confidence'] ?? 0).toStringAsFixed(2)}',
+                  ),
+                ),
+              ),
+            ),
         ],
       ],
     );
@@ -79,12 +95,25 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (_image != null)
-              SizedBox(height: 240, child: Image.file(_image!, fit: BoxFit.cover)),
-            ElevatedButton.icon(onPressed: _pickImage, icon: const Icon(Icons.photo), label: const Text('Pick Image')),
+              SizedBox(
+                height: 240,
+                child: Image.file(_image!, fit: BoxFit.cover),
+              ),
+            ElevatedButton.icon(
+              onPressed: _pickImage,
+              icon: const Icon(Icons.photo),
+              label: const Text('Pick Image'),
+            ),
             const SizedBox(height: 8),
             ElevatedButton.icon(
               onPressed: _loading ? null : _scan,
-              icon: _loading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.search),
+              icon: _loading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.search),
               label: const Text('Scan Style'),
             ),
             const SizedBox(height: 12),

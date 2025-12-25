@@ -111,7 +111,8 @@ class BarbermanLeaveService {
     String leaveId, {
     String? adminUid,
   }) async {
-    final approverUid = adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+    final approverUid =
+        adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
 
     try {
       await _firestore
@@ -219,9 +220,11 @@ class BarbermanLeaveService {
 
       if (!barbershop.exists) return 12; // default
 
-      final barbermen = (barbershop.data()?['barbermen'] as List<dynamic>?)
-          ?.map((b) => b as Map<String, dynamic>)
-          .toList() ?? [];
+      final barbermen =
+          (barbershop.data()?['barbermen'] as List<dynamic>?)
+              ?.map((b) => b as Map<String, dynamic>)
+              .toList() ??
+          [];
 
       final barberData = barbermen.firstWhere(
         (b) => b['id'] == barbermanId,
@@ -248,9 +251,11 @@ class BarbermanLeaveService {
 
       if (!barberDoc.exists) return []; // no off days
 
-      final offDays = (barberDoc.data()?['offDays'] as List<dynamic>?)
-          ?.whereType<int>()
-          .toList() ?? [];
+      final offDays =
+          (barberDoc.data()?['offDays'] as List<dynamic>?)
+              ?.whereType<int>()
+              .toList() ??
+          [];
 
       return offDays;
     } catch (e) {
@@ -275,19 +280,21 @@ class BarbermanLeaveService {
 
       if (!barberDoc.exists) return;
 
-      final currentDays = (barberDoc.data()?['annualLeaveDays'] as num?)?.toInt() ?? 12;
+      final currentDays =
+          (barberDoc.data()?['annualLeaveDays'] as num?)?.toInt() ?? 12;
       final newDays = (currentDays + dayChange).clamp(0, 365);
 
-      await barberRef.update({
-        'annualLeaveDays': newDays,
-      });
+      await barberRef.update({'annualLeaveDays': newDays});
     } catch (e) {
       debugPrint('Error updating annual leave days: $e');
     }
   }
 
   /// Create a new booking request
-  Future<void> createBookingRequest(String barbershopId, Map<String, dynamic> bookingData) async {
+  Future<void> createBookingRequest(
+    String barbershopId,
+    Map<String, dynamic> bookingData,
+  ) async {
     final bookingRef = _firestore
         .collection('barbershops')
         .doc(barbershopId)
@@ -301,7 +308,11 @@ class BarbermanLeaveService {
   }
 
   /// Update booking request status
-  Future<void> updateBookingStatus(String barbershopId, String requestId, String status) async {
+  Future<void> updateBookingStatus(
+    String barbershopId,
+    String requestId,
+    String status,
+  ) async {
     final requestRef = _firestore
         .collection('barbershops')
         .doc(barbershopId)
@@ -312,7 +323,10 @@ class BarbermanLeaveService {
   }
 
   /// Automatically cancel unpaid booking requests
-  Future<void> cancelUnpaidRequests(String barbershopId, DateTime deadline) async {
+  Future<void> cancelUnpaidRequests(
+    String barbershopId,
+    DateTime deadline,
+  ) async {
     final query = _firestore
         .collection('barbershops')
         .doc(barbershopId)

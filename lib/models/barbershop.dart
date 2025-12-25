@@ -6,16 +6,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 // - final berarti property tidak bisa diubah setelah object dibuat
 class Barbershop {
   // penjelasan property:
-  final String id;                 // id unik dari database (firebase)
-  final String name;               // nama barbershop (contoh: "Barber Premium")
-  final String addres;             // alamat (CATATAN: field ini sengaja typo 'addres' seperti di database)
-  final double rating;             // rating barbershop (0.0 - 5.0)
-  final String imageUrl;           // url gambar barbershop (dari internet)
-  final List<String> services;     // list berisi id service yang ada di barbershop ini
-  final int openHour;              // jam buka toko (format 0-23, contoh: 9 = jam 9 pagi)
-  final int closeHour;             // jam tutup toko (format 0-23, contoh: 21 = jam 9 malam)
-  final int? paymentWindowMinutes; // payment window in minutes for awaiting_payment (optional)
-  final bool isOpen;               // status apakah toko sedang buka sekarang
+  final String id; // id unik dari database (firebase)
+  final String name; // nama barbershop (contoh: "Barber Premium")
+  final String
+  addres; // alamat (CATATAN: field ini sengaja typo 'addres' seperti di database)
+  final double rating; // rating barbershop (0.0 - 5.0)
+  final String imageUrl; // url gambar barbershop (dari internet)
+  final List<String>
+  services; // list berisi id service yang ada di barbershop ini
+  final int openHour; // jam buka toko (format 0-23, contoh: 9 = jam 9 pagi)
+  final int closeHour; // jam tutup toko (format 0-23, contoh: 21 = jam 9 malam)
+  final int?
+  paymentWindowMinutes; // payment window in minutes for awaiting_payment (optional)
+  final bool isOpen; // status apakah toko sedang buka sekarang
 
   // penjelasan constructor:
   // - semua parameter adalah required (harus diberikan)
@@ -36,7 +39,7 @@ class Barbershop {
   // penjelasan factory barbershop.fromfirestore:
   // - factory adalah constructor khusus untuk membuat object dari data firebase
   // - DocumentSnapshot<Map<String, dynamic>> = data yang diambil dari firebase
-  // - doc.data() ?? {} = ambil data, jika null gunakan map kosong {} 
+  // - doc.data() ?? {} = ambil data, jika null gunakan map kosong {}
   // - doc.id = id dokumen di firebase (digunakan sebagai barbershop id)
   // - method ini memastikan data dari firebase bisa dikonversi jadi object barbershop
   factory Barbershop.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -66,14 +69,16 @@ class Barbershop {
       }
       return fallback;
     }
-    
+
     // penjelasan addressValue:
     // - data['address'] = coba cari field 'address' (benar)
     // - ?? data['addres'] = jika tidak ada, coba 'addres' (salah di database)
     // - ?? 'Alamat Tidak Diketahui' = jika keduanya tidak ada, gunakan text default
     // - as String = cast hasilnya jadi string
     // - ini memastikan compatibility dengan berbagai format database
-    final String addressValue = (data['address'] ?? data['addres'] ?? 'Alamat Tidak Diketahui') as String;
+    final String addressValue =
+        (data['address'] ?? data['addres'] ?? 'Alamat Tidak Diketahui')
+            as String;
 
     // buat barbershop object dari data firebase
     return Barbershop(
@@ -83,7 +88,8 @@ class Barbershop {
       // rating: ambil dari database dan convert ke double, jika tidak ada default 5.0
       // as num? = cast ke number (bisa int atau double), toDouble() = ubah ke double
       rating: (data['rating'] as num?)?.toDouble() ?? 5.0,
-      imageUrl: data['imageUrl'] ??
+      imageUrl:
+          data['imageUrl'] ??
           'https://cdn-icons-png.flaticon.com/512/706/706830.png',
       // services: ambil dari database, jika itu list maka convert ke List<String>
       // jika bukan list, gunakan list kosong []
@@ -96,7 +102,9 @@ class Barbershop {
       // default jam tutup 21 (9 malam) jika tidak ada di database
       closeHour: parseHour(data['close_hour'] ?? data['closeHour'], 21),
       // paymentWindowMinutes: optional per-shop configuration
-      paymentWindowMinutes: (data['payment_window_minutes'] as num?)?.toInt() ?? (data['paymentWindowMinutes'] as num?)?.toInt(),
+      paymentWindowMinutes:
+          (data['payment_window_minutes'] as num?)?.toInt() ??
+          (data['paymentWindowMinutes'] as num?)?.toInt(),
       // isOpen: ambil dari database, default false jika tidak ada
       isOpen: data['isOpen'] as bool? ?? false,
     );
@@ -110,7 +118,7 @@ class Barbershop {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'addres': addres,  // menggunakan 'addres' seperti di database
+      'addres': addres, // menggunakan 'addres' seperti di database
       'rating': rating,
       'imageUrl': imageUrl,
       'services': services,

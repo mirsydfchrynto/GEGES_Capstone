@@ -8,8 +8,15 @@ import 'package:geges_smartbarber/services/session_service.dart';
 
 // Public interface so tests can inject a fake implementation without initializing Firebase
 abstract class AuthServiceBase {
-  Future<Map<String, dynamic>> signIn({required String email, required String password});
-  Future<Map<String, dynamic>> registerCustomer({required String email, required String password, required String name});
+  Future<Map<String, dynamic>> signIn({
+    required String email,
+    required String password,
+  });
+  Future<Map<String, dynamic>> registerCustomer({
+    required String email,
+    required String password,
+    required String name,
+  });
   Future<Map<String, dynamic>> signInWithGoogle();
   Future<Map<String, dynamic>> sendPasswordResetEmail({required String email});
   Future<UserData?> getUserById(String uid);
@@ -66,10 +73,7 @@ class AuthService implements AuthServiceBase {
 
       return {'success': true, 'role': role};
     } on FirebaseAuthException catch (e) {
-      return {
-        'success': false,
-        'message': _mapAuthErrorMessage(e),
-      };
+      return {'success': false, 'message': _mapAuthErrorMessage(e)};
     } catch (e) {
       return {'success': false, 'message': 'Terjadi kesalahan saat login: $e'};
     }
@@ -78,7 +82,9 @@ class AuthService implements AuthServiceBase {
   String _mapAuthErrorMessage(FirebaseAuthException e) {
     final msg = (e.message ?? '').toLowerCase();
     // Map common FirebaseAuth error codes/messages to friendly Indonesian strings
-    if (msg.contains('recaptcha') || msg.contains('reCAPTCHA'.toLowerCase()) || msg.contains('captcha') ) {
+    if (msg.contains('recaptcha') ||
+        msg.contains('reCAPTCHA'.toLowerCase()) ||
+        msg.contains('captcha')) {
       return 'Verifikasi reCAPTCHA gagal atau token kosong. Periksa konfigurasi Firebase Auth reCAPTCHA dan koneksi jaringan. Untuk debugging, coba sign-in dengan email/password.';
     }
 
@@ -140,7 +146,7 @@ class AuthService implements AuthServiceBase {
       return {
         'success': true,
         'message': 'Registrasi berhasil. Silakan verifikasi email Anda.',
-      }; 
+      };
     } on FirebaseAuthException catch (e) {
       return {'success': false, 'message': e.message ?? 'Registrasi gagal'};
     } catch (e) {
@@ -156,15 +162,19 @@ class AuthService implements AuthServiceBase {
   // ============================
   final GoogleSignIn? _googleSignIn;
 
-  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore, GoogleSignIn? googleSignIn})
-      : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _googleSignIn = googleSignIn;
+  AuthService({
+    FirebaseAuth? auth,
+    FirebaseFirestore? firestore,
+    GoogleSignIn? googleSignIn,
+  }) : _auth = auth ?? FirebaseAuth.instance,
+       _firestore = firestore ?? FirebaseFirestore.instance,
+       _googleSignIn = googleSignIn;
 
   @override
   Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
-      final googleSignIn = _googleSignIn ?? GoogleSignIn(scopes: <String>['email', 'profile']);
+      final googleSignIn =
+          _googleSignIn ?? GoogleSignIn(scopes: <String>['email', 'profile']);
 
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
@@ -225,10 +235,7 @@ class AuthService implements AuthServiceBase {
 
       return {'success': true, 'role': role};
     } on FirebaseAuthException catch (e) {
-      return {
-        'success': false,
-        'message': _mapAuthErrorMessage(e),
-      };
+      return {'success': false, 'message': _mapAuthErrorMessage(e)};
     } on Exception catch (e) {
       // Tangani khusus ApiException: 10 (common Android Google Sign-in error)
       final msg = e.toString();
@@ -289,19 +296,13 @@ class AuthService implements AuthServiceBase {
       final doc = await _firestore.collection('users').doc(uid).get();
 
       // Gunakan Model UserData.fromFirestore
-      return doc.exists
-          ? UserData.fromFirestore(
-              doc,
-            )
-          : null;
+      return doc.exists ? UserData.fromFirestore(doc) : null;
     } catch (e) {
       debugPrint('Error getUserById: $e');
       return null;
     }
   }
   // --- AKHIR PERBAIKAN ---
-
-
 
   // ============================
   // UPDATE PROFILE & REAUTH
@@ -353,7 +354,9 @@ class AuthService implements AuthServiceBase {
 
     // update last_login on user document
     try {
-      await _firestore.collection('users').doc(uid).update({'last_login': FieldValue.serverTimestamp()});
+      await _firestore.collection('users').doc(uid).update({
+        'last_login': FieldValue.serverTimestamp(),
+      });
     } catch (e) {
       // non-fatal if update fails (e.g., permission rules); log and continue
       debugPrint('Failed to update last_login for $uid: $e');
@@ -448,7 +451,7 @@ class AuthService implements AuthServiceBase {
       // note: fetchSignInMethodsForEmail deprecated untuk security reason
       // sebagai alternatif, kami just proceed dengan operasi & handle requires-recent-login error di catch
       // ini lebih aman sesuai Firebase best practices
-      
+
       // if requires recent login, akan throw error dan user diminta re-auth
       return await updateProfile(
         uid: uid,
@@ -504,9 +507,8 @@ class AuthService implements AuthServiceBase {
   }
 
   Future<bool> isAdmin(String uid) async {
-  final doc = await _firestore.collection('users').doc(uid).get();
-  final data = doc.data();
-  return (data?['role'] == 'admin_owner');
-}
-
+    final doc = await _firestore.collection('users').doc(uid).get();
+    final data = doc.data();
+    return (data?['role'] == 'admin_owner');
+  }
 }

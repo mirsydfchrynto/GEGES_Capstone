@@ -45,7 +45,10 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
   Future<void> _startService(Queue queue) async {
     try {
       await _queueService.startService(queue.id);
-      _showSnackBar('Layanan untuk antrean #${queue.id.substring(0, 6)} dimulai', isError: false);
+      _showSnackBar(
+        'Layanan untuk antrean #${queue.id.substring(0, 6)} dimulai',
+        isError: false,
+      );
     } catch (e) {
       _showSnackBar('Gagal memulai layanan: $e', isError: true);
     }
@@ -61,7 +64,10 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
       // pastikan implementasi service yang kamu pakai menerima (queueId, startTime).
       // Di beberapa versi ada yang hanya butuh queueId — sesuaikan jika perlu.
       await _queueService.finishService(queue.id, queue.startTime!);
-      _showSnackBar('Layanan selesai untuk #${queue.id.substring(0, 6)}', isError: false);
+      _showSnackBar(
+        'Layanan selesai untuk #${queue.id.substring(0, 6)}',
+        isError: false,
+      );
     } catch (e) {
       _showSnackBar('Gagal menyelesaikan layanan: $e', isError: true);
     }
@@ -69,8 +75,14 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
 
   Future<void> _cancelQueue(Queue queue) async {
     try {
-      await _queueService.cancelQueue(queue.id, reason: 'Dibatalkan oleh Admin');
-      _showSnackBar('Antrean dibatalkan (#${queue.id.substring(0, 6)})', isError: true);
+      await _queueService.cancelQueue(
+        queue.id,
+        reason: 'Dibatalkan oleh Admin',
+      );
+      _showSnackBar(
+        'Antrean dibatalkan (#${queue.id.substring(0, 6)})',
+        isError: true,
+      );
     } catch (e) {
       _showSnackBar('Gagal membatalkan: $e', isError: true);
     }
@@ -80,7 +92,10 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
     try {
       // Use adminConfirmRequest to move waiting -> awaiting_payment
       await _queueService.adminConfirmRequest(queue.id);
-      _showSnackBar('Booking dikonfirmasi — menunggu pembayaran customer (awaiting_payment)', isError: false);
+      _showSnackBar(
+        'Booking dikonfirmasi — menunggu pembayaran customer (awaiting_payment)',
+        isError: false,
+      );
     } catch (e) {
       _showSnackBar('Gagal konfirmasi booking: $e', isError: true);
     }
@@ -88,11 +103,13 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
 
   void _showSnackBar(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: isError ? Colors.redAccent : kBrownAccent,
-      duration: const Duration(seconds: 2),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.redAccent : kBrownAccent,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   String _getStatusDisplayName(String status) {
@@ -113,7 +130,9 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
   }
 
   List<Queue> _filterAndSortQueues(List<Queue> queues) {
-    final filtered = queues.where((q) => _currentStatusFilter.contains(q.status.value)).toList();
+    final filtered = queues
+        .where((q) => _currentStatusFilter.contains(q.status.value))
+        .toList();
 
     filtered.sort((a, b) {
       int priority(String s) {
@@ -141,76 +160,117 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: kDarkSurface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (context) {
-        return StatefulBuilder(builder: (context, setModal) {
-          return Padding(
-            padding: EdgeInsets.only(
-              top: 20,
-              left: 20,
-              right: 20,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(10))),
-                const SizedBox(height: 12),
-                const Text('Filter Status Antrean', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                ...allStatuses.map((s) {
-                  return CheckboxListTile(
-                    value: tmp.contains(s),
-                    title: Text(_getStatusDisplayName(s), style: const TextStyle(color: Colors.white)),
-                    onChanged: (v) {
-                      setModal(() {
-                        if (v == true) {
-                          tmp.add(s);
-                        } else {
-                          tmp.remove(s);
-                        }
-                      });
-                    },
-                    activeColor: kBrownAccent,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    contentPadding: EdgeInsets.zero,
-                  );
-                }),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          setState(() => _currentStatusFilter = ['booked', 'ongoing']);
-                          Navigator.pop(context);
-                        },
-                        style: OutlinedButton.styleFrom(side: BorderSide(color: kBrownAccent)),
-                        child: const Text('Default', style: TextStyle(color: Colors.white)),
-                      ),
+        return StatefulBuilder(
+          builder: (context, setModal) {
+            return Padding(
+              padding: EdgeInsets.only(
+                top: 20,
+                left: 20,
+                right: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 50,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (tmp.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih minimal 1 status'), backgroundColor: Colors.redAccent));
-                            return;
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Filter Status Antrean',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...allStatuses.map((s) {
+                    return CheckboxListTile(
+                      value: tmp.contains(s),
+                      title: Text(
+                        _getStatusDisplayName(s),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      onChanged: (v) {
+                        setModal(() {
+                          if (v == true) {
+                            tmp.add(s);
+                          } else {
+                            tmp.remove(s);
                           }
-                          setState(() => _currentStatusFilter = List.from(tmp));
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent),
-                        child: const Text('Terapkan', style: TextStyle(color: Colors.black)),
+                        });
+                      },
+                      activeColor: kBrownAccent,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(
+                              () =>
+                                  _currentStatusFilter = ['booked', 'ongoing'],
+                            );
+                            Navigator.pop(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: kBrownAccent),
+                          ),
+                          child: const Text(
+                            'Default',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          );
-        });
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (tmp.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Pilih minimal 1 status'),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                              return;
+                            }
+                            setState(
+                              () => _currentStatusFilter = List.from(tmp),
+                            );
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kBrownAccent,
+                          ),
+                          child: const Text(
+                            'Terapkan',
+                            style: TextStyle(color: Colors.black),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
       },
     );
   }
@@ -222,13 +282,28 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
     return Scaffold(
       backgroundColor: kBlack,
       appBar: AppBar(
-        title: Text(widget.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(
+          widget.title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: kBrownAccent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
         actions: [
-          IconButton(icon: const Icon(Icons.filter_list_rounded, color: Colors.black), onPressed: _showFilterModal),
-          IconButton(icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.black), onPressed: () => _showSnackBar('Tambah manual belum diaktifkan')),
+          IconButton(
+            icon: const Icon(Icons.filter_list_rounded, color: Colors.black),
+            onPressed: _showFilterModal,
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.person_add_alt_1_rounded,
+              color: Colors.black,
+            ),
+            onPressed: () => _showSnackBar('Tambah manual belum diaktifkan'),
+          ),
         ],
       ),
       body: SafeArea(
@@ -238,53 +313,97 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return Center(
-                  child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Text(
-                  'Error stream data: ${snapshot.error}\nCek Firestore index & rules.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.redAccent),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    'Error stream data: ${snapshot.error}\nCek Firestore index & rules.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
                 ),
-              ));
+              );
             }
 
             final allQueues = snapshot.data ?? [];
             // ongoingCount = jumlah ongoing
-            final ongoingCount = allQueues.where((q) => q.status.value == 'ongoing').length;
+            final ongoingCount = allQueues
+                .where((q) => q.status.value == 'ongoing')
+                .length;
             // waitingCount here is the number of booked (confirmed) items waiting in queue
-            final waitingCount = allQueues.where((q) => q.status.value == 'booked').length;
+            final waitingCount = allQueues
+                .where((q) => q.status.value == 'booked')
+                .length;
 
             Widget header = Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 12.0,
+              ),
               child: Wrap(
                 spacing: 10,
                 runSpacing: 8,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color.fromRGBO(27, 94, 32, 0.12),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color.fromRGBO(51, 105, 30, 0.4)),
+                      border: Border.all(
+                        color: const Color.fromRGBO(51, 105, 30, 0.4),
+                      ),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.cut, color: Colors.greenAccent, size: 14),
-                      const SizedBox(width: 6),
-                      Text('Sedang Dicukur: $ongoingCount', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.w600)),
-                    ]),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.cut,
+                          color: Colors.greenAccent,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Sedang Dicukur: $ongoingCount',
+                          style: const TextStyle(
+                            color: Colors.greenAccent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color.fromRGBO(195, 164, 123, 0.12),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color.fromRGBO(195, 164, 123, 0.4)),
+                      border: Border.all(
+                        color: const Color.fromRGBO(195, 164, 123, 0.4),
+                      ),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.access_time_filled, color: kBrownAccent, size: 14),
-                      const SizedBox(width: 6),
-                      Text('Menunggu: $waitingCount', style: const TextStyle(color: kBrownAccent, fontWeight: FontWeight.w600)),
-                    ]),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.access_time_filled,
+                          color: kBrownAccent,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Menunggu: $waitingCount',
+                          style: const TextStyle(
+                            color: kBrownAccent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -297,51 +416,73 @@ class _LiveQueueScreenState extends State<LiveQueueScreen> {
               children: [
                 header,
                 Expanded(
-                  child: Builder(builder: (context) {
-                    if (snapshot.connectionState == ConnectionState.waiting && allQueues.isEmpty) {
-                      return const LoadingWidget();
-                    }
+                  child: Builder(
+                    builder: (context) {
+                      if (snapshot.connectionState == ConnectionState.waiting &&
+                          allQueues.isEmpty) {
+                        return const LoadingWidget();
+                      }
 
-                    if (filtered.isEmpty) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.inbox_outlined, size: 56, color: const Color.fromRGBO(195, 164, 123, 0.6)),
-                              const SizedBox(height: 12),
-                              const Text('Tidak ada antrean yang cocok.', style: TextStyle(color: Colors.white70)),
-                              const SizedBox(height: 6),
-                              Text('Filter: ${_currentStatusFilter.map(_getStatusDisplayName).join(', ')}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                            ],
+                      if (filtered.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.inbox_outlined,
+                                  size: 56,
+                                  color: const Color.fromRGBO(
+                                    195,
+                                    164,
+                                    123,
+                                    0.6,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Tidak ada antrean yang cocok.',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Filter: ${_currentStatusFilter.map(_getStatusDisplayName).join(', ')}',
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, idx) {
-                        final q = filtered[idx];
-
-                        // provide onConfirmBooking only for waiting items (so admin confirms payment -> booked)
-                        final FutureOr<void> Function()? onConfirm = (q.status.value == 'waiting')
-                            ? () => _confirmBooking(q)
-                            : null;
-
-                        // provide start/finish/cancel as usual
-                        return QueueCard(
-                          queue: q,
-                          onConfirmBooking: onConfirm,
-                          onStartService: () => _startService(q),
-                          onFinishService: () => _finishService(q),
-                          onCancelQueue: () => _cancelQueue(q),
                         );
-                      },
-                    );
-                  }),
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, idx) {
+                          final q = filtered[idx];
+
+                          // provide onConfirmBooking only for waiting items (so admin confirms payment -> booked)
+                          final FutureOr<void> Function()? onConfirm =
+                              (q.status.value == 'waiting')
+                              ? () => _confirmBooking(q)
+                              : null;
+
+                          // provide start/finish/cancel as usual
+                          return QueueCard(
+                            queue: q,
+                            onConfirmBooking: onConfirm,
+                            onStartService: () => _startService(q),
+                            onFinishService: () => _finishService(q),
+                            onCancelQueue: () => _cancelQueue(q),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
               ],
             );

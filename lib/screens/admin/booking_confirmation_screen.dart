@@ -20,17 +20,25 @@ class BookingConfirmationScreen extends StatelessWidget {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Text(
-              'Layar "Konfirmasi Booking" sudah tidak digunakan lagi.\nGunakan menu "Verifikasi Pembayaran" untuk memproses bukti pembayaran dan menyetujui booking.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentVerificationScreen())),
-              child: const Text('Buka Verifikasi Pembayaran'),
-            ),
-          ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Layar "Konfirmasi Booking" sudah tidak digunakan lagi.\nGunakan menu "Verifikasi Pembayaran" untuk memproses bukti pembayaran dan menyetujui booking.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PaymentVerificationScreen(),
+                  ),
+                ),
+                child: const Text('Buka Verifikasi Pembayaran'),
+              ),
+            ],
+          ),
         ),
       ),
     );

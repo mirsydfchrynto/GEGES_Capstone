@@ -12,7 +12,8 @@ class BookingDetails {
   final int? estimatedDuration; // in minutes
   final Timestamp bookingTime;
   final String status; // waiting | booked | ongoing | served | cancelled
-  final Timestamp? paymentDueAt; // when payment must be completed (alias for payment_deadline)
+  final Timestamp?
+  paymentDueAt; // when payment must be completed (alias for payment_deadline)
   final Timestamp? paymentSubmittedAt;
   final String? paymentProofBase64;
   final String? paymentMethod;
@@ -45,19 +46,27 @@ class BookingDetails {
     this.rating,
   });
 
-  factory BookingDetails.fromFirestore(DocumentSnapshot<Map<String, dynamic>> snap) {
+  factory BookingDetails.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> snap,
+  ) {
     final data = snap.data() ?? {};
     return BookingDetails(
       id: snap.id,
       barbershopId: data['barbershop_id'] as String? ?? '',
       customerId: data['customer_id'] as String? ?? '',
       barbermanId: data['barberman_id'] as String?,
-      serviceIds: ((data['service_ids'] as List<dynamic>?) ?? []).map((e) => e.toString()).toList(),
+      serviceIds: ((data['service_ids'] as List<dynamic>?) ?? [])
+          .map((e) => e.toString())
+          .toList(),
       totalPrice: (data['total_price'] as num?)?.toInt(),
       estimatedDuration: (data['estimated_duration'] as num?)?.toInt(),
-      bookingTime: data['booking_time'] is Timestamp ? data['booking_time'] as Timestamp : Timestamp.now(),
+      bookingTime: data['booking_time'] is Timestamp
+          ? data['booking_time'] as Timestamp
+          : Timestamp.now(),
       status: data['status'] as String? ?? 'waiting',
-      paymentDueAt: (data['payment_deadline'] as Timestamp?) ?? (data['payment_due_at'] as Timestamp?),
+      paymentDueAt:
+          (data['payment_deadline'] as Timestamp?) ??
+          (data['payment_due_at'] as Timestamp?),
       paymentSubmittedAt: data['payment_submitted_at'] as Timestamp?,
       paymentProofBase64: data['payment_proof_base64'] as String?,
       paymentMethod: data['payment_method'] as String?,

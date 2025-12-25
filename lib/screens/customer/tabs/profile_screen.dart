@@ -7,10 +7,10 @@ import 'package:geges_smartbarber/screens/customer/tabs/favorite_barbershops_scr
 
 // --- IMPORT DARI ITERASI SEBELUMNYA ---
 import '../../../models/user_data.dart'; // Model UserData yang sudah kita buat
-import '../edit_profile_screen.dart';   // EditProfileScreen yang sudah kita buat
+import '../edit_profile_screen.dart'; // EditProfileScreen yang sudah kita buat
 
 // Pastikan path import ke screens lain ini sudah benar di project Anda
-import '../../login_screen.dart'; 
+import '../../login_screen.dart';
 import 'my_bookings_screen.dart'; // Akan digunakan sebagai History Screen
 // Saya asumsikan ini adalah FavoriteBarbersScreen (bukan barbershop)
 
@@ -28,14 +28,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color kCardColor = Color(0xFF2C2C2C); // Background kartu
   static const Color kRedDanger = Color(0xFFDC3545); // Merah untuk logout
   static const Color kTextGrey = Color(0xFFB0B0B0); // Teks abu-abu
-  static const Color kTextBlack = Color(0xFF1B1B1B); // Teks hitam untuk tombol emas
+  static const Color kTextBlack = Color(
+    0xFF1B1B1B,
+  ); // Teks hitam untuk tombol emas
 
   // --- MENGGUNAKAN MODEL USERDATA YANG SUDAH KITA BUAT ---
   UserData _currentUser = UserData(
     uid: FirebaseAuth.instance.currentUser?.uid ?? 'guest_uid',
     name: "Tegar Nugraha", // Placeholder awal
     role: "customer",
-  ); 
+  );
   String _userEmail = "tegar.nugraha@example.com"; // Placeholder
   String? _userPhotoUrl; // Placeholder
 
@@ -54,9 +56,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _currentUser = UserData(
           uid: user.uid,
           name: user.displayName ?? "anonymous",
-          role: _currentUser.role, // Pertahankan role yang ada (atau fetch dari Firestore)
+          role: _currentUser
+              .role, // Pertahankan role yang ada (atau fetch dari Firestore)
         );
-        _userEmail = user.email ?? "Edit Profile"; 
+        _userEmail = user.email ?? "Edit Profile";
         _userPhotoUrl = user.photoURL;
       });
     }
@@ -72,7 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
   }
-  
+
   // Fungsi baru untuk navigasi ke Edit Profile
   void _goToEditProfile() async {
     // Navigasi ke EditProfileScreen dan tunggu hasilnya
@@ -92,17 +95,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kSurface,
       appBar: AppBar(
-        title: const Text('My Profile', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'My Profile',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: kSurface,
         elevation: 0,
-        automaticallyImplyLeading: true, 
-        iconTheme: const IconThemeData(color: Colors.white), 
+        automaticallyImplyLeading: true,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -111,7 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _buildProfileHeader(),
             const SizedBox(height: 20),
-            
+
             // --- MENU UTAMA ---
             _buildMenuCard(
               title: 'History', // <--- DIGANTI DARI 'My Bookings' KE 'History'
@@ -119,7 +124,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const MyBookingsScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const MyBookingsScreen(),
+                  ),
                 );
               },
             ),
@@ -128,12 +135,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Favorite Barbers',
               icon: Icons.favorite_border,
               onTap: () {
-                 // Ganti dengan FavoriteBarbersScreen (jika Anda menggunakan nama itu)
-              
-                 Navigator.push(
+                // Ganti dengan FavoriteBarbersScreen (jika Anda menggunakan nama itu)
+
+                Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const FavoriteBarbershopsScreen()),
-                 );
+                  MaterialPageRoute(
+                    builder: (context) => const FavoriteBarbershopsScreen(),
+                  ),
+                );
               },
             ),
 
@@ -155,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // TODO: Navigasi ke Terms of Service
               },
             ),
-            
+
             const SizedBox(height: 20),
 
             // --- TOMBOL LOGOUT ---
@@ -175,7 +184,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
-            
+
             const SizedBox(height: 20),
 
             // --- PROMO CARD ---
@@ -199,7 +208,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             radius: 30,
             backgroundColor: kBrownAccent.withValues(alpha: 0.2),
             // Menggunakan CachedNetworkImage untuk foto profil dari URL (jika ada)
-            backgroundImage: _userPhotoUrl != null && _userPhotoUrl!.startsWith('http')
+            backgroundImage:
+                _userPhotoUrl != null && _userPhotoUrl!.startsWith('http')
                 ? CachedNetworkImageProvider(_userPhotoUrl!)
                 : null,
             child: (_userPhotoUrl == null || !_userPhotoUrl!.startsWith('http'))
@@ -222,11 +232,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  _userEmail, 
-                  style: TextStyle(
-                    color: kTextGrey,
-                    fontSize: 13,
-                  ),
+                  _userEmail,
+                  style: TextStyle(color: kTextGrey, fontSize: 13),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -235,7 +242,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           // Tombol Settings/Edit Profile
           IconButton(
-            onPressed: _goToEditProfile, // Panggil fungsi navigasi ke EditProfileScreen
+            onPressed:
+                _goToEditProfile, // Panggil fungsi navigasi ke EditProfileScreen
             icon: Icon(Icons.settings, color: kTextGrey, size: 24),
           ),
         ],
@@ -296,10 +304,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 8),
           const Text(
             'Join out network of Profesional Barbers',
-            style: TextStyle(
-              color: kTextGrey,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: kTextGrey, fontSize: 14),
           ),
           const SizedBox(height: 20),
           SizedBox(

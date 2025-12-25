@@ -17,7 +17,8 @@ class MyBookingsScreenImproved extends StatefulWidget {
   const MyBookingsScreenImproved({super.key});
 
   @override
-  State<MyBookingsScreenImproved> createState() => _MyBookingsScreenImprovedState();
+  State<MyBookingsScreenImproved> createState() =>
+      _MyBookingsScreenImprovedState();
 }
 
 class _MyBookingsScreenImprovedState extends State<MyBookingsScreenImproved>
@@ -71,9 +72,7 @@ class _MyBookingsScreenImprovedState extends State<MyBookingsScreenImproved>
           controller: _tabController,
           isScrollable: true,
           indicatorColor: Colors.amber,
-          tabs: _tabs
-              .map((tab) => Tab(text: tab))
-              .toList(),
+          tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
         ),
       ),
       body: TabBarView(
@@ -98,9 +97,7 @@ class _MyBookingsScreenImprovedState extends State<MyBookingsScreenImproved>
         }
 
         if (snapshot.hasError) {
-          return Center(
-            child: Text('Error: ${snapshot.error}'),
-          );
+          return Center(child: Text('Error: ${snapshot.error}'));
         }
 
         final bookings = snapshot.data ?? [];
@@ -200,7 +197,10 @@ class _MyBookingsScreenImprovedState extends State<MyBookingsScreenImproved>
                         if (scheduledAt != null)
                           Text(
                             'Jadwal: ${DateFormat('dd MMM yyyy, HH:mm').format(scheduledAt.toDate())}',
-                            style: const TextStyle(fontSize: 11, color: Colors.black54),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.black54,
+                            ),
                           ),
                       ],
                     ),
@@ -211,7 +211,10 @@ class _MyBookingsScreenImprovedState extends State<MyBookingsScreenImproved>
                       style: const TextStyle(fontSize: 10, color: Colors.white),
                     ),
                     backgroundColor: statusColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                   ),
                 ],
               ),
@@ -230,7 +233,10 @@ class _MyBookingsScreenImprovedState extends State<MyBookingsScreenImproved>
                   if (createdAt != null)
                     Text(
                       'Dibuat: ${DateFormat('dd MMM HH:mm').format(createdAt.toDate())}',
-                      style: const TextStyle(fontSize: 10, color: Colors.black54),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.black54,
+                      ),
                     ),
                 ],
               ),
@@ -249,17 +255,31 @@ class _MyBookingsScreenImprovedState extends State<MyBookingsScreenImproved>
                       if (payment['proofUrl'] != null)
                         Row(
                           children: [
-                            const Icon(Icons.check_circle, size: 16, color: Colors.green),
+                            const Icon(
+                              Icons.check_circle,
+                              size: 16,
+                              color: Colors.green,
+                            ),
                             const SizedBox(width: 4),
-                            const Text('Bukti Dikirim', style: TextStyle(fontSize: 10)),
+                            const Text(
+                              'Bukti Dikirim',
+                              style: TextStyle(fontSize: 10),
+                            ),
                           ],
                         ),
                       if (payment['proofLocked'] == true)
                         Row(
                           children: [
-                            const Icon(Icons.lock, size: 16, color: Colors.orange),
+                            const Icon(
+                              Icons.lock,
+                              size: 16,
+                              color: Colors.orange,
+                            ),
                             const SizedBox(width: 4),
-                            const Text('Upload Terkunci', style: TextStyle(fontSize: 10)),
+                            const Text(
+                              'Upload Terkunci',
+                              style: TextStyle(fontSize: 10),
+                            ),
                           ],
                         ),
                     ],

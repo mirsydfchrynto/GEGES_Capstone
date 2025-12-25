@@ -8,12 +8,16 @@ class SessionService {
   static const _kLastLogin = 'session_last_login';
 
   final SecureStorage _storage;
-  SessionService([SecureStorage? storage]) : _storage = storage ?? FlutterSecureStorageAdapter();
+  SessionService([SecureStorage? storage])
+    : _storage = storage ?? FlutterSecureStorageAdapter();
 
   Future<void> saveSession({required String uid, String? idToken}) async {
     await _storage.write(key: _kUid, value: uid);
     if (idToken != null) await _storage.write(key: _kIdToken, value: idToken);
-    await _storage.write(key: _kLastLogin, value: DateTime.now().toIso8601String());
+    await _storage.write(
+      key: _kLastLogin,
+      value: DateTime.now().toIso8601String(),
+    );
     if (kDebugMode) debugPrint('Session saved for $uid');
   }
 

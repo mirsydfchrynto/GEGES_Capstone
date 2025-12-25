@@ -8,8 +8,12 @@ import 'package:intl/intl.dart'; // Untuk format harga
 class ServicesTab extends StatelessWidget {
   final Barbershop shop;
   // Format Rupiah (sesuai main.dart)
-  final NumberFormat _currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0); 
-  
+  final NumberFormat _currencyFormat = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
+
   ServicesTab({super.key, required this.shop});
 
   // Data dummy untuk Services (karena di model Barbershop kita cuma simpan List<String>)
@@ -42,8 +46,12 @@ class ServicesTab extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    service['name'] as String, 
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+                    service['name'] as String,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -54,8 +62,12 @@ class ServicesTab extends StatelessWidget {
               ),
               Text(
                 _currencyFormat.format(service['price']),
-                style: const TextStyle(color: Color(0xFFC3A47B), fontSize: 16, fontWeight: FontWeight.bold),
-              )
+                style: const TextStyle(
+                  color: Color(0xFFC3A47B),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         );
@@ -64,4 +76,5 @@ class ServicesTab extends StatelessWidget {
     );
   }
 }
+
 // [ANDA BISA COPY PASTE SAMPAI SINI]

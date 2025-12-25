@@ -17,7 +17,10 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void initState() {
     super.initState();
-    _checkAuth();
+    // Defer auth check to avoid Navigator assertions while the widget tree is still mounting.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAuth();
+    });
   }
 
   Future<void> _checkAuth() async {
@@ -25,7 +28,9 @@ class _AuthGateState extends State<AuthGate> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         if (!mounted) return;
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const OnboardingScreen()));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
         return;
       }
 
@@ -34,26 +39,32 @@ class _AuthGateState extends State<AuthGate> {
       if (!mounted) return;
 
       if (userData == null) {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const OnboardingScreen()));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
         return;
       }
 
       if (userData.role == 'customer') {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
       } else {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const AdminDashboardScreen()));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        );
       }
     } catch (e) {
       // In case of error, fall back to Onboarding
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const OnboardingScreen()));
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }

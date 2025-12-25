@@ -36,7 +36,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   // FocusNodes for inputs to allow animated focused styling
   late final FocusNode _nameFocusNode;
@@ -74,10 +75,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   static const String _kErrAllFields = 'Semua field wajib diisi.';
   static const String _kErrNameMin = 'Nama minimal 3 karakter.';
   static const String _kErrEmailFormat = 'Format email tidak valid.';
-  static const String _kErrPasswordMismatch = 'Password dan konfirmasi tidak cocok.';
+  static const String _kErrPasswordMismatch =
+      'Password dan konfirmasi tidak cocok.';
   static const String _kErrPasswordMin = 'Password minimal 6 karakter.';
   static const String _kMsgRegisterSuccess = 'Pendaftaran berhasil!';
-  static const String _kMsgGoogleRegisterSuccess = 'Registrasi dengan Google berhasil! Navigasi ke Home.';
+  static const String _kMsgGoogleRegisterSuccess =
+      'Registrasi dengan Google berhasil! Navigasi ke Home.';
 
   @override
   void initState() {
@@ -119,7 +122,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - kirim email verifikasi
     // - jika sukses, navigasi ke login screen
     // - jika gagal, tampilkan error message
-    
+
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -147,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _errorMessage = _kErrEmailFormat);
       return;
     }
-    
+
     // penjelasan validasi password match:
     // - cek apakah password dan konfirmasi sama
     // - jika tidak cocok, tampilkan error message
@@ -155,7 +158,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _errorMessage = _kErrPasswordMismatch);
       return;
     }
-    
+
     // penjelasan validasi password strength:
     // - cek apakah password minimal 6 karakter
     // - ini adalah minimal requirement dari firebase
@@ -194,7 +197,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _goToLogin();
       } else {
         // Tampilkan error message
-        setState(() => _errorMessage = result['message'] ?? 'Registrasi gagal.');
+        setState(
+          () => _errorMessage = result['message'] ?? 'Registrasi gagal.',
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -212,7 +217,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - fungsi ini dipanggil saat user tekan tombol "log in" atau setelah register sukses
     // - navigasi ke loginscreen dengan pushReplacement (ganti screen, jangan push)
     // - transitionduration zero untuk instant transition tanpa animasi
-    
+
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
@@ -232,7 +237,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - jika user belum terdaftar, akan otomatis dibuat account baru
     // - jika user sudah terdaftar, akan login langsung
     // - navigasi ke login screen untuk menunjukkan sukses
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -261,8 +266,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         setState(() => _errorMessage = message);
 
         // Jika error related to recaptcha atau credential, tawarkan retry
-        final isRecaptcha = message.toLowerCase().contains('recaptcha') || message.toLowerCase().contains('captcha');
-        final isCredential = message.toLowerCase().contains('credential') || message.toLowerCase().contains('developer_error') || message.toLowerCase().contains('oauth');
+        final isRecaptcha =
+            message.toLowerCase().contains('recaptcha') ||
+            message.toLowerCase().contains('captcha');
+        final isCredential =
+            message.toLowerCase().contains('credential') ||
+            message.toLowerCase().contains('developer_error') ||
+            message.toLowerCase().contains('oauth');
 
         if (isRecaptcha || isCredential) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -287,12 +297,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       // Tawarkan retry untuk error tertentu
       final msg = e.toString().toLowerCase();
-      if (msg.contains('recaptcha') || msg.contains('credential') || msg.contains('developer_error')) {
+      if (msg.contains('recaptcha') ||
+          msg.contains('credential') ||
+          msg.contains('developer_error')) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Terjadi kesalahan autentikasi: $e'),
             backgroundColor: const Color(0xFFD32F2F),
-            action: SnackBarAction(label: 'Retry', textColor: Colors.white, onPressed: _signInWithGoogle),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _signInWithGoogle,
+            ),
           ),
         );
       }
@@ -306,7 +322,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final hasLower = password.contains(RegExp(r'[a-z]'));
     final hasDigit = password.contains(RegExp(r'[0-9]'));
     final hasSpecial = password.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
-    int score = [hasUpper, hasLower, hasDigit, hasSpecial].where((b) => b).length;
+    int score = [
+      hasUpper,
+      hasLower,
+      hasDigit,
+      hasSpecial,
+    ].where((b) => b).length;
     if (score <= 2) return 'Sedang';
     if (score >= 3) return 'Kuat';
     return 'Lemah';
@@ -319,7 +340,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - scaffold = layout dasar dengan appbar, body, dll
     // - singlechildscrollview = membuat content bisa di-scroll jika terlalu panjang
     // - column = tata letak vertikal (dari atas ke bawah)
-    
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -341,7 +362,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const Icon(Icons.cut, color: kBrownAccent, size: 120),
               ),
               const SizedBox(height: 24),
-              
+
               // penjelasan judul & subtitle:
               // - text untuk menampilkan teks statis
               // - textalign center untuk meratakan ke tengah
@@ -349,7 +370,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const Text(
                 'Welcome to GEGES',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               // subtitle
@@ -359,7 +384,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
               const SizedBox(height: 32),
-              
+
               // penjelasan tab login/signup:
               // - _buildAuthTabs() adalah custom widget untuk tombol tab login/signup
               // - isLogin false karena ini halaman signup
@@ -372,21 +397,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // - _buildTextField() adalah custom widget untuk input field styling
               // - hinttext, icon, keyboardtype parameter untuk konfigurasi
               // username field
-              _buildTextField(_nameController, 'Username', Icons.person_outline, key: const Key('register_name'), focusNode: _nameFocusNode),
+              _buildTextField(
+                _nameController,
+                'Username',
+                Icons.person_outline,
+                key: const Key('register_name'),
+                focusNode: _nameFocusNode,
+              ),
               const SizedBox(height: 16),
               // email field
-              _buildTextField(_emailController, 'Email', Icons.email_outlined,
-                  key: const Key('register_email'), keyboardType: TextInputType.emailAddress, focusNode: _emailFocusNode),
+              _buildTextField(
+                _emailController,
+                'Email',
+                Icons.email_outlined,
+                key: const Key('register_email'),
+                keyboardType: TextInputType.emailAddress,
+                focusNode: _emailFocusNode,
+              ),
               const SizedBox(height: 16),
               // password field (hidden)
-              _buildTextField(_passwordController, 'Password', Icons.lock_outline,
-                  key: const Key('register_password'), isObscure: !_passwordVisible,
-                  onPasswordToggle: () => setState(() => _passwordVisible = !_passwordVisible), focusNode: _passwordFocusNode),
+              _buildTextField(
+                _passwordController,
+                'Password',
+                Icons.lock_outline,
+                key: const Key('register_password'),
+                isObscure: !_passwordVisible,
+                onPasswordToggle: () =>
+                    setState(() => _passwordVisible = !_passwordVisible),
+                focusNode: _passwordFocusNode,
+              ),
               const SizedBox(height: 16),
               // confirm password field (hidden)
-              _buildTextField(_confirmPasswordController, 'Confirm Password', Icons.lock_outline,
-                  key: const Key('register_confirm_password'), isObscure: !_confirmPasswordVisible,
-                  onPasswordToggle: () => setState(() => _confirmPasswordVisible = !_confirmPasswordVisible), focusNode: _confirmFocusNode),
+              _buildTextField(
+                _confirmPasswordController,
+                'Confirm Password',
+                Icons.lock_outline,
+                key: const Key('register_confirm_password'),
+                isObscure: !_confirmPasswordVisible,
+                onPasswordToggle: () => setState(
+                  () => _confirmPasswordVisible = !_confirmPasswordVisible,
+                ),
+                focusNode: _confirmFocusNode,
+              ),
               const SizedBox(height: 20),
 
               // penjelasan password strength indicator:
@@ -398,9 +450,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Text(
                   'Kekuatan Password: ${_getPasswordStrength(_passwordController.text)}',
                   style: TextStyle(
-                    color: _getPasswordStrength(_passwordController.text) == 'Kuat'
+                    color:
+                        _getPasswordStrength(_passwordController.text) == 'Kuat'
                         ? Colors.green
-                        : (_getPasswordStrength(_passwordController.text) == 'Sedang' ? Colors.orange : Colors.red),
+                        : (_getPasswordStrength(_passwordController.text) ==
+                                  'Sedang'
+                              ? Colors.orange
+                              : Colors.red),
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -417,7 +473,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Text(
                     _errorMessage,
                     key: const Key('register_error_text'),
-                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -430,17 +490,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
               SizedBox(
                 height: 55,
                 child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: kBrownAccent))
+                    ? const Center(
+                        child: CircularProgressIndicator(color: kBrownAccent),
+                      )
                     : ElevatedButton(
                         key: const Key('register_create_btn'),
                         onPressed: _register,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: kBrownAccent,
                           foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        child: const Text('Create Account',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'Create Account',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
               ),
               const SizedBox(height: 32),
@@ -463,10 +532,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   icon: Image.asset(
                     'assets/images/google.png',
                     height: 24,
-                    errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.android, color: Colors.white, size: 24),
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.android,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
-                  label: const Text('Continue with Google', style: TextStyle(fontSize: 16)),
+                  label: const Text(
+                    'Continue with Google',
+                    style: TextStyle(fontSize: 16),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kDarkGrey,
                     foregroundColor: Colors.white,
@@ -478,7 +553,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              
+
               // penjelasan footer terms:
               // - richtext untuk membuat text dengan style berbeda di bagian yang berbeda
               // - textspan untuk mendefinisikan style per bagian
@@ -494,15 +569,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ========================================
   // custom widget: tab untuk login/signup
   // ========================================
-  Widget _buildAuthTabs({required bool isLogin, required VoidCallback onLoginTap}) {
+  Widget _buildAuthTabs({
+    required bool isLogin,
+    required VoidCallback onLoginTap,
+  }) {
     // penjelasan:
     // - widget ini menampilkan 2 tab: "log in" dan "sign up"
     // - tab yang aktif memiliki background coklat
     // - tab yang tidak aktif transparan
     // - ontap callback dipanggil saat user tekan tab
-    
+
     return Container(
-      decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: kDarkGrey,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
           // penjelasan tab login:
@@ -515,14 +596,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
-                    color: isLogin ? kBrownAccent : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12)),
-                child: Text('Log in',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: isLogin ? Colors.black : Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16)),
+                  color: isLogin ? kBrownAccent : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Log in',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isLogin ? Colors.black : Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
               ),
             ),
           ),
@@ -534,12 +619,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                  color: !isLogin ? kBrownAccent : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12)),
-              child: const Text('Sign Up',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
+                color: !isLogin ? kBrownAccent : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Sign Up',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ),
           ),
         ],
@@ -550,8 +641,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ========================================
   // custom widget: text input field
   // ========================================
-  Widget _buildTextField(TextEditingController c, String hint, IconData icon,
-      {Key? key, bool isObscure = false, TextInputType keyboardType = TextInputType.text, VoidCallback? onPasswordToggle, FocusNode? focusNode}) {
+  Widget _buildTextField(
+    TextEditingController c,
+    String hint,
+    IconData icon, {
+    Key? key,
+    bool isObscure = false,
+    TextInputType keyboardType = TextInputType.text,
+    VoidCallback? onPasswordToggle,
+    FocusNode? focusNode,
+  }) {
     // penjelasan:
     // - reusable widget untuk membuat input field dengan style yang konsisten
     // - c: controller menangkap text yang user ketik
@@ -569,7 +668,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         color: kDarkGrey,
         borderRadius: BorderRadius.circular(20),
         boxShadow: (node != null && node.hasFocus)
-            ? [BoxShadow(color: kBrownAccent.withValues(alpha: 0.12), blurRadius: 8, spreadRadius: 1)]
+            ? [
+                BoxShadow(
+                  color: kBrownAccent.withValues(alpha: 0.12),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ]
             : null,
       ),
       child: TextField(
@@ -578,7 +683,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         obscureText: isObscure,
         keyboardType: keyboardType,
         focusNode: node,
-        onChanged: (_) => setState(() {}), // Rebuild untuk password strength indicator
+        onChanged: (_) =>
+            setState(() {}), // Rebuild untuk password strength indicator
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           hintText: hint,
@@ -614,7 +720,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - widget ini menampilkan baris dengan garis di kanan-kiri dengan "or" di tengah
     // - divider untuk membuat garis horizontal
     // - row dengan expanded untuk membuat garis responsive
-    
+
     return Row(
       children: [
         Expanded(child: Divider(color: Colors.grey.shade800)),
@@ -635,7 +741,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - richtext untuk membuat text dengan style berbeda di bagian yang berbeda
     // - textspan untuk mendefinisikan style per bagian
     // - tapgesturerecognizer untuk membuat teks clickable
-    
+
     return RichText(
       textAlign: TextAlign.center,
       text: TextSpan(
@@ -643,18 +749,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
         children: [
           const TextSpan(text: 'By continuing, you agree to our\n'),
           TextSpan(
-              text: 'Terms of Services',
-              style: const TextStyle(color: kBrownAccent, decoration: TextDecoration.underline),
-              recognizer: TapGestureRecognizer()..onTap = () {
+            text: 'Terms of Services',
+            style: const TextStyle(
+              color: kBrownAccent,
+              decoration: TextDecoration.underline,
+            ),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () {
                 // TODO: buka halaman terms of services
-              }),
+              },
+          ),
           const TextSpan(text: ' and '),
           TextSpan(
-              text: 'Privacy Policy',
-              style: const TextStyle(color: kBrownAccent, decoration: TextDecoration.underline),
-              recognizer: TapGestureRecognizer()..onTap = () {
+            text: 'Privacy Policy',
+            style: const TextStyle(
+              color: kBrownAccent,
+              decoration: TextDecoration.underline,
+            ),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () {
                 // TODO: buka halaman privacy policy
-              }),
+              },
+          ),
         ],
       ),
     );

@@ -11,24 +11,39 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 class BookingAntiDuplicateService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static const String bookingsCollection = 'bookings';
+  final FirebaseFirestore _firestore;
+
+  BookingAntiDuplicateService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+  static const String primaryCollection = 'queues';
+
+  Future<DocumentReference<Map<String, dynamic>>> _resolveBookingDocRef(
+    String id,
+  ) async {
+    final primaryRef = _firestore.collection(primaryCollection).doc(id);
+    final pSnap = await primaryRef.get();
+    if (pSnap.data() != null) return primaryRef;
+    final legacyRef = _firestore.collection('bookings').doc(id);
+    final lSnap = await legacyRef.get();
+    if (lSnap.data() != null) return legacyRef;
+    return primaryRef; // fallback primary ref (likely non-existent)
+  }
 
   /// Submit bukti pembayaran dengan transaction (atomik, prevent double-upload)
-  /// 
+  ///
   /// Kondisi yang dicek:
   /// - Booking harus exist
   /// - Status harus 'confirmed'
   /// - payment.proofUrl harus null (belum ada)
   /// - payment.proofLocked harus false/null
-  /// 
+  ///
   /// Jika semua kondisi terpenuhi:
   /// - Set proofUrl, proofUploadedAt (server ts), proofUploadedBy (uid)
   /// - Increment proofUploadAttemptCount
   /// - Set proofLocked = true
   /// - Set verificationStatus = 'pending'
   /// - Update updatedAt
-  /// 
+  ///
   /// Throws exception jika:
   /// - Booking tidak ditemukan
   /// - Status tidak 'confirmed'
@@ -43,7 +58,7 @@ class BookingAntiDuplicateService {
       throw Exception('Parameter tidak boleh kosong');
     }
 
-    final bookingRef = _firestore.collection(bookingsCollection).doc(bookingId);
+    final bookingRef = await _resolveBookingDocRef(bookingId);
 
     try {
       await _firestore.runTransaction((tx) async {
@@ -56,7 +71,7 @@ class BookingAntiDuplicateService {
         final data = snapshot.data() ?? {};
         final status = data['status'] as String?;
         final payment = Map<String, dynamic>.from(data['payment'] ?? {});
-        
+
         final currentProofUrl = payment['proofUrl'] as String?;
         final proofLocked = payment['proofLocked'] as bool? ?? false;
 
@@ -102,7 +117,7 @@ class BookingAntiDuplicateService {
   }
 
   /// Admin verifikasi pembayaran: accepted
-  /// 
+  ///
   /// Update: verificationStatus='accepted', status='booked'
   /// Persyaratan: verificationStatus harus 'pending'
   Future<void> acceptPaymentVerification({
@@ -110,7 +125,7 @@ class BookingAntiDuplicateService {
     required String adminUid,
     String? adminNotes,
   }) async {
-    final bookingRef = _firestore.collection(bookingsCollection).doc(bookingId);
+    final bookingRef = await _resolveBookingDocRef(bookingId);
 
     try {
       await _firestore.runTransaction((tx) async {
@@ -121,7 +136,9 @@ class BookingAntiDuplicateService {
 
         final data = snapshot.data() ?? {};
         final payment = Map<String, dynamic>.from(data['payment'] ?? {});
-        final verificationStatus = payment['verificationStatus'] as String?;
+        final verificationStatus =
+            payment['verificationStatus'] as String? ??
+            data['payment_verification_status'] as String?;
 
         if (verificationStatus != 'pending') {
           throw Exception(
@@ -138,6 +155,7 @@ class BookingAntiDuplicateService {
             'payment.verificationNotes': adminNotes,
           // After verification the booking becomes booked and enters the live queue
           'status': 'booked',
+          'payment_verification_status': 'accepted',
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
@@ -147,13 +165,15 @@ class BookingAntiDuplicateService {
         );
       });
     } catch (e, st) {
-      debugPrint('[BookingAntiDupService] Error acceptPaymentVerification: $e\n$st');
+      debugPrint(
+        '[BookingAntiDupService] Error acceptPaymentVerification: $e\n$st',
+      );
       rethrow;
     }
   }
 
   /// Admin reject pembayaran
-  /// 
+  ///
   /// Update: verificationStatus='rejected', status='awaiting_payment' (allow re-upload)
   /// atau status='cancelled' tergantung policy
   Future<void> rejectPaymentVerification({
@@ -162,7 +182,7 @@ class BookingAntiDuplicateService {
     required String rejectionReason,
     bool allowReupload = true,
   }) async {
-    final bookingRef = _firestore.collection(bookingsCollection).doc(bookingId);
+    final bookingRef = await _resolveBookingDocRef(bookingId);
 
     try {
       await _firestore.runTransaction((tx) async {
@@ -173,7 +193,9 @@ class BookingAntiDuplicateService {
 
         final data = snapshot.data() ?? {};
         final payment = Map<String, dynamic>.from(data['payment'] ?? {});
-        final verificationStatus = payment['verificationStatus'] as String?;
+        final verificationStatus =
+            payment['verificationStatus'] as String? ??
+            data['payment_verification_status'] as String?;
 
         if (verificationStatus != 'pending') {
           throw Exception(
@@ -188,11 +210,13 @@ class BookingAntiDuplicateService {
           'payment.rejectionReason': rejectionReason,
           'payment.proofLocked': !allowReupload, // Unlock jika reupload allowed
           'status': allowReupload ? 'awaiting_payment' : 'cancelled',
+          'payment_verification_status': 'rejected',
           'updatedAt': FieldValue.serverTimestamp(),
         };
 
         if (!allowReupload) {
           updateData['payment.proofUrl'] = FieldValue.delete();
+          updateData['payment_proof_base64'] = FieldValue.delete();
         }
 
         tx.update(bookingRef, updateData);
@@ -203,7 +227,9 @@ class BookingAntiDuplicateService {
         );
       });
     } catch (e, st) {
-      debugPrint('[BookingAntiDupService] Error rejectPaymentVerification: $e\n$st');
+      debugPrint(
+        '[BookingAntiDupService] Error rejectPaymentVerification: $e\n$st',
+      );
       rethrow;
     }
   }
@@ -214,15 +240,14 @@ class BookingAntiDuplicateService {
     String userId,
   ) async {
     try {
-      final snapshot = await _firestore
-          .collection(bookingsCollection)
-          .doc(bookingId)
-          .get();
+      final ref = await _resolveBookingDocRef(bookingId);
+      final snapshot = await ref.get();
 
       if (!snapshot.exists) return null;
 
       final data = snapshot.data() ?? {};
-      if ((data['userId'] as String?) != userId) {
+      if ((data['userId'] as String?) != userId &&
+          (data['customer_id'] as String?) != userId) {
         throw Exception('Booking bukan milik user ini');
       }
 
@@ -234,7 +259,7 @@ class BookingAntiDuplicateService {
   }
 
   /// Stream bookings untuk customer dengan filter eksklusif
-  /// 
+  ///
   /// Gunakan untuk setiap tab agar tidak ada overlap/duplikasi
   /// filterType supported:
   /// - 'awaiting_payment' : status == 'awaiting_payment' & no verificationStatus
@@ -243,14 +268,14 @@ class BookingAntiDuplicateService {
   /// - 'cancelled'        : status == 'cancelled'
   Stream<List<DocumentSnapshot>> streamCustomerBookingsFiltered({
     required String userId,
-    required String filterType, // 'awaiting_payment', 'payment_pending', 'booked', 'cancelled'
+    required String
+    filterType, // 'awaiting_payment', 'payment_pending', 'booked', 'cancelled'
   }) {
     Query<Map<String, dynamic>> query = _firestore
-        .collection(bookingsCollection)
-        .where('userId', isEqualTo: userId);
+        .collection('queues')
+        .where('customer_id', isEqualTo: userId);
 
     switch (filterType) {
-
       case 'awaiting_payment':
         // Menunggu pembayaran: awaiting_payment & belum upload
         query = query
@@ -276,11 +301,11 @@ class BookingAntiDuplicateService {
         throw Exception('Filter type tidak dikenali: $filterType');
     }
 
-    query = query.orderBy('createdAt', descending: true);
+    query = query.orderBy('created_at', descending: true);
 
     return query.snapshots().map((snapshot) {
       final List<DocumentSnapshot> docs = snapshot.docs;
-      
+
       // Safety: deduplicate by bookingId (meskipun seharusnya tidak ada duplikasi)
       final Map<String, DocumentSnapshot> unique = {};
       for (var doc in docs) {
@@ -292,50 +317,60 @@ class BookingAntiDuplicateService {
   }
 
   /// Stream admin verifikasi pembayaran (hanya pending)
-  /// 
+  ///
   /// Admin melihat hanya booking yang payment.verificationStatus == 'pending'
   /// Deduplicate by bookingId untuk extra safety
   Stream<List<DocumentSnapshot>> streamPaymentVerificationQueue() {
     return _firestore
-        .collection(bookingsCollection)
+        .collection('queues')
         .where('payment.verificationStatus', isEqualTo: 'pending')
         .orderBy('payment.proofUploadedAt', descending: false) // oldest first
         .snapshots()
         .map((snapshot) {
-      final List<DocumentSnapshot> docs = snapshot.docs;
+          final List<DocumentSnapshot> docs = snapshot.docs;
 
-      // Deduplicate by bookingId
-      final Map<String, DocumentSnapshot> unique = {};
-      for (var doc in docs) {
-        if (!unique.containsKey(doc.id)) {
-          unique[doc.id] = doc;
-        }
-      }
+          // Deduplicate by bookingId
+          final Map<String, DocumentSnapshot> unique = {};
+          for (var doc in docs) {
+            if (!unique.containsKey(doc.id)) {
+              unique[doc.id] = doc;
+            }
+          }
 
-      debugPrint(
-        '[BookingAntiDupService] Verifikasi queue: ${unique.length} pending payments',
-      );
-      return unique.values.toList();
-    });
+          debugPrint(
+            '[BookingAntiDupService] Verifikasi queue: ${unique.length} pending payments',
+          );
+          return unique.values.toList();
+        });
   }
 
   /// Identify duplikasi: cari booking dengan kombinasi userId + scheduledAt yang sama
-  /// 
+  ///
   /// Return: `List<List<String>>` dimana setiap inner list adalah group ID yang duplikasi
   /// Gunakan untuk admin cleanup manual
   Future<List<List<String>>> identifyDuplicateBookings() async {
     try {
-      final allBookings = await _firestore
-          .collection(bookingsCollection)
-          .get();
+      final allQueues = await _firestore.collection('queues').get();
+      final allBookingsLegacy = await _firestore.collection('bookings').get();
+
+      final allDocs = [...allQueues.docs, ...allBookingsLegacy.docs];
 
       final Map<String, List<String>> groupByKey = {};
 
-      for (var doc in allBookings.docs) {
+      for (var doc in allDocs) {
         final data = doc.data();
-        final userId = data['userId'] as String?;
-        final scheduledAt = data['scheduledAt'] as Timestamp?;
-        final serviceId = data['serviceId'] as String?;
+        final userId =
+            data['userId'] as String? ?? data['customer_id'] as String?;
+        final scheduledAt =
+            data['scheduledAt'] as Timestamp? ??
+            data['booking_time'] as Timestamp?;
+        String? serviceId;
+        if (data['serviceId'] is String) {
+          serviceId = data['serviceId'] as String?;
+        } else if (data['service_ids'] is List) {
+          final list = (data['service_ids'] as List);
+          if (list.isNotEmpty) serviceId = list.first as String?;
+        }
 
         if (userId == null || scheduledAt == null) continue;
 
@@ -360,18 +395,29 @@ class BookingAntiDuplicateService {
   }
 
   /// Mark booking sebagai duplicate_removed (soft delete)
-  /// 
+  ///
   /// Gunakan untuk migrasi: pilih 1 booking authoritative, mark yang lain
   Future<void> markAsDuplicateRemoved({
     required String bookingId,
     required String reason,
   }) async {
     try {
-      await _firestore.collection(bookingsCollection).doc(bookingId).update({
-        'status': 'duplicate_removed',
-        'duplicateRemovedAt': FieldValue.serverTimestamp(),
-        'duplicateRemovedReason': reason,
-      });
+      final ref = _firestore.collection('queues').doc(bookingId);
+      final snap = await ref.get();
+      if (snap.exists) {
+        await ref.update({
+          'status': 'duplicate_removed',
+          'duplicateRemovedAt': FieldValue.serverTimestamp(),
+          'duplicateRemovedReason': reason,
+        });
+      } else {
+        final legacyRef = _firestore.collection('bookings').doc(bookingId);
+        await legacyRef.update({
+          'status': 'duplicate_removed',
+          'duplicateRemovedAt': FieldValue.serverTimestamp(),
+          'duplicateRemovedReason': reason,
+        });
+      }
 
       debugPrint(
         '[BookingAntiDupService] Marked as duplicate: '

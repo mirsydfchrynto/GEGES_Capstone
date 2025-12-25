@@ -59,12 +59,17 @@ class BarbershopGalleryService {
   /// Get all photo URLs untuk barbershop tertentu
   Future<List<String>> getPhotoUrls(String barbershopId) async {
     try {
-      final doc = await _firestore.collection('barbershops').doc(barbershopId).get();
+      final doc = await _firestore
+          .collection('barbershops')
+          .doc(barbershopId)
+          .get();
       if (!doc.exists) return [];
 
-      final photoUrls = (doc.data()?['photoUrls'] as List<dynamic>?)
-          ?.whereType<String>()
-          .toList() ?? [];
+      final photoUrls =
+          (doc.data()?['photoUrls'] as List<dynamic>?)
+              ?.whereType<String>()
+              .toList() ??
+          [];
 
       return photoUrls;
     } catch (e) {
@@ -81,9 +86,11 @@ class BarbershopGalleryService {
         .snapshots()
         .map((snapshot) {
           if (!snapshot.exists) return [];
-          final photoUrls = (snapshot.data()?['photoUrls'] as List<dynamic>?)
-              ?.whereType<String>()
-              .toList() ?? [];
+          final photoUrls =
+              (snapshot.data()?['photoUrls'] as List<dynamic>?)
+                  ?.whereType<String>()
+                  .toList() ??
+              [];
           return photoUrls;
         });
   }
@@ -176,7 +183,9 @@ class BarbershopGalleryService {
   // -----------------------
 
   /// Get metadata untuk semua foto (captions, upload dates, etc)
-  Stream<List<Map<String, dynamic>>> streamGalleryMetadata(String barbershopId) {
+  Stream<List<Map<String, dynamic>>> streamGalleryMetadata(
+    String barbershopId,
+  ) {
     return _firestore
         .collection('barbershops')
         .doc(barbershopId)
@@ -185,12 +194,14 @@ class BarbershopGalleryService {
         .snapshots()
         .map((snapshot) {
           return snapshot.docs
-              .map((doc) => {
-                    'url': doc['url'],
-                    'caption': doc['caption'] as String?,
-                    'uploadedAt': doc['uploadedAt'] as Timestamp?,
-                    ...doc.data(),
-                  })
+              .map(
+                (doc) => {
+                  'url': doc['url'],
+                  'caption': doc['caption'] as String?,
+                  'uploadedAt': doc['uploadedAt'] as Timestamp?,
+                  ...doc.data(),
+                },
+              )
               .toList();
         });
   }

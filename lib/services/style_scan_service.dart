@@ -8,7 +8,10 @@ class StyleScanService {
   final String baseUrl;
   final Duration timeout;
 
-  StyleScanService({required this.baseUrl, this.timeout = const Duration(seconds: 30)});
+  StyleScanService({
+    required this.baseUrl,
+    this.timeout = const Duration(seconds: 30),
+  });
 
   /// Uploads [imageFile] to the `/detect` endpoint and returns the parsed JSON map.
   /// Throws on non-200 responses or network errors.
@@ -16,7 +19,9 @@ class StyleScanService {
     final uri = Uri.parse('${baseUrl.replaceAll(r"/\z", '')}/detect');
 
     final request = http.MultipartRequest('POST', uri);
-    request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+    request.files.add(
+      await http.MultipartFile.fromPath('image', imageFile.path),
+    );
 
     final streamed = await request.send().timeout(timeout);
     final resp = await http.Response.fromStream(streamed).timeout(timeout);
@@ -25,7 +30,8 @@ class StyleScanService {
       throw HttpException('Server returned ${resp.statusCode}: ${resp.body}');
     }
 
-    final Map<String, dynamic> body = json.decode(resp.body) as Map<String, dynamic>;
+    final Map<String, dynamic> body =
+        json.decode(resp.body) as Map<String, dynamic>;
     return body;
   }
 }

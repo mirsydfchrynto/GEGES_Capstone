@@ -11,10 +11,7 @@ import 'package:intl/intl.dart';
 class BarbermanManagementScreen extends StatefulWidget {
   final String barbershopId;
 
-  const BarbermanManagementScreen({
-    super.key,
-    required this.barbershopId,
-  });
+  const BarbermanManagementScreen({super.key, required this.barbershopId});
 
   @override
   State<BarbermanManagementScreen> createState() =>
@@ -54,10 +51,7 @@ class _BarbermanManagementScreenState extends State<BarbermanManagementScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildBarbermanList(),
-          _buildLeaveRequestList(),
-        ],
+        children: [_buildBarbermanList(), _buildLeaveRequestList()],
       ),
     );
   }
@@ -67,7 +61,9 @@ class _BarbermanManagementScreenState extends State<BarbermanManagementScreen>
   // -----------------------
   Widget _buildBarbermanList() {
     return StreamBuilder<List<Barberman>>(
-      stream: _barbermanService.streamBarbermenByBarbershop(widget.barbershopId),
+      stream: _barbermanService.streamBarbermenByBarbershop(
+        widget.barbershopId,
+      ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -158,9 +154,11 @@ class _BarbermanCardState extends State<_BarbermanCard> {
     super.initState();
     // Initialize off days selection (7 days: Mon-Sun)
     _selectedOffDays = List<bool>.filled(7, false);
-    final offDayIndices = widget.barberman.offDays
-        ?.map((d) => DayOfWeek.values.indexOf(d))
-        .toList() ?? [];
+    final offDayIndices =
+        widget.barberman.offDays
+            ?.map((d) => DayOfWeek.values.indexOf(d))
+            .toList() ??
+        [];
     for (final idx in offDayIndices) {
       if (idx >= 0 && idx < 7) {
         _selectedOffDays[idx] = true;
@@ -204,8 +202,9 @@ class _BarbermanCardState extends State<_BarbermanCard> {
                     widget.barberman.onLeave ? 'Cuti' : 'Aktif',
                     style: const TextStyle(color: Colors.white),
                   ),
-                  backgroundColor:
-                      widget.barberman.onLeave ? const Color(0xFFD32F2F) : const Color(0xFF4CAF50),
+                  backgroundColor: widget.barberman.onLeave
+                      ? const Color(0xFFD32F2F)
+                      : const Color(0xFF4CAF50),
                 ),
               ],
             ),
@@ -267,16 +266,16 @@ class _BarbermanCardState extends State<_BarbermanCard> {
       // Create updated barber with new off days
       // Note: this updates local state; in a real app, save to Firebase here
       // For now, we just show the UI feedback
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Pengaturan hari libur disimpan')),
       );
 
       widget.onUpdated();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal: $e')));
     }
   }
 }
@@ -376,9 +375,9 @@ class _LeaveRequestCard extends StatelessWidget {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'approved':
-  return const Color(0xFF4CAF50);
+        return const Color(0xFF4CAF50);
       case 'rejected':
-  return const Color(0xFFD32F2F);
+        return const Color(0xFFD32F2F);
       case 'pending':
       default:
         return Colors.orange;
@@ -389,14 +388,10 @@ class _LeaveRequestCard extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await leaveService.approveLeave(barbershopId, leave.id);
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Cuti disetujui')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('Cuti disetujui')));
       onAction();
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Gagal: $e')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('Gagal: $e')));
     }
   }
 
@@ -404,14 +399,10 @@ class _LeaveRequestCard extends StatelessWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await leaveService.rejectLeave(barbershopId, leave.id);
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Cuti ditolak')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('Cuti ditolak')));
       onAction();
     } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Gagal: $e')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('Gagal: $e')));
     }
   }
 }

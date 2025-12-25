@@ -9,10 +9,12 @@ abstract class SecureStorage {
 
 class FlutterSecureStorageAdapter implements SecureStorage {
   final FlutterSecureStorage _s;
-  FlutterSecureStorageAdapter([FlutterSecureStorage? s]) : _s = s ?? const FlutterSecureStorage();
+  FlutterSecureStorageAdapter([FlutterSecureStorage? s])
+    : _s = s ?? const FlutterSecureStorage();
 
   @override
-  Future<void> write({required String key, required String value}) async => await _s.write(key: key, value: value);
+  Future<void> write({required String key, required String value}) async =>
+      await _s.write(key: key, value: value);
 
   @override
   Future<String?> read({required String key}) async => await _s.read(key: key);

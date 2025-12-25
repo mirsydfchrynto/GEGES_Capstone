@@ -16,11 +16,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 
-@GenerateMocks([
-  FirebaseAuth,
-  User,
-  QueueService,
-])
+@GenerateMocks([FirebaseAuth, User, QueueService])
 import 'payment_upload_proof_test.mocks.dart';
 
 void main() {
@@ -44,10 +40,13 @@ void main() {
     // ================================================================
     // TC-01: Timer Sudah Habis (CHECKPOINT 1 - BRANCH A)
     // ================================================================
-    test('TC-01: HARUS return error jika waktu pembayaran sudah habis', () async {
-      final timeRemaining = Duration.zero;
-      expect(timeRemaining.inSeconds == 0, true);
-    });
+    test(
+      'TC-01: HARUS return error jika waktu pembayaran sudah habis',
+      () async {
+        final timeRemaining = Duration.zero;
+        expect(timeRemaining.inSeconds == 0, true);
+      },
+    );
 
     // ================================================================
     // TC-02: Tidak Ada Gambar Dipilih (CHECKPOINT 2 - BRANCH A)
@@ -70,10 +69,14 @@ void main() {
     // TC-04: Pesanan Tidak Ditemukan (CHECKPOINT 4 - BRANCH A)
     // ================================================================
     test('TC-04: HARUS return error jika pesanan tidak ditemukan', () async {
-      when(mockQueueService.getQueueByIdForCustomer(any, any))
-          .thenAnswer((_) async => null);
+      when(
+        mockQueueService.getQueueByIdForCustomer(any, any),
+      ).thenAnswer((_) async => null);
 
-      final queue = await mockQueueService.getQueueByIdForCustomer(orderId, userId);
+      final queue = await mockQueueService.getQueueByIdForCustomer(
+        orderId,
+        userId,
+      );
       expect(queue, null);
     });
 
@@ -90,41 +93,60 @@ void main() {
         status: QueueStatus.booked,
         requestStatus: RequestStatus.approved,
         paymentProofBase64: 'base64_exists',
-        paymentDeadline: Timestamp.fromDate(DateTime.now().add(Duration(minutes: 10))),
+        paymentDeadline: Timestamp.fromDate(
+          DateTime.now().add(Duration(minutes: 10)),
+        ),
       );
 
-      when(mockQueueService.getQueueByIdForCustomer(any, any))
-          .thenAnswer((_) async => existingQueue);
+      when(
+        mockQueueService.getQueueByIdForCustomer(any, any),
+      ).thenAnswer((_) async => existingQueue);
 
-      final queue = await mockQueueService.getQueueByIdForCustomer(orderId, userId);
-      final proofExists = queue?.paymentProofBase64 != null && queue!.paymentProofBase64!.isNotEmpty;
+      final queue = await mockQueueService.getQueueByIdForCustomer(
+        orderId,
+        userId,
+      );
+      final proofExists =
+          queue?.paymentProofBase64 != null &&
+          queue!.paymentProofBase64!.isNotEmpty;
       expect(proofExists, true);
     });
 
     // ================================================================
     // TC-06: Deadline Sudah Lewat (CHECKPOINT 6 - BRANCH A)
     // ================================================================
-    test('TC-06: HARUS return error jika deadline pembayaran sudah lewat', () async {
-      final expiredQueue = Queue(
-        id: 'queue_123',
-        barbershopId: 'barbershop_001',
-        customerId: 'user_456',
-        barbermanId: 'barberman_001',
-        bookingTime: Timestamp.fromDate(DateTime.now().subtract(Duration(minutes: 15))),
-        status: QueueStatus.waiting,
-        requestStatus: RequestStatus.approved,
-        paymentProofBase64: null,
-        paymentDeadline: Timestamp.fromDate(DateTime.now().subtract(Duration(minutes: 5))),
-      );
+    test(
+      'TC-06: HARUS return error jika deadline pembayaran sudah lewat',
+      () async {
+        final expiredQueue = Queue(
+          id: 'queue_123',
+          barbershopId: 'barbershop_001',
+          customerId: 'user_456',
+          barbermanId: 'barberman_001',
+          bookingTime: Timestamp.fromDate(
+            DateTime.now().subtract(Duration(minutes: 15)),
+          ),
+          status: QueueStatus.waiting,
+          requestStatus: RequestStatus.approved,
+          paymentProofBase64: null,
+          paymentDeadline: Timestamp.fromDate(
+            DateTime.now().subtract(Duration(minutes: 5)),
+          ),
+        );
 
-      when(mockQueueService.getQueueByIdForCustomer(any, any))
-          .thenAnswer((_) async => expiredQueue);
+        when(
+          mockQueueService.getQueueByIdForCustomer(any, any),
+        ).thenAnswer((_) async => expiredQueue);
 
-      final queue = await mockQueueService.getQueueByIdForCustomer(orderId, userId);
-      final deadline = queue?.paymentDeadline?.toDate();
-      final isExpired = deadline != null && DateTime.now().isAfter(deadline);
-      expect(isExpired, true);
-    });
+        final queue = await mockQueueService.getQueueByIdForCustomer(
+          orderId,
+          userId,
+        );
+        final deadline = queue?.paymentDeadline?.toDate();
+        final isExpired = deadline != null && DateTime.now().isAfter(deadline);
+        expect(isExpired, true);
+      },
+    );
 
     // ================================================================
     // TC-07: File Terlalu Besar (CHECKPOINT 7 - BRANCH A)
@@ -149,17 +171,24 @@ void main() {
         status: QueueStatus.waiting,
         requestStatus: RequestStatus.approved,
         paymentProofBase64: null,
-        paymentDeadline: Timestamp.fromDate(DateTime.now().add(Duration(minutes: 10))),
+        paymentDeadline: Timestamp.fromDate(
+          DateTime.now().add(Duration(minutes: 10)),
+        ),
       );
 
       final base64Proof = 'base64_proof_valid';
 
-      when(mockQueueService.getQueueByIdForCustomer(any, any))
-          .thenAnswer((_) async => validQueue);
+      when(
+        mockQueueService.getQueueByIdForCustomer(any, any),
+      ).thenAnswer((_) async => validQueue);
 
-      final queue = await mockQueueService.getQueueByIdForCustomer(orderId, userId);
+      final queue = await mockQueueService.getQueueByIdForCustomer(
+        orderId,
+        userId,
+      );
       final deadline = queue?.paymentDeadline?.toDate();
-      final deadlineValid = deadline == null || DateTime.now().isBefore(deadline);
+      final deadlineValid =
+          deadline == null || DateTime.now().isBefore(deadline);
       final fileSizeValid = base64Proof.length <= 950000;
 
       expect(queue, isNotNull);
@@ -173,8 +202,9 @@ void main() {
     // ================================================================
     test('TC-09: HARUS throw exception jika dokumen queue hilang', () async {
       expect(
-          () => throw Exception('Queue dokumen tidak ditemukan'),
-          throwsException);
+        () => throw Exception('Queue dokumen tidak ditemukan'),
+        throwsException,
+      );
     });
 
     // ================================================================
@@ -190,14 +220,17 @@ void main() {
         status: QueueStatus.waiting,
         requestStatus: RequestStatus.approved,
         paymentProofBase64: null,
-        paymentDeadline: Timestamp.fromDate(DateTime.now().add(Duration(minutes: 10))),
+        paymentDeadline: Timestamp.fromDate(
+          DateTime.now().add(Duration(minutes: 10)),
+        ),
       );
 
       final isOwner = foreignQueue.customerId == userId;
       expect(isOwner, false);
       expect(
-          () => throw Exception('Unauthorized: booking bukan milik Anda'),
-          throwsException);
+        () => throw Exception('Unauthorized: booking bukan milik Anda'),
+        throwsException,
+      );
     });
   });
 

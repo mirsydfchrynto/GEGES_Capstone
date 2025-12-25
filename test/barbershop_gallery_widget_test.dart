@@ -4,15 +4,19 @@ import 'package:geges_smartbarber/screens/admin/barbershop_gallery_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 void main() {
-  testWidgets('Photo card opens preview and contains CachedNetworkImage', (WidgetTester tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: PhotoCard(
-          imageUrl: 'https://example.invalid/url.jpg',
-          onDelete: () {},
+  testWidgets('Photo card opens preview and contains CachedNetworkImage', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PhotoCard(
+            imageUrl: 'https://example.invalid/url.jpg',
+            onDelete: () {},
+          ),
         ),
       ),
-    ));
+    );
 
     // Tap the image to open preview
     expect(find.byType(PhotoCard), findsOneWidget);

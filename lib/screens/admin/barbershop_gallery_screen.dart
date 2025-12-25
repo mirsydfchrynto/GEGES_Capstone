@@ -98,10 +98,10 @@ class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
                       itemCount: photoUrls.length,
                       itemBuilder: (context, index) {
                         final url = photoUrls[index];
@@ -132,25 +132,22 @@ class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
       setState(() => _isUploading = true);
 
       final file = File(pickedFile.path);
-      final url = await _galleryService.uploadPhoto(
-        widget.barbershopId,
-        file,
-      );
+      final url = await _galleryService.uploadPhoto(widget.barbershopId, file);
 
       if (!mounted) return;
       setState(() => _isUploading = false);
 
       if (url != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Foto berhasil diupload')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Foto berhasil diupload')));
       }
     } catch (e) {
       if (mounted) setState(() => _isUploading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal upload: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal upload: $e')));
       }
     }
   }
@@ -168,7 +165,10 @@ class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Hapus', style: TextStyle(color: Color(0xFFD32F2F))),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(color: Color(0xFFD32F2F)),
+            ),
           ),
         ],
       ),
@@ -179,14 +179,14 @@ class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
     try {
       await _galleryService.deletePhoto(widget.barbershopId, photoUrl);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Foto dihapus')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Foto dihapus')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menghapus: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal menghapus: $e')));
     }
   }
 }
@@ -198,11 +198,7 @@ class PhotoCard extends StatelessWidget {
   final String imageUrl;
   final VoidCallback onDelete;
 
-  const PhotoCard({
-    super.key,
-    required this.imageUrl,
-    required this.onDelete,
-  });
+  const PhotoCard({super.key, required this.imageUrl, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -219,10 +215,19 @@ class PhotoCard extends StatelessWidget {
               child: CachedNetworkImage(
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
-                placeholder: (c, u) => Container(color: Colors.grey[900], child: const Center(child: CircularProgressIndicator())),
+                placeholder: (c, u) => Container(
+                  color: Colors.grey[900],
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
                 errorWidget: (c, u, e) => Container(
                   color: Colors.grey[900],
-                  child: const Center(child: Icon(Icons.broken_image, size: 48, color: Colors.white30)),
+                  child: const Center(
+                    child: Icon(
+                      Icons.broken_image,
+                      size: 48,
+                      color: Colors.white30,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -241,11 +246,7 @@ class PhotoCard extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               padding: const EdgeInsets.all(4),
-              child: const Icon(
-                Icons.close,
-                color: Colors.white,
-                size: 16,
-              ),
+              child: const Icon(Icons.close, color: Colors.white, size: 16),
             ),
           ),
         ),
@@ -263,8 +264,10 @@ class PhotoCard extends StatelessWidget {
           child: CachedNetworkImage(
             imageUrl: imageUrl,
             fit: BoxFit.contain,
-            placeholder: (c, u) => const Center(child: CircularProgressIndicator()),
-            errorWidget: (c, u, e) => const Center(child: Icon(Icons.broken_image, size: 48)),
+            placeholder: (c, u) =>
+                const Center(child: CircularProgressIndicator()),
+            errorWidget: (c, u, e) =>
+                const Center(child: Icon(Icons.broken_image, size: 48)),
           ),
         ),
       ),

@@ -25,6 +25,7 @@ class QueueCard extends StatefulWidget {
   final FutureOr<void> Function()? onStartService;
   final FutureOr<void> Function()? onFinishService;
   final FutureOr<void> Function()? onCancelQueue;
+
   /// optional confirm callback (useful for "waiting" -> "booked")
   final FutureOr<void> Function()? onConfirmBooking;
 
@@ -140,7 +141,10 @@ class _QueueCardState extends State<QueueCard> {
     if (widget.onConfirmBooking == null) {
       // If confirm callback is not provided we should NOT auto-start the service.
       // Instead show a warning so developer knows to wire the callback.
-      _showSnack('Aksi konfirmasi belum dihubungkan (onConfirmBooking null)', isError: true);
+      _showSnack(
+        'Aksi konfirmasi belum dihubungkan (onConfirmBooking null)',
+        isError: true,
+      );
       return;
     }
 
@@ -159,7 +163,7 @@ class _QueueCardState extends State<QueueCard> {
     final confirmed = await _showConfirmDialog(
       'Selesaikan Layanan',
       'Tandai antrean ini sebagai selesai?',
-  const Color(0xFF4CAF50),
+      const Color(0xFF4CAF50),
     );
     if (!confirmed) return;
 
@@ -178,7 +182,7 @@ class _QueueCardState extends State<QueueCard> {
     final confirmed = await _showConfirmDialog(
       'Batalkan Antrean',
       'Yakin ingin membatalkan antrean ini?',
-  const Color(0xFFD32F2F),
+      const Color(0xFFD32F2F),
     );
     if (!confirmed) return;
 
@@ -204,7 +208,10 @@ class _QueueCardState extends State<QueueCard> {
         TextEditingController reasonCtrl = TextEditingController(text: reason);
         return AlertDialog(
           backgroundColor: kDarkSurface,
-          title: const Text('Proses Refund', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          title: const Text(
+            'Proses Refund',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
           content: TextField(
             controller: reasonCtrl,
             style: const TextStyle(color: Colors.white),
@@ -213,7 +220,9 @@ class _QueueCardState extends State<QueueCard> {
               hintStyle: const TextStyle(color: Colors.white54),
               fillColor: Colors.black26,
               filled: true,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             maxLines: 2,
           ),
@@ -229,7 +238,10 @@ class _QueueCardState extends State<QueueCard> {
                 Navigator.pop(dialogCtx);
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-              child: const Text('Proses Refund', style: TextStyle(color: Colors.black)),
+              child: const Text(
+                'Proses Refund',
+                style: TextStyle(color: Colors.black),
+              ),
             ),
           ],
         );
@@ -263,7 +275,10 @@ class _QueueCardState extends State<QueueCard> {
             title: Text(title, style: const TextStyle(color: Colors.white)),
             content: Text(msg, style: const TextStyle(color: Colors.white70)),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Batal')),
+              TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: const Text('Batal'),
+              ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(c, true),
                 style: ElevatedButton.styleFrom(backgroundColor: color),
@@ -277,15 +292,19 @@ class _QueueCardState extends State<QueueCard> {
 
   void _showSnack(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-  backgroundColor: isError ? const Color(0xFFD32F2F) : kBrownAccent,
-      duration: const Duration(seconds: 2),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? const Color(0xFFD32F2F) : kBrownAccent,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   Widget _buildServiceList() {
-    final ids = widget.queue.serviceIds ?? (widget.queue.serviceId != null ? [widget.queue.serviceId!] : []);
+    final ids =
+        widget.queue.serviceIds ??
+        (widget.queue.serviceId != null ? [widget.queue.serviceId!] : []);
     if (ids.isEmpty) {
       return const Text('-', style: TextStyle(color: Colors.white70));
     }
@@ -341,7 +360,8 @@ class _QueueCardState extends State<QueueCard> {
   Widget build(BuildContext context) {
     final queue = widget.queue;
     final QueueStatus status = queue.status;
-    final bool isWaitingOrBooked = status == QueueStatus.waiting || status == QueueStatus.booked;
+    final bool isWaitingOrBooked =
+        status == QueueStatus.waiting || status == QueueStatus.booked;
     final bool isOngoing = status == QueueStatus.ongoing;
     final Color borderColor = _statusToColor(status);
 
@@ -356,183 +376,303 @@ class _QueueCardState extends State<QueueCard> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(14.0),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // HEADER
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text("Waktu Booking:", style: TextStyle(color: Colors.white54, fontSize: 12)),
-              Text(_formatBookingTime(queue.bookingTime), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-            ]),
-            Chip(
-              label: Text(
-                _statusToLabel(status).toUpperCase(),
-                style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11),
-              ),
-              backgroundColor: borderColor,
-            ),
-          ]),
-          const SizedBox(height: 10),
-          const Divider(color: Colors.white12),
-          const SizedBox(height: 6),
-
-          // CUSTOMER
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(Icons.person, color: kBrownAccent, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FutureBuilder<UserData?>(
-                future: _customerFuture,
-                builder: (c, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const Text('Memuat...', style: TextStyle(color: Colors.white70));
-                  }
-                  final name = snap.data?.name ?? queue.customerId;
-                  final phone = snap.data?.phoneNumber ?? '-';
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      Text(phone, style: const TextStyle(color: Colors.white70)),
-                    ],
-                  );
-                },
-              ),
-            ),
-            if (paymentWidget != null) paymentWidget,
-          ]),
-          const SizedBox(height: 12),
-
-          // BARBERMAN
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Icon(Icons.content_cut, color: kBrownAccent, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FutureBuilder<Barberman?>(
-                future: _barbermanFuture,
-                builder: (c, snap) {
-                  final name = snap.data?.name ?? queue.barbermanId;
-                  final dur = queue.estimatedDuration ?? (snap.data?.avgDuration ?? 30);
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name, style: const TextStyle(color: Colors.white, fontSize: 16)),
-                      Text('~ ${dur.toInt()} menit', style: const TextStyle(color: Colors.white70)),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ]),
-          const SizedBox(height: 14),
-
-          // LAYANAN & HARGA
-          Row(children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Layanan', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                _buildServiceList(),
-              ]),
-            ),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              const Text('Total', style: TextStyle(color: Colors.white54, fontSize: 12)),
-              Text(
-                queue.totalPrice != null ? 'Rp ${queue.totalPrice}' : '-',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ]),
-          ]),
-          const SizedBox(height: 14),
-
-          // ACTION BUTTONS
-          if (isWaitingOrBooked || isOngoing)
-            Row(children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _processingCancel ? null : _handleCancel,
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFD32F2F)),
-                    foregroundColor: const Color(0xFFD32F2F),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: _processingCancel
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD32F2F)))
-                      : const Text('Batal'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: Builder(builder: (ctx) {
-                  // Waiting: show Confirm (requires onConfirmBooking to be provided)
-                  if (status == QueueStatus.waiting) {
-                    return ElevatedButton.icon(
-                      onPressed: (_processingConfirm ? null : _handleConfirm),
-                      icon: _processingConfirm
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                          : const Icon(Icons.check, size: 16),
-                      label: const Text('Konfirmasi'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kBrownAccent,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    );
-                  }
-
-                  // Booked: start service
-                  if (status == QueueStatus.booked) {
-                    return ElevatedButton.icon(
-                      onPressed: (_processingStart ? null : _handleStart),
-                      icon: _processingStart
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                          : const Icon(Icons.play_arrow, size: 16),
-                      label: const Text('Mulai Potong'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kGreenAccent,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    );
-                  }
-
-                  // Ongoing: finish
-                  return ElevatedButton.icon(
-                    onPressed: (_processingFinish ? null : _handleFinish),
-                    icon: _processingFinish
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                        : const Icon(Icons.check, size: 16),
-                    label: const Text('Selesai Potong'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kBrownAccent,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // HEADER
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Waktu Booking:",
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
                     ),
-                  );
-                }),
+                    Text(
+                      _formatBookingTime(queue.bookingTime),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Chip(
+                  label: Text(
+                    _statusToLabel(status).toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                  backgroundColor: borderColor,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const Divider(color: Colors.white12),
+            const SizedBox(height: 6),
+
+            // CUSTOMER
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.person, color: kBrownAccent, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FutureBuilder<UserData?>(
+                    future: _customerFuture,
+                    builder: (c, snap) {
+                      if (snap.connectionState == ConnectionState.waiting) {
+                        return const Text(
+                          'Memuat...',
+                          style: TextStyle(color: Colors.white70),
+                        );
+                      }
+                      final name = snap.data?.name ?? queue.customerId;
+                      final phone = snap.data?.phoneNumber ?? '-';
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            phone,
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                if (paymentWidget != null) paymentWidget,
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // BARBERMAN
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.content_cut, color: kBrownAccent, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FutureBuilder<Barberman?>(
+                    future: _barbermanFuture,
+                    builder: (c, snap) {
+                      final name = snap.data?.name ?? queue.barbermanId;
+                      final dur =
+                          queue.estimatedDuration ??
+                          (snap.data?.avgDuration ?? 30);
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            '~ ${dur.toInt()} menit',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // LAYANAN & HARGA
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Layanan',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      _buildServiceList(),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'Total',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                    Text(
+                      queue.totalPrice != null ? 'Rp ${queue.totalPrice}' : '-',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // ACTION BUTTONS
+            if (isWaitingOrBooked || isOngoing)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _processingCancel ? null : _handleCancel,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFD32F2F)),
+                        foregroundColor: const Color(0xFFD32F2F),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: _processingCancel
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFFD32F2F),
+                              ),
+                            )
+                          : const Text('Batal'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Builder(
+                      builder: (ctx) {
+                        // Waiting: show Confirm (requires onConfirmBooking to be provided)
+                        if (status == QueueStatus.waiting) {
+                          return ElevatedButton.icon(
+                            onPressed: (_processingConfirm
+                                ? null
+                                : _handleConfirm),
+                            icon: _processingConfirm
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.black,
+                                    ),
+                                  )
+                                : const Icon(Icons.check, size: 16),
+                            label: const Text('Konfirmasi'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kBrownAccent,
+                              foregroundColor: Colors.black,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          );
+                        }
+
+                        // Booked: start service
+                        if (status == QueueStatus.booked) {
+                          return ElevatedButton.icon(
+                            onPressed: (_processingStart ? null : _handleStart),
+                            icon: _processingStart
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.black,
+                                    ),
+                                  )
+                                : const Icon(Icons.play_arrow, size: 16),
+                            label: const Text('Mulai Potong'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: kGreenAccent,
+                              foregroundColor: Colors.black,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          );
+                        }
+
+                        // Ongoing: finish
+                        return ElevatedButton.icon(
+                          onPressed: (_processingFinish ? null : _handleFinish),
+                          icon: _processingFinish
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.black,
+                                  ),
+                                )
+                              : const Icon(Icons.check, size: 16),
+                          label: const Text('Selesai Potong'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kBrownAccent,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ]),
-          
-          // REFUND ACTION BUTTON - Show for cancelled bookings that haven't been refunded yet
-          if (status == QueueStatus.cancelled && (queue.isRefunded != true))
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _processingRefund ? null : _handleRefund,
-                  icon: _processingRefund
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                      : const Icon(Icons.money_off, size: 16),
-                  label: const Text('Proses Refund'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+
+            // REFUND ACTION BUTTON - Show for cancelled bookings that haven't been refunded yet
+            if (status == QueueStatus.cancelled && (queue.isRefunded != true))
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _processingRefund ? null : _handleRefund,
+                    icon: _processingRefund
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.black,
+                            ),
+                          )
+                        : const Icon(Icons.money_off, size: 16),
+                    label: const Text('Proses Refund'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-        ]),
+          ],
+        ),
       ),
     );
   }

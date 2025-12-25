@@ -31,7 +31,9 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       final userId = _userIdCtrl.text.trim();
       final title = _titleCtrl.text.trim();
       final body = _bodyCtrl.text.trim();
-      final queueId = _queueIdCtrl.text.trim().isEmpty ? null : _queueIdCtrl.text.trim();
+      final queueId = _queueIdCtrl.text.trim().isEmpty
+          ? null
+          : _queueIdCtrl.text.trim();
 
       final payload = {
         'title': title,
@@ -40,14 +42,25 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
         'read': false,
         'delivered': false,
       };
-      if (queueId != null) payload['queue_id'] = queueId;
+      if (queueId != null) {
+        payload['queue_id'] = queueId;
+      }
 
       if (_isBroadcast) {
-        await FirebaseFirestore.instance.collection('notifications').add({...payload, 'broadcast': true});
+        await FirebaseFirestore.instance.collection('notifications').add({
+          ...payload,
+          'broadcast': true,
+        });
       } else {
         // require user id if not broadcast
-        if (userId.isEmpty) throw Exception('User ID kosong untuk notifikasi personal');
-        await FirebaseFirestore.instance.collection('notifications').add({...payload, 'user_id': userId, 'broadcast': false});
+        if (userId.isEmpty) {
+          throw Exception('User ID kosong untuk notifikasi personal');
+        }
+        await FirebaseFirestore.instance.collection('notifications').add({
+          ...payload,
+          'user_id': userId,
+          'broadcast': false,
+        });
       }
 
       // Optionally create a push_requests doc for server-side processing
@@ -65,11 +78,17 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifikasi dibuat')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Notifikasi dibuat')));
         Navigator.of(context).pop();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal membuat notifikasi: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal membuat notifikasi: $e')));
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -99,10 +118,14 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
               TextFormField(
                 controller: _userIdCtrl,
                 focusNode: _userFocus,
-                decoration: const InputDecoration(labelText: 'User ID atau cari nama (kosong = broadcast)'),
+                decoration: const InputDecoration(
+                  labelText: 'User ID atau cari nama (kosong = broadcast)',
+                ),
                 onChanged: (v) {
                   // clear selected display name when typing
-                  setState(() { _selectedUserName = null; });
+                  setState(() {
+                    _selectedUserName = null;
+                  });
                   if (_debounce?.isActive ?? false) _debounce!.cancel();
                   _debounce = Timer(const Duration(milliseconds: 400), () {
                     _doUserSearch(v.trim());
@@ -113,7 +136,11 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                 Container(
                   constraints: const BoxConstraints(maxHeight: 180),
                   margin: const EdgeInsets.only(top: 8.0),
-                  decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6), color: Colors.white),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(6),
+                    color: Colors.white,
+                  ),
                   child: ListView.builder(
                     shrinkWrap: true,
                     itemCount: _searchResults.length,
@@ -141,24 +168,33 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
               if (_selectedUserName != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
-                  child: Text('Terpilih: $_selectedUserName', style: const TextStyle(fontSize: 12)),
+                  child: Text(
+                    'Terpilih: $_selectedUserName',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _titleCtrl,
                 decoration: const InputDecoration(labelText: 'Judul'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Judul wajib diisi' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Judul wajib diisi'
+                    : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _bodyCtrl,
                 decoration: const InputDecoration(labelText: 'Isi'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Isi notifikasi wajib diisi' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Isi notifikasi wajib diisi'
+                    : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _queueIdCtrl,
-                decoration: const InputDecoration(labelText: 'Queue ID (opsional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Queue ID (opsional)',
+                ),
               ),
               const SizedBox(height: 10),
               CheckboxListTile(
@@ -185,12 +221,21 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
               if (_isBroadcast)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 8.0),
-                  child: Text('Notifikasi akan dikirim ke semua pengguna terdaftar (broadcast).', style: TextStyle(fontSize: 12)),
+                  child: Text(
+                    'Notifikasi akan dikirim ke semua pengguna terdaftar (broadcast).',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _submitting ? null : _send,
-                child: _submitting ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Kirim'),
+                child: _submitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Kirim'),
               ),
             ],
           ),
@@ -212,7 +257,10 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
           .endAt(['$q\uf8ff'])
           .limit(10)
           .get();
-      setState(() => _searchResults = qs.docs.cast<QueryDocumentSnapshot<Map<String, dynamic>>>());
+      setState(
+        () => _searchResults = qs.docs
+            .cast<QueryDocumentSnapshot<Map<String, dynamic>>>(),
+      );
     } catch (e) {
       // ignore search errors for now
       setState(() => _searchResults = []);

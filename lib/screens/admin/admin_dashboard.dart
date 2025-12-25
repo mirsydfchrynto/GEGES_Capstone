@@ -73,10 +73,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
 
       // Accept multiple admin role variants to be robust against inconsistent DB values
-      if (!(adminData.role == 'admin_owner' || adminData.role == 'owner' || adminData.role == 'admin')) {
+      if (!(adminData.role == 'admin_owner' ||
+          adminData.role == 'owner' ||
+          adminData.role == 'admin')) {
         if (mounted) {
           setState(() {
-            _loadingError = 'ERROR: Akses ditolak. Role Anda: ${adminData.role}.';
+            _loadingError =
+                'ERROR: Akses ditolak. Role Anda: ${adminData.role}.';
           });
         }
         return;
@@ -137,7 +140,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     });
 
     try {
-      await _barbershopService.updateShopStatus(_adminBarbershopId!, !_isShopOpen);
+      await _barbershopService.updateShopStatus(
+        _adminBarbershopId!,
+        !_isShopOpen,
+      );
 
       if (mounted) {
         setState(() {
@@ -164,9 +170,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: kDarkSurface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: const Text('Konfirmasi Logout', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          content: const Text('Apakah Anda yakin ingin keluar dari akun admin?', style: TextStyle(color: Colors.white70)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: const Text(
+            'Konfirmasi Logout',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Apakah Anda yakin ingin keluar dari akun admin?',
+            style: TextStyle(color: Colors.white70),
+          ),
           actions: <Widget>[
             TextButton(
               child: const Text('Batal', style: TextStyle(color: kBrownAccent)),
@@ -177,13 +191,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD32F2F),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: () {
                 Navigator.of(context).pop(); // Tutup dialog
                 _logout(context); // Lanjutkan proses logout
               },
-              child: const Text('Logout', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Logout',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -205,13 +224,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   // Build helpers & small widgets
-  Widget _buildHeader(BuildContext context, {
+  Widget _buildHeader(
+    BuildContext context, {
     required int todayBookingCount,
     required int pendingCount,
     required int completedCount,
   }) {
     final shopStatusText = _isShopOpen ? 'BUKA' : 'TUTUP';
-  final shopStatusColor = _isShopOpen ? const Color(0xFF4CAF50) : const Color(0xFFD32F2F);
+    final shopStatusColor = _isShopOpen
+        ? const Color(0xFF4CAF50)
+        : const Color(0xFFD32F2F);
 
     // use explicit RGBA for brown accent tints (avoid withOpacity deprecated)
     final brown70 = const Color.fromRGBO(195, 164, 123, 0.7);
@@ -231,22 +253,48 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   Text(
                     _barbershopName.toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 23,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  Row(children: [
-                    Container(width: 10, height: 10, decoration: BoxDecoration(color: shopStatusColor, shape: BoxShape.circle)),
-                    const SizedBox(width: 8),
-                    Text('Status Toko: $shopStatusText', style: TextStyle(color: shopStatusColor, fontWeight: FontWeight.bold)),
-                  ]),
+                  Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: shopStatusColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Status Toko: $shopStatusText',
+                        style: TextStyle(
+                          color: shopStatusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
 
             // Logout icon (compact)
             Container(
-              decoration: BoxDecoration(color: kDarkSurface, borderRadius: BorderRadius.circular(10)),
-              child: IconButton(icon: const Icon(Icons.logout, color: kBrownAccent), onPressed: () => _showLogoutConfirmationDialog(context), tooltip: 'Logout'),
+              decoration: BoxDecoration(
+                color: kDarkSurface,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.logout, color: kBrownAccent),
+                onPressed: () => _showLogoutConfirmationDialog(context),
+                tooltip: 'Logout',
+              ),
             ),
           ],
         ),
@@ -257,26 +305,56 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Kelola Toko', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Kelola Toko',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(color: kBlack, borderRadius: BorderRadius.circular(8)),
-              child: Row(children: [
-                Text(shopStatusText, style: TextStyle(color: shopStatusColor, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 8),
-                SizedBox(
-                  height: 20,
-                  child: Switch(
-                    value: _isShopOpen,
-                    onChanged: _isTogglingStatus ? null : (_) => _toggleShopStatus(),
-                    activeThumbColor: const Color(0xFF388E3C),
-                    inactiveThumbColor: const Color(0xFFD32F2F),
-                    inactiveTrackColor: const Color.fromRGBO(255, 0, 0, 0.3),
+              decoration: BoxDecoration(
+                color: kBlack,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    shopStatusText,
+                    style: TextStyle(
+                      color: shopStatusColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                if (_isTogglingStatus)
-                  const Padding(padding: EdgeInsets.only(left: 8.0), child: SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2, color: kBrownAccent))),
-              ]),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 20,
+                    child: Switch(
+                      value: _isShopOpen,
+                      onChanged: _isTogglingStatus
+                          ? null
+                          : (_) => _toggleShopStatus(),
+                      activeThumbColor: const Color(0xFF388E3C),
+                      inactiveThumbColor: const Color(0xFFD32F2F),
+                      inactiveTrackColor: const Color.fromRGBO(255, 0, 0, 0.3),
+                    ),
+                  ),
+                  if (_isTogglingStatus)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 8.0),
+                      child: SizedBox(
+                        width: 15,
+                        height: 15,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: kBrownAccent,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -284,40 +362,91 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         const SizedBox(height: 20),
 
         // stat cards (dihitung dari stream snapshot; nilai dikirim ke header)
-        Row(children: [
-          _buildStatCard('Booking', todayBookingCount.toString(), Icons.calendar_today, brown70),
-          const SizedBox(width: 8),
-          _buildStatCard('Waiting', pendingCount.toString(), Icons.pending, brown70),
-          const SizedBox(width: 8),
-          _buildStatCard('Selesai', completedCount.toString(), Icons.check_circle_outline, brown70),
-        ]),
+        Row(
+          children: [
+            _buildStatCard(
+              'Booking',
+              todayBookingCount.toString(),
+              Icons.calendar_today,
+              brown70,
+            ),
+            const SizedBox(width: 8),
+            _buildStatCard(
+              'Waiting',
+              pendingCount.toString(),
+              Icons.pending,
+              brown70,
+            ),
+            const SizedBox(width: 8),
+            _buildStatCard(
+              'Selesai',
+              completedCount.toString(),
+              Icons.check_circle_outline,
+              brown70,
+            ),
+          ],
+        ),
 
         const SizedBox(height: 20),
-        const Text('Menu Utama', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        const Text(
+          'Menu Utama',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(height: 15),
       ],
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color iconColor) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color iconColor,
+  ) {
     final border = BoxDecoration(
       color: kDarkSurface,
       borderRadius: BorderRadius.circular(12),
-      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 5))],
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.25),
+          blurRadius: 10,
+          offset: const Offset(0, 5),
+        ),
+      ],
     );
 
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: border,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(title, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-            Icon(icon, color: iconColor, size: 20),
-          ]),
-          const SizedBox(height: 8),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-        ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                Icon(icon, color: iconColor, size: 20),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -334,52 +463,136 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       children: [
         // 'Konfirmasi Booking' has been removed in favor of 'Verifikasi Pembayaran'
         // Admin should verify payment from the "Verifikasi Pembayaran" menu.
-        _buildMenuCard(Icons.playlist_add_check, 'Antrean Live', 'Booked & Ongoing', () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => LiveQueueScreen(barbershopId: _adminBarbershopId!, initialFilter: [QueueStatus.booked.value, QueueStatus.ongoing.value], title: 'Antrean Live')));
-        }),
-        _buildMenuCard(Icons.payment, 'Verifikasi Pembayaran', 'Awaiting Payment', () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentVerificationScreen()));
-        }),
         _buildMenuCard(
-  Icons.receipt_long,
-  'Tambah Booking Manual',
-  'Quick Entry',
-  () async {
-    if (_adminBarbershopId == null) {
-      _showSnackBar('Barbershop belum terdeteksi.');
-      return;
-    }
+          Icons.playlist_add_check,
+          'Antrean Live',
+          'Booked & Ongoing',
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LiveQueueScreen(
+                  barbershopId: _adminBarbershopId!,
+                  initialFilter: [
+                    QueueStatus.booked.value,
+                    QueueStatus.ongoing.value,
+                  ],
+                  title: 'Antrean Live',
+                ),
+              ),
+            );
+          },
+        ),
+        _buildMenuCard(
+          Icons.payment,
+          'Verifikasi Pembayaran',
+          'Awaiting Payment',
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const PaymentVerificationScreen(),
+              ),
+            );
+          },
+        ),
+        _buildMenuCard(
+          Icons.receipt_long,
+          'Tambah Booking Manual',
+          'Quick Entry',
+          () async {
+            if (_adminBarbershopId == null) {
+              _showSnackBar('Barbershop belum terdeteksi.');
+              return;
+            }
 
-    final barbershop = await _getBarbershopSafe(_adminBarbershopId!);
-    if (barbershop == null) {
-      _showSnackBar('Data barbershop tidak ditemukan.');
-      return;
-    }
+            final barbershop = await _getBarbershopSafe(_adminBarbershopId!);
+            if (barbershop == null) {
+              _showSnackBar('Data barbershop tidak ditemukan.');
+              return;
+            }
 
-    if (!mounted) return;
+            if (!mounted) return;
 
-    // Navigate to a full-screen manual booking page using the existing ManualBookingForm
-    Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
-      appBar: AppBar(backgroundColor: kBrownAccent, title: const Text('Tambah Booking Manual', style: TextStyle(color: Colors.black))),
-      backgroundColor: kBlack,
-      body: SafeArea(child: Padding(padding: const EdgeInsets.all(12.0), child: ManualBookingForm(barbershop: barbershop, queueService: _queueService))),
-    )));
-  },
-),
+            // Navigate to a full-screen manual booking page using the existing ManualBookingForm
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => Scaffold(
+                  appBar: AppBar(
+                    backgroundColor: kBrownAccent,
+                    title: const Text(
+                      'Tambah Booking Manual',
+                      style: TextStyle(color: Colors.black),
+                    ),
+                  ),
+                  backgroundColor: kBlack,
+                  body: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: ManualBookingForm(
+                        barbershop: barbershop,
+                        queueService: _queueService,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
 
-        _buildMenuCard(Icons.list_alt, 'Lihat Semua Riwayat', 'Archive & Report', () => _showSnackBar('Navigasi ke Semua Riwayat Booking')),
-        _buildMenuCard(Icons.cut, 'Kelola Layanan', 'Harga & Durasi', () => _showSnackBar('Navigasi ke Kelola Layanan')),
-        _buildMenuCard(Icons.face_retouching_natural, 'Kelola Barberman', 'Jadwal & Role', () => _showSnackBar('Navigasi ke Kelola Barberman')),
-        _buildMenuCard(Icons.photo_library, 'Kelola Galeri Toko', 'Update Photos', () => _showSnackBar('Navigasi ke Kelola Galeri')),
-        _buildMenuCard(Icons.star_half, 'Lihat Ulasan', 'Customer Feedback', () => _showSnackBar('Navigasi ke Kelola Ulasan')),
-        _buildMenuCard(Icons.notifications_active, 'Kirim Notifikasi', 'Via Firestore', () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const SendNotificationScreen()));
-        }),
+        _buildMenuCard(
+          Icons.list_alt,
+          'Lihat Semua Riwayat',
+          'Archive & Report',
+          () => _showSnackBar('Navigasi ke Semua Riwayat Booking'),
+        ),
+        _buildMenuCard(
+          Icons.cut,
+          'Kelola Layanan',
+          'Harga & Durasi',
+          () => _showSnackBar('Navigasi ke Kelola Layanan'),
+        ),
+        _buildMenuCard(
+          Icons.face_retouching_natural,
+          'Kelola Barberman',
+          'Jadwal & Role',
+          () => _showSnackBar('Navigasi ke Kelola Barberman'),
+        ),
+        _buildMenuCard(
+          Icons.photo_library,
+          'Kelola Galeri Toko',
+          'Update Photos',
+          () => _showSnackBar('Navigasi ke Kelola Galeri'),
+        ),
+        _buildMenuCard(
+          Icons.star_half,
+          'Lihat Ulasan',
+          'Customer Feedback',
+          () => _showSnackBar('Navigasi ke Kelola Ulasan'),
+        ),
+        _buildMenuCard(
+          Icons.notifications_active,
+          'Kirim Notifikasi',
+          'Via Firestore',
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SendNotificationScreen()),
+            );
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildMenuCard(IconData icon, String title, String subtitle, VoidCallback onTap) {
+  Widget _buildMenuCard(
+    IconData icon,
+    String title,
+    String subtitle,
+    VoidCallback onTap,
+  ) {
     final brownBorder = const Color.fromRGBO(195, 164, 123, 0.2);
     final brownBg = const Color.fromRGBO(195, 164, 123, 0.1);
 
@@ -388,25 +601,70 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(color: kDarkSurface, borderRadius: BorderRadius.circular(12), border: Border.all(color: brownBorder, width: 1)),
-        child: Column(mainAxisAlignment: MainAxisAlignment.spaceBetween, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: brownBg, borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: kBrownAccent, size: 30)),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-          ]),
-        ]),
+        decoration: BoxDecoration(
+          color: kDarkSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: brownBorder, width: 1),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: brownBg,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: kBrownAccent, size: 30),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildUpcomingAppointment(List<Queue> allQueues) {
-    final activeQueues = allQueues.where((q) => q.status == QueueStatus.waiting || q.status == QueueStatus.booked || q.status == QueueStatus.ongoing).toList();
-    activeQueues.sort((a, b) => a.bookingTime.toDate().compareTo(b.bookingTime.toDate()));
+    final activeQueues = allQueues
+        .where(
+          (q) =>
+              q.status == QueueStatus.waiting ||
+              q.status == QueueStatus.booked ||
+              q.status == QueueStatus.ongoing,
+        )
+        .toList();
+    activeQueues.sort(
+      (a, b) => a.bookingTime.toDate().compareTo(b.bookingTime.toDate()),
+    );
 
     if (activeQueues.isEmpty) {
-      return const Padding(padding: EdgeInsets.only(top: 20), child: Center(child: Text('Tidak ada janji temu aktif saat ini.', style: TextStyle(color: Colors.white54, fontSize: 16))));
+      return const Padding(
+        padding: EdgeInsets.only(top: 20),
+        child: Center(
+          child: Text(
+            'Tidak ada janji temu aktif saat ini.',
+            style: TextStyle(color: Colors.white54, fontSize: 16),
+          ),
+        ),
+      );
     }
 
     final q = activeQueues.first;
@@ -414,24 +672,94 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return FutureBuilder<String>(
       future: _getUpcomingDetails(q),
       builder: (context, snap) {
-        final data = snap.data?.split('|') ?? ['Pelanggan Loading...', 'Layanan Loading...'];
+        final data =
+            snap.data?.split('|') ??
+            ['Pelanggan Loading...', 'Layanan Loading...'];
         final customerName = data[0];
         final serviceName = data[1];
 
         return Container(
           margin: const EdgeInsets.only(top: 25, bottom: 10),
           padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(color: kDarkSurface, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color.fromRGBO(195, 164, 123, 0.4))),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Janji Temu Mendatang', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-            const Divider(color: Colors.white12, height: 25),
-            Row(children: [
-              Container(width: 50, height: 50, decoration: BoxDecoration(color: const Color.fromRGBO(195, 164, 123, 0.2), borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.person, color: kBrownAccent, size: 30)),
-              const SizedBox(width: 15),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(customerName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)), Text(serviceName, style: const TextStyle(color: Colors.white70, fontSize: 14))])),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(DateFormat('HH:mm').format(q.bookingTime.toDate()), style: const TextStyle(color: kBrownAccent, fontWeight: FontWeight.bold, fontSize: 18)), Text(q.status.value.toUpperCase(), style: TextStyle(color: _getStatusColor(q.status), fontSize: 12))]),
-            ]),
-          ]),
+          decoration: BoxDecoration(
+            color: kDarkSurface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color.fromRGBO(195, 164, 123, 0.4)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Janji Temu Mendatang',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Divider(color: Colors.white12, height: 25),
+              Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: const Color.fromRGBO(195, 164, 123, 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      color: kBrownAccent,
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          customerName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          serviceName,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        DateFormat('HH:mm').format(q.bookingTime.toDate()),
+                        style: const TextStyle(
+                          color: kBrownAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      Text(
+                        q.status.value.toUpperCase(),
+                        style: TextStyle(
+                          color: _getStatusColor(q.status),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
@@ -442,17 +770,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       // Prefer customer_name stored on the queue (manual bookings) then fallback to users collection
       String customerName = 'Pelanggan Tidak Dikenal';
       try {
-        final dataSnap = await FirebaseFirestore.instance.collection('queues').doc(queue.id).get();
+        final dataSnap = await FirebaseFirestore.instance
+            .collection('queues')
+            .doc(queue.id)
+            .get();
         final qData = dataSnap.data();
-        if (qData != null && qData['customer_name'] != null && (qData['customer_name'] as String).isNotEmpty) {
+        if (qData != null &&
+            qData['customer_name'] != null &&
+            (qData['customer_name'] as String).isNotEmpty) {
           customerName = qData['customer_name'] as String;
         } else {
-          final userSnap = await FirebaseFirestore.instance.collection('users').doc(queue.customerId).get();
+          final userSnap = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(queue.customerId)
+              .get();
           customerName = userSnap.data()?['name'] ?? 'Pelanggan Tidak Dikenal';
         }
       } catch (_) {
         // best effort fallback to users collection
-        final userSnap = await FirebaseFirestore.instance.collection('users').doc(queue.customerId).get();
+        final userSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(queue.customerId)
+            .get();
         customerName = userSnap.data()?['name'] ?? 'Pelanggan Tidak Dikenal';
       }
 
@@ -470,35 +809,62 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case QueueStatus.waiting:
         return Colors.orangeAccent;
       case QueueStatus.booked:
-  return const Color(0xFF448AFF);
+        return const Color(0xFF448AFF);
       case QueueStatus.ongoing:
-  return const Color(0xFF4CAF50);
+        return const Color(0xFF4CAF50);
       case QueueStatus.served:
         return Colors.grey;
       case QueueStatus.cancelled:
-  return const Color(0xFFD32F2F);
+        return const Color(0xFFD32F2F);
     }
   }
 
   void _showSnackBar(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 1), backgroundColor: kBrownAccent));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        duration: const Duration(seconds: 1),
+        backgroundColor: kBrownAccent,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loadingError.isNotEmpty) {
-      return Scaffold(backgroundColor: kBlack, body: Center(child: Padding(padding: const EdgeInsets.all(32.0), child: Text(_loadingError, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent, fontSize: 16)))));
+      return Scaffold(
+        backgroundColor: kBlack,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Text(
+              _loadingError,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+            ),
+          ),
+        ),
+      );
     }
 
     if (_adminBarbershopId == null) {
-      return const Scaffold(backgroundColor: kBlack, body: Center(child: CircularProgressIndicator(color: kBrownAccent)));
+      return const Scaffold(
+        backgroundColor: kBlack,
+        body: Center(child: CircularProgressIndicator(color: kBrownAccent)),
+      );
     }
 
     // Limit stream size to reduce UI load; counts should be fetched via helpers for accurate badges.
     final stream = _queueService.streamQueuesForBarbershop(
       _adminBarbershopId!,
-      statusFilter: [QueueStatus.waiting.value, QueueStatus.booked.value, QueueStatus.ongoing.value, QueueStatus.served.value, QueueStatus.cancelled.value],
+      statusFilter: [
+        QueueStatus.waiting.value,
+        QueueStatus.booked.value,
+        QueueStatus.ongoing.value,
+        QueueStatus.served.value,
+        QueueStatus.cancelled.value,
+      ],
     );
 
     return Scaffold(
@@ -507,7 +873,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         onPressed: _isRefreshing ? null : _manualRefresh,
         backgroundColor: kBrownAccent,
         tooltip: 'Segarkan',
-        child: _isRefreshing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2)) : const Icon(Icons.refresh, color: Colors.black),
+        child: _isRefreshing
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.black,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Icon(Icons.refresh, color: Colors.black),
       ),
       body: SafeArea(
         child: StreamBuilder<List<Queue>>(
@@ -515,7 +890,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           initialData: const <Queue>[],
           builder: (context, snapshot) {
             if (snapshot.hasError) {
-              return Center(child: Padding(padding: const EdgeInsets.all(32.0), child: Text('Error Stream Data: ${snapshot.error}\n(Periksa Firestore index & rules)', textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent, fontSize: 16))));
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Text(
+                    'Error Stream Data: ${snapshot.error}\n(Periksa Firestore index & rules)',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              );
             }
 
             final allQueues = snapshot.data ?? [];
@@ -524,17 +911,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             final todayQueues = allQueues.where((q) {
               final today = DateTime.now();
               final bookingDate = q.bookingTime.toDate();
-              return bookingDate.year == today.year && bookingDate.month == today.month && bookingDate.day == today.day;
+              return bookingDate.year == today.year &&
+                  bookingDate.month == today.month &&
+                  bookingDate.day == today.day;
             }).toList();
 
             // waiting = jumlah 'waiting'
-            final pending = todayQueues.where((q) => q.status == QueueStatus.waiting).length;
+            final pending = todayQueues
+                .where((q) => q.status == QueueStatus.waiting)
+                .length;
             // bookedCount = jumlah 'booked' (setelah verifikasi pembayaran oleh admin)
-            final bookedCount = todayQueues.where((q) => q.status == QueueStatus.booked).length;
+            final bookedCount = todayQueues
+                .where((q) => q.status == QueueStatus.booked)
+                .length;
             // ongoingCount = jumlah 'ongoing' (sudah mulai)
-            final ongoingCount = todayQueues.where((q) => q.status == QueueStatus.ongoing).length;
+            final ongoingCount = todayQueues
+                .where((q) => q.status == QueueStatus.ongoing)
+                .length;
             // served = jumlah 'served' (selesai)
-            final served = todayQueues.where((q) => q.status == QueueStatus.served).length;
+            final served = todayQueues
+                .where((q) => q.status == QueueStatus.served)
+                .length;
 
             // IMPORTANT: todayBookingCount should NOT include waiting.
             // Booking = confirmed bookings + ongoing (they are part of booking flow)
@@ -542,17 +939,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(20.0),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                _buildHeader(context, todayBookingCount: todayBookingCount, pendingCount: pending, completedCount: served),
-                _buildGridMenu(),
-                _buildUpcomingAppointment(allQueues),
-                const SizedBox(height: 50),
-              ]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(
+                    context,
+                    todayBookingCount: todayBookingCount,
+                    pendingCount: pending,
+                    completedCount: served,
+                  ),
+                  _buildGridMenu(),
+                  _buildUpcomingAppointment(allQueues),
+                  const SizedBox(height: 50),
+                ],
+              ),
             );
           },
         ),
       ),
-
     );
   }
 }
