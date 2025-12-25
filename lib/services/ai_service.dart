@@ -1,29 +1,68 @@
 import 'dart:io';
 
-// This is a placeholder implementation of the AIService.
-// The original file was missing. This mock service allows the app to compile
-// and provides a basic user experience.
-// TODO: Replace with actual API calls to a backend AI service.
+import 'dart:convert';
+import 'dart:io';
 
+import 'package:http/http.dart' as http;
+
+// AIService supports an optional backend endpoint via --dart-define=AI_API_URL="https://...".
+// If the environment variable is not provided, it falls back to a local mock implementation to keep the app functional offline and in tests.
 class AIService {
-  /// Provides a mock response for the AI chatbot.
+  final String _endpoint = const String.fromEnvironment('AI_API_URL', defaultValue: '');
+
+  /// Provides a response for the AI chatbot, using remote endpoint when configured.
   Future<String> getChatbotResponse(String message) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 2));
-
-    message = message.toLowerCase();
-
-    if (message.contains('jam buka')) {
-      return 'Kami buka setiap hari dari jam 10:00 pagi sampai 21:00 malam.';
-    } else if (message.contains('harga') || message.contains('cukur')) {
-      return 'Harga potong rambut standar adalah Rp 50.000. Untuk layanan lain, silakan cek di menu layanan kami.';
-    } else if (message.contains('lokasi') || message.contains('alamat')) {
-      return 'Kami berada di Jl. Kemerdekaan No. 45, Kota Keren. Anda bisa menemukan kami di Google Maps!';
-    } else {
-      return 'Terima kasih sudah bertanya. Saat ini saya adalah bot sederhana. Untuk pertanyaan lebih lanjut, silakan hubungi admin kami.';
+    if (_endpoint.isNotEmpty) {
+      try {
+        final resp = await http.post(
+          Uri.parse(_endpoint),
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+          body: jsonEncode({'message': message}),
+        ).timeout(const Duration(seconds: 6));
+        if (resp.statusCode == 200) {
+          final body = jsonDecode(resp.body);
+          return body['reply']?.toString() ?? 'Maaf, tidak ada jawaban.';
+        }
+      } catch (_) {
+        // fallback to local.
+      }
     }
+
+    // Local fallback implementation (kept for offline/testing)
+    await Future.delayed(const Duration(seconds: 2));
+    final lc = message.toLowerCase();
+    if (lc.contains('jam buka')) {
+      return 'Kami buka setiap hari dari jam 10:00 pagi sampai 21:00 malam.';
+    } else if (lc.contains('harga') || lc.contains('cukur')) {
+      return 'Harga potong rambut standar adalah Rp 50.000. Untuk layanan lain, silakan cek di menu layanan kami.';
+    } else if (lc.contains('lokasi') || lc.contains('alamat')) {
+      return 'Kami berada di Jl. Kemerdekaan No. 45, Kota Keren. Anda bisa menemukan kami di Google Maps!';
+    }
+
+    return 'Terima kasih sudah bertanya. Saat ini saya adalah bot sederhana. Untuk pertanyaan lebih lanjut, silakan hubungi admin kami.';
   }
 
+  /// Provides a mock suggestion for the AI Style Scan. Uses remote endpoint if configured, else local fallback.
+  Future<String> getStyleSuggestion(File image) async {
+    if (_endpoint.isNotEmpty) {
+      try {
+        final bytes = await image.readAsBytes();
+        final resp = await http.post(Uri.parse('$_endpoint/style-scan'), body: bytes).timeout(const Duration(seconds: 8));
+        if (resp.statusCode == 200) {
+          final body = jsonDecode(resp.body);
+          return body['suggestion']?.toString() ?? _localStyleSuggestion();
+        }
+      } catch (_) {
+        // ignore and fallback
+      }
+    }
+
+    await Future.delayed(const Duration(seconds: 3));
+    return _localStyleSuggestion();
+  }
+
+  String _localStyleSuggestion() => 'Berdasarkan analisis bentuk wajah Anda, gaya rambut "Undercut" dengan sedikit "Fade" di bagian samping akan sangat cocok. Ini akan memberikan kesan rapi namun tetap modern dan stylish.';
+}
   /// Provides a mock suggestion for the AI Style Scan.
   Future<String> getStyleSuggestion(File image) async {
     // Simulate network delay and a fake "upload"

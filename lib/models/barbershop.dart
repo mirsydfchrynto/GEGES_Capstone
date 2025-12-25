@@ -18,6 +18,10 @@ class Barbershop {
   final int closeHour; // jam tutup toko (format 0-23, contoh: 21 = jam 9 malam)
   final int?
   paymentWindowMinutes; // payment window in minutes for awaiting_payment (optional)
+
+  // Special order fee (in smallest currency unit, e.g., Rp)
+  final int? specialOrderFee;
+
   final bool isOpen; // status apakah toko sedang buka sekarang
 
   // penjelasan constructor:
@@ -33,6 +37,7 @@ class Barbershop {
     required this.openHour,
     required this.closeHour,
     this.paymentWindowMinutes,
+    this.specialOrderFee,
     required this.isOpen,
   });
 
@@ -105,6 +110,9 @@ class Barbershop {
       paymentWindowMinutes:
           (data['payment_window_minutes'] as num?)?.toInt() ??
           (data['paymentWindowMinutes'] as num?)?.toInt(),
+      specialOrderFee:
+          (data['special_order_fee'] as num?)?.toInt() ??
+          (data['specialOrderFee'] as num?)?.toInt(),
       // isOpen: ambil dari database, default false jika tidak ada
       isOpen: data['isOpen'] as bool? ?? false,
     );
@@ -125,6 +133,7 @@ class Barbershop {
       'open_hour': openHour,
       'close_hour': closeHour,
       'payment_window_minutes': paymentWindowMinutes,
+      'special_order_fee': specialOrderFee,
       'isOpen': isOpen,
     };
   }

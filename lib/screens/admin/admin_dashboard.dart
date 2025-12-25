@@ -9,6 +9,7 @@ import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
+import 'package:geges_smartbarber/screens/admin/barbershop_settings_screen.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/screens/admin/live_queue_screen.dart';
@@ -555,6 +556,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           () => _showSnackBar('Navigasi ke Kelola Layanan'),
         ),
         _buildMenuCard(
+          Icons.settings,
+          'Shop Settings',
+          'Special Order & Rules',
+          () async {
+            if (_adminBarbershopId == null) {
+              _showSnackBar('Barbershop belum terdeteksi.');
+              return;
+            }
+            final barbershop = await _getBarbershopSafe(_adminBarbershopId!);
+            if (barbershop == null) {
+              _showSnackBar('Data barbershop tidak ditemukan.');
+              return;
+            }
+            if (!mounted) return;
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => BarbershopSettingsScreen(barbershop: barbershop),
+            ));
+          },
+        ),
+        _buildMenuCard(
           Icons.face_retouching_natural,
           'Kelola Barberman',
           'Jadwal & Role',
@@ -795,8 +816,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         customerName = userSnap.data()?['name'] ?? 'Pelanggan Tidak Dikenal';
       }
 
-      // TODO: resolve real service name by looking up service collection if stored (for demo use placeholder)
-      const serviceName = 'Signature Haircut';
+      // Try to resolve service name from services collection, fallback to placeholder
+      String serviceName = 'Signature Haircut';
+      try {
+        final svcId = queue.firstServiceId;
+        if (svcId != null && svcId.isNotEmpty) {
+          final svcSnap = await FirebaseFirestore.instance
+              .collection('services')
+              .doc(svcId)
+              .get();
+          if (svcSnap.exists) {
+            final sdata = svcSnap.data();
+            serviceName = (sdata?['name'] ?? sdata?['serviceName'] ?? serviceName).toString();
+          }
+        }
+      } catch (_) {
+        // keep fallback
+      }
+
       return '$customerName|$serviceName';
     } catch (e) {
       debugPrint("Error fetching upcoming details: $e");

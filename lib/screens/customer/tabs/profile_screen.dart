@@ -12,6 +12,7 @@ import '../edit_profile_screen.dart'; // EditProfileScreen yang sudah kita buat
 // Pastikan path import ke screens lain ini sudah benar di project Anda
 import '../../login_screen.dart';
 import 'my_bookings_screen.dart'; // Akan digunakan sebagai History Screen
+import 'package:geges_smartbarber/utils/links.dart';
 // Saya asumsikan ini adalah FavoriteBarbersScreen (bukan barbershop)
 
 class ProfileScreen extends StatefulWidget {
@@ -153,7 +154,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Help Centers',
               icon: Icons.help_outline,
               onTap: () {
-                // TODO: Navigasi ke Help Center
+                Links.openUrl(Links.helpCenter);
               },
             ),
             const SizedBox(height: 12),
@@ -161,7 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Terms of Service',
               icon: Icons.description_outlined,
               onTap: () {
-                // TODO: Navigasi ke Terms of Service
+                Links.openUrl(Links.termsOfService);
               },
             ),
 
@@ -311,7 +312,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                // TODO: Action: Navigasi ke halaman registrasi barbershop
+                // Open barbershop registration page
+                Links.openUrl(Links.barbershopRegister);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: kBrownAccent,

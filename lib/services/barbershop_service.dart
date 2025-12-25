@@ -47,6 +47,19 @@ class BarbershopService {
     }
   }
 
+  /// Update special order fee for a barbershop (in smallest currency unit)
+  Future<void> updateSpecialOrderFee(String barbershopId, int fee) async {
+    try {
+      await _firestore.collection('barbershops').doc(barbershopId).update({
+        'special_order_fee': fee,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error updateSpecialOrderFee: $e');
+      rethrow;
+    }
+  }
+
   Future<void> updateShopStatus(String id, bool isOpen) async {
     try {
       await _firestore.collection('barbershops').doc(id).update({

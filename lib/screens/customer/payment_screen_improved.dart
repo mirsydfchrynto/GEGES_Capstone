@@ -12,6 +12,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import 'package:geges_smartbarber/services/booking_anti_duplicate_service.dart';
 
@@ -155,6 +157,30 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
     ).format(amount);
   }
 
+  /// Pick an image using the image picker and upload to Firebase Storage.
+  /// If upload succeeds, call [_submitProof] with the download URL.
+  Future<void> _pickAndUploadAndSubmit() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      if (picked == null) return; // user cancelled
+
+      setState(() => _isSubmitting = true);
+
+      final bytes = await picked.readAsBytes();
+      final path = 'bookings/${widget.bookingId}/proof_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final ref = FirebaseStorage.instance.ref().child(path);
+      await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+      final downloadUrl = await ref.getDownloadURL();
+
+      await _submitProof(downloadUrl);
+    } catch (e) {
+      _showError('Gagal mengunggah bukti: $e');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isTimeExpired = _timeRemaining.inSeconds <= 0;
@@ -271,9 +297,7 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
               child: ElevatedButton.icon(
                 onPressed: _isSubmitting || _proofLocked || isTimeExpired
                     ? null
-                    : () => _submitProof(
-                        'https://example.com/proof',
-                      ), // TODO: get real proof URL
+                    : () => _pickAndUploadAndSubmit(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amber[700],
                   disabledBackgroundColor: Colors.grey,

@@ -14,6 +14,8 @@ import 'package:flutter/material.dart';
 
 import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
+import 'package:geges_smartbarber/utils/links.dart';
+import 'package:geges_smartbarber/l10n/app_strings.dart';
 
 // penjelasan statefulwidget:
 // - registerscreen adalah statefulwidget karena ada state yang berubah (error message, loading)
@@ -70,18 +72,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   static const Color kDarkGrey = Color(0xFF1E1E1E);
   static const Color kHintText = Color(0xFF6B6B6B);
 
-  // UI strings (extract to constants to prepare for localization)
-  // TODO: move these to ARB/localization files and use intl package
-  static const String _kErrAllFields = 'Semua field wajib diisi.';
-  static const String _kErrNameMin = 'Nama minimal 3 karakter.';
-  static const String _kErrEmailFormat = 'Format email tidak valid.';
-  static const String _kErrPasswordMismatch =
-      'Password dan konfirmasi tidak cocok.';
-  static const String _kErrPasswordMin = 'Password minimal 6 karakter.';
-  static const String _kMsgRegisterSuccess = 'Pendaftaran berhasil!';
-  static const String _kMsgGoogleRegisterSuccess =
-      'Registrasi dengan Google berhasil! Navigasi ke Home.';
-
+  // UI strings moved to AppStrings to prepare for localization. See lib/l10n/app_strings.dart
+  // Note: full ARB/localization migration to follow as a separate task.
+  
   @override
   void initState() {
     super.initState();
@@ -132,14 +125,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - cek apakah ada field yang kosong
     // - jika ada, tampilkan error message & return
     if (name.isEmpty || email.isEmpty || password.isEmpty || confirm.isEmpty) {
-      setState(() => _errorMessage = _kErrAllFields);
+      setState(() => _errorMessage = AppStrings.registerErrAllFields);
       return;
     }
 
     // penjelasan validasi nama:
     // - minimal 3 karakter untuk nama valid
     if (name.length < 3) {
-      setState(() => _errorMessage = _kErrNameMin);
+      setState(() => _errorMessage = AppStrings.registerErrNameMin);
       return;
     }
 
@@ -147,7 +140,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - cek format email dengan regex
     final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
     if (!emailRegex.hasMatch(email)) {
-      setState(() => _errorMessage = _kErrEmailFormat);
+      setState(() => _errorMessage = AppStrings.registerErrEmailFormat);
       return;
     }
 
@@ -155,7 +148,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - cek apakah password dan konfirmasi sama
     // - jika tidak cocok, tampilkan error message
     if (password != confirm) {
-      setState(() => _errorMessage = _kErrPasswordMismatch);
+      setState(() => _errorMessage = AppStrings.registerErrPasswordMismatch);
       return;
     }
 
@@ -163,7 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - cek apakah password minimal 6 karakter
     // - ini adalah minimal requirement dari firebase
     if (password.length < 6) {
-      setState(() => _errorMessage = _kErrPasswordMin);
+      setState(() => _errorMessage = AppStrings.registerErrPasswordMin);
       return;
     }
 
@@ -190,7 +183,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Tampilkan snackbar sukses & navigasi ke login
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? _kMsgRegisterSuccess),
+            content: Text(result['message'] ?? AppStrings.registerMsgSuccess),
             backgroundColor: const Color(0xFF4CAF50),
           ),
         );
@@ -756,7 +749,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             recognizer: TapGestureRecognizer()
               ..onTap = () {
-                // TODO: buka halaman terms of services
+                Links.openUrl(Links.termsOfService);
               },
           ),
           const TextSpan(text: ' and '),
@@ -768,7 +761,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             recognizer: TapGestureRecognizer()
               ..onTap = () {
-                // TODO: buka halaman privacy policy
+                Links.openUrl(Links.privacyPolicy);
               },
           ),
         ],

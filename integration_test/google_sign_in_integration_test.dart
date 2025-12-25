@@ -28,8 +28,17 @@ void main() {
       app.main();
       await tester.pumpAndSettle();
 
-      // Navigate to Register screen if your app doesn't start there.
-      // TODO: adapt navigation steps below to match your app's initial route.
+      // Navigate from Onboarding -> Login -> Register if necessary.
+      // This makes the test robust to different initial routes.
+      if (find.text('Skip').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Skip'));
+        await tester.pumpAndSettle();
+      }
+
+      if (find.text('Sign Up').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Sign Up'));
+        await tester.pumpAndSettle();
+      }
 
       // Find the Google sign-up button keyed in UI
       final googleBtn = find.byKey(const Key('register_google_btn'));
