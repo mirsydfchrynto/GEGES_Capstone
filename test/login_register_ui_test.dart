@@ -61,10 +61,19 @@ void main() {
     testWidgets('TC-LOGIN-UI-04: Password visibility toggle', (
       WidgetTester tester,
     ) async {
-      // TODO: This test expects a visibility toggle icon that hasn't been implemented in LoginScreen.
-      // The password field currently uses the simple _buildTextField without a suffix icon.
-      // This test should be updated when visibility toggle UI is added.
-    }, skip: true);
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+
+      // Find password field visibility toggles
+      final visibilityButtons = find.byIcon(Icons.visibility);
+      expect(visibilityButtons, findsWidgets);
+
+      // Tap first visibility button (password field)
+      await tester.tap(visibilityButtons.first);
+      await tester.pump();
+
+      // Should toggle to visibility_off
+      expect(find.byIcon(Icons.visibility_off), findsWidgets);
+    });
 
     testWidgets('TC-LOGIN-UI-05: Tab navigation to Sign Up', (
       WidgetTester tester,
