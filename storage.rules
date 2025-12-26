@@ -1,0 +1,23 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Tenant documents: only tenant owner or admins may read/write files under tenants/{tenantId}/docs/**
+    match /tenants/{tenantId}/docs/{allPaths=**} {
+      allow read: if isOwner() || isAdmin();
+      allow write: if isOwner() || isAdmin();
+    }
+
+    // Helper to check admin role via Firestore users/{uid}.role == 'admin'
+    function isAdmin() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Helper to check tenant owner
+    function isOwner() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/tenants/$(tenantId)).data.owner_uid == request.auth.uid;
+    }
+  }
+}
