@@ -35,24 +35,38 @@ async function main() {
     const otherBucket = otherCtx.storage().bucket();
     const adminBucket = adminCtx.storage().bucket();
 
-    const ownerFile = ownerBucket.file('tenants/tenant1/docs/owner_doc.txt');
-    const otherFile = otherBucket.file('tenants/tenant1/docs/other_doc.txt');
-    const adminFile = adminBucket.file('tenants/tenant1/docs/admin_doc.txt');
+    const ownerFile = ownerBucket.file('tenants/tenant1/docs/owner_doc.png');
+    const otherFile = otherBucket.file('tenants/tenant1/docs/other_doc.png');
+    const adminFile = adminBucket.file('tenants/tenant1/docs/admin_doc.pdf');
 
-    // Owner should succeed writing their tenant doc
-    await assertSucceeds(ownerFile.save('owner content'));
+    // Valid small image upload by owner should succeed
+    await assertSucceeds(ownerFile.save(Buffer.from('small image'), { metadata: { contentType: 'image/png' } }));
 
-    // Other user should fail writing
-    await assertFails(otherFile.save('malicious content'));
+    // Upload with disallowed content type should fail
+    const badFile = ownerBucket.file('tenants/tenant1/docs/bad.bin');
+    await assertFails(badFile.save(Buffer.from('data'), { metadata: { contentType: 'application/octet-stream' } }));
 
-    // Admin should succeed
-    await assertSucceeds(adminFile.save('admin content'));
+    // Upload that exceeds size limit should fail (6MB)
+    const largeFile = ownerBucket.file('tenants/tenant1/docs/large.png');
+    const largeBuf = Buffer.alloc(6 * 1024 * 1024, 'a'); // 6MB
+    await assertFails(largeFile.save(largeBuf, { metadata: { contentType: 'image/png' } }));
+
+    // Other user should fail writing their tenant doc
+    await assertFails(otherFile.save(Buffer.from('malicious'), { metadata: { contentType: 'image/png' } }));
+
+    // Admin should succeed writing a pdf
+    await assertSucceeds(adminFile.save(Buffer.from('admin doc'), { metadata: { contentType: 'application/pdf' } }));
 
     // Owner should be able to read their file
     await assertSucceeds(ownerFile.download());
 
     // Other user should fail to read owner's file
     await assertFails(otherFile.download());
+
+    // Listing behavior: owner and admin can list, other cannot
+    await assertSucceeds(ownerBucket.getFiles({ prefix: 'tenants/tenant1/docs/' }));
+    await assertFails(otherBucket.getFiles({ prefix: 'tenants/tenant1/docs/' }));
+    await assertSucceeds(adminBucket.getFiles({ prefix: 'tenants/tenant1/docs/' }));
 
     console.log('Storage rules tests completed (check assert results).');
   } finally {

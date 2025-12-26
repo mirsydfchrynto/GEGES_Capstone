@@ -16,11 +16,13 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '18'
-      - name: Run storage rules tests
-        working-directory: ./scripts
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+      - name: Run storage rules tests (inside emulators)
         run: |
-          npm ci
-          npm run test:storage
+          firebase emulators:exec "bash -lc 'cd scripts && npm ci && npm run test:storage'" --only firestore,storage
+          # emulators:exec will set FIRESTORE_EMULATOR_HOST and FIREBASE_STORAGE_EMULATOR_HOST
+
 
   functions-tests:
     name: Functions unit tests

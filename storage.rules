@@ -4,8 +4,24 @@ service firebase.storage {
 
     // Tenant documents: only tenant owner or admins may read/write files under tenants/{tenantId}/docs/**
     match /tenants/{tenantId}/docs/{allPaths=**} {
+      // Allow listing for owner or admin so they can enumerate tenant documents
+      allow list: if isOwner() || isAdmin();
+
+      // Allow read for owner or admin
       allow read: if isOwner() || isAdmin();
-      allow write: if isOwner() || isAdmin();
+
+      // Allow write only for owner or admin AND only for valid uploads
+      allow write: if (isOwner() || isAdmin()) && validUpload();
+
+      // Valid uploads: size < 5MB and contentType is image/*, application/pdf or text/*
+      function validUpload() {
+        return request.resource.size < 5 * 1024 * 1024 &&
+          (
+            (request.resource.contentType.matches('image/.*')) ||
+            (request.resource.contentType == 'application/pdf') ||
+            (request.resource.contentType.matches('text/.*'))
+          );
+      }
     }
 
     // Helper to check admin role via Firestore users/{uid}.role == 'admin'
