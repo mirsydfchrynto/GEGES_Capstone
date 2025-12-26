@@ -68,6 +68,14 @@ async function main() {
     await assertFails(otherBucket.getFiles({ prefix: 'tenants/tenant1/docs/' }));
     await assertSucceeds(adminBucket.getFiles({ prefix: 'tenants/tenant1/docs/' }));
 
+    // Unauthenticated users should not be able to read or list tenant docs
+    const unauthCtx = testEnv.unauthenticatedContext();
+    const unauthBucket = unauthCtx.storage().bucket();
+    const unauthFile = unauthBucket.file('tenants/tenant1/docs/owner_doc.png');
+    await assertFails(unauthFile.download());
+    await assertFails(unauthBucket.getFiles({ prefix: 'tenants/tenant1/docs/' }));
+
+
     console.log('Storage rules tests completed (check assert results).');
   } finally {
     await testEnv.cleanup();

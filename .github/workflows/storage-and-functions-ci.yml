@@ -18,6 +18,11 @@ jobs:
           node-version: '18'
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
+      - name: Setup Java (for emulators)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
       - name: Run storage rules tests (inside emulators)
         run: |
           firebase emulators:exec "bash -lc 'cd scripts && npm ci && npm run test:storage'" --only firestore,storage
