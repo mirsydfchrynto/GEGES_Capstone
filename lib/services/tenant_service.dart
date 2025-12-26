@@ -6,8 +6,9 @@ import 'package:firebase_storage/firebase_storage.dart';
 class TenantService {
   final FirebaseFirestore _fs;
   final FirebaseStorage? _storage;
+  final dynamic _emailOutboxService; // keep dynamic to avoid import cycle in tests
 
-  TenantService({FirebaseFirestore? firestore, FirebaseStorage? storage}) : _fs = firestore ?? FirebaseFirestore.instance, _storage = storage;
+  TenantService({FirebaseFirestore? firestore, FirebaseStorage? storage, dynamic emailOutboxService}) : _fs = firestore ?? FirebaseFirestore.instance, _storage = storage, _emailOutboxService = emailOutboxService;
 
   /// Create a tenant application document and return the new doc id.
   Future<String> createTenantApplication(Map<String, dynamic> data) async {
@@ -76,5 +77,47 @@ class TenantService {
     if (!approve && reason != null) update['rejection_reason'] = reason;
 
     await _fs.collection('tenants').doc(tenantId).update(update);
+
+    // After updating tenant status, queue notification & email to owner
+    try {
+      final tenantDoc = await _fs.collection('tenants').doc(tenantId).get();
+      final data = tenantDoc.data() as Map<String, dynamic>?;
+      if (data != null) {
+        final ownerUid = data['owner_uid'] as String?;
+        final ownerEmail = data['owner_email'] as String?;
+
+        // create a user notification doc for FCM/local handling
+        if (ownerUid != null) {
+          final title = approve ? 'Pendaftaran Tenant Disetujui' : 'Pendaftaran Tenant Ditolak';
+          final body = approve
+              ? 'Pendaftaran tenant Anda telah disetujui. Anda sekarang dapat melanjutkan setup.'
+              : 'Pendaftaran tenant Anda ditolak oleh admin.' + ((reason != null) ? '\nAlasan: $reason' : '');
+
+          await _fs.collection('notifications').add({
+            'user_id': ownerUid,
+            'title': title,
+            'body': body,
+            'delivered': false,
+            'created_at': FieldValue.serverTimestamp(),
+          });
+        }
+
+        // queue an email in outbox if available
+        if (ownerEmail != null && _emailOutboxService != null) {
+          final subject = approve ? 'Tenant Registration Approved' : 'Tenant Registration Rejected';
+          final body = approve
+              ? 'Selamat — tenant Anda telah disetujui. Silakan periksa dashboard untuk langkah selanjutnya.'
+              : 'Maaf — tenant Anda ditolak. ${reason ?? ''}';
+
+          try {
+            await _emailOutboxService.queueEmail(to: ownerEmail, subject: subject, body: body, metadata: {'tenantId': tenantId, 'approved': approve});
+          } catch (_) {
+            // best-effort: swallow email failures so admin flow is not blocked
+          }
+        }
+      }
+    } catch (_) {
+      // best-effort
+    }
   }
 }
