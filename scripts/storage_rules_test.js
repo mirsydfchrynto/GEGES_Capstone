@@ -22,10 +22,13 @@ async function main() {
   });
 
   try {
-    // Create an admin context and tenant document
-    const adminCtx = testEnv.authenticatedContext('admin1');
-    await adminCtx.firestore().doc('users/admin1').set({ role: 'admin' });
-    await adminCtx.firestore().doc('tenants/tenant1').set({ owner_uid: 'user1', owner_email: 'u1@example.com' });
+    // Create initial data using the admin SDK (bypass security rules) so tests can run deterministically
+    const admin = require('firebase-admin');
+    try { admin.initializeApp({ projectId }); } catch (e) { /* already initialized */ }
+    const adminDb = admin.firestore();
+
+    await adminDb.doc('users/admin1').set({ role: 'admin' });
+    await adminDb.doc('tenants/tenant1').set({ owner_uid: 'user1', owner_email: 'u1@example.com' });
 
     // Owner and other user contexts
     const ownerCtx = testEnv.authenticatedContext('user1');
