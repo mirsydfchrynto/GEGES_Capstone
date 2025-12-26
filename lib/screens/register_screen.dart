@@ -246,9 +246,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (result['success'] == true) {
         // Sukses registrasi/login dengan Google
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(_kMsgGoogleRegisterSuccess),
-            backgroundColor: Color(0xFF4CAF50),
+          SnackBar(
+            content: Text(AppStrings.registerMsgGoogleSuccess),
+            backgroundColor: const Color(0xFF4CAF50),
           ),
         );
         // Langsung navigasi ke Login agar user bisa masuk dengan role yang tepat

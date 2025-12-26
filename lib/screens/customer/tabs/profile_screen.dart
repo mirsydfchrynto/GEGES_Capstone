@@ -13,6 +13,7 @@ import '../edit_profile_screen.dart'; // EditProfileScreen yang sudah kita buat
 import '../../login_screen.dart';
 import 'my_bookings_screen.dart'; // Akan digunakan sebagai History Screen
 import 'package:geges_smartbarber/utils/links.dart';
+import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 // Saya asumsikan ini adalah FavoriteBarbersScreen (bukan barbershop)
 
 class ProfileScreen extends StatefulWidget {
@@ -312,8 +313,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                // Open barbershop registration page
-                Links.openUrl(Links.barbershopRegister);
+                // Navigate to tenant registration screen
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const TenantRegistrationScreen(),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: kBrownAccent,

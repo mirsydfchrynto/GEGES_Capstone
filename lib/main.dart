@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'package:geges_smartbarber/services/notification_service.dart';
 import 'package:geges_smartbarber/services/app_navigator.dart';
 import 'package:geges_smartbarber/screens/admin/barber_shops_list_screen.dart';
+import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 
 // ==========================================
 // file: lib/main.dart
@@ -138,6 +139,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // admin routes
       routes: {
         '/admin/barber-management': (_) => const BarberShopsListScreen(),
+        '/tenant/register': (_) => const TenantRegistrationScreen(),
       },
 
       // =====================================================

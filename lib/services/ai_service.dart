@@ -1,7 +1,5 @@
 import 'dart:io';
-
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -62,20 +60,4 @@ class AIService {
   }
 
   String _localStyleSuggestion() => 'Berdasarkan analisis bentuk wajah Anda, gaya rambut "Undercut" dengan sedikit "Fade" di bagian samping akan sangat cocok. Ini akan memberikan kesan rapi namun tetap modern dan stylish.';
-}
-  /// Provides a mock suggestion for the AI Style Scan.
-  Future<String> getStyleSuggestion(File image) async {
-    // Simulate network delay and a fake "upload"
-    await Future.delayed(const Duration(seconds: 3));
-
-    // In a real scenario, you would convert the image to bytes and send it
-    // in a multipart request.
-    // final bytes = await image.readAsBytes();
-    // final request = http.MultipartRequest('POST', Uri.parse(_styleScanApiUrl));
-    // request.files.add(http.MultipartFile.fromBytes('image', bytes));
-    // final response = await request.send();
-
-    // For now, return a hardcoded suggestion.
-    return 'Berdasarkan analisis bentuk wajah Anda, gaya rambut "Undercut" dengan sedikit "Fade" di bagian samping akan sangat cocok. Ini akan memberikan kesan rapi namun tetap modern dan stylish.';
-  }
 }
