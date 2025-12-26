@@ -4,15 +4,25 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 
 class TenantRequestsScreen extends StatefulWidget {
-  const TenantRequestsScreen({super.key});
+  final FirebaseFirestore? firestore;
+  final TenantService? tenantService;
+
+  const TenantRequestsScreen({super.key, this.firestore, this.tenantService});
 
   @override
   State<TenantRequestsScreen> createState() => _TenantRequestsScreenState();
 }
 
 class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
-  final _fs = FirebaseFirestore.instance;
-  final TenantService _tenantService = TenantService();
+  late final FirebaseFirestore _fs;
+  late final TenantService _tenantService;
+
+  @override
+  void initState() {
+    super.initState();
+    _fs = widget.firestore ?? FirebaseFirestore.instance;
+    _tenantService = widget.tenantService ?? TenantService();
+  }
 
   Future<void> _approve(String tenantId) async {
     final userId = FirebaseAuth.instance.currentUser?.uid ?? 'admin_unknown';

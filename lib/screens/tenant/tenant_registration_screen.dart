@@ -195,24 +195,44 @@ class TenantContinueScreen extends StatefulWidget {
   final String tenantId;
   final int amount;
 
-  const TenantContinueScreen({super.key, required this.tenantId, required this.amount});
+  /// Optional overrides for testing and dependency injection
+  final TenantService? tenantService;
+  final FirebaseFirestore? firestore;
+  final Future<String?> Function()? filePicker;
+
+  const TenantContinueScreen({
+    super.key,
+    required this.tenantId,
+    required this.amount,
+    this.tenantService,
+    this.firestore,
+    this.filePicker,
+  });
 
   @override
   State<TenantContinueScreen> createState() => _TenantContinueScreenState();
 }
 
 class _TenantContinueScreenState extends State<TenantContinueScreen> {
-  final TenantService _tenantService = TenantService();
+  TenantService get _tenantService => widget.tenantService ?? TenantService();
+  FirebaseFirestore get _fs => widget.firestore ?? FirebaseFirestore.instance;
   bool _isSubmitting = false;
+
   Future<void> _submitPaymentProof(File proofFile) async {
     setState(() => _isSubmitting = true);
     try {
       final proofUrl = await _tenantService.uploadTenantDocument(widget.tenantId, proofFile, filename: 'payment_proof_${DateTime.now().millisecondsSinceEpoch}.jpg');
-      final userId = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
-      await _tenantService.submitRegistrationPayment(tenantId: widget.tenantId, proofUrl: proofUrl, userId: userId);
+      String userId = 'unknown';
+      try {
+        userId = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
+      } catch (_) {
+        // In tests FirebaseAuth may not be initialized; fallback to 'unknown'
+      }
+
+      await _tenant_service_submit(tenantId: widget.tenantId, proofUrl: proofUrl, userId: userId);
 
       // update invoice status
-      await FirebaseFirestore.instance.collection('tenants').doc(widget.tenantId).set({
+      await _fs.collection('tenants').doc(widget.tenantId).set({
         'invoice': {
           'status': 'payment_submitted',
           'submitted_at': Timestamp.now(),
@@ -226,6 +246,22 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mengirim bukti pembayaran: $e')));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _tenant_service_submit({required String tenantId, required String proofUrl, required String userId}) async {
+    // extracted to allow overriding in tests if needed
+    // debug print to help tests trace
+    try {
+      // ignore: avoid_print
+      print('calling submitRegistrationPayment for $tenantId');
+      await _tenantService.submitRegistrationPayment(tenantId: tenantId, proofUrl: proofUrl, userId: userId);
+      // ignore: avoid_print
+      print('submitRegistrationPayment returned for $tenantId');
+    } catch (e) {
+      // ignore: avoid_print
+      print('submitRegistrationPayment error: $e');
+      rethrow;
     }
   }
 
@@ -262,9 +298,17 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
               onPressed: _isSubmitting
                   ? null
                   : () async {
-                      final res = await FilePicker.platform.pickFiles();
-                      if (res == null || res.files.single.path == null) return;
-                      final file = File(res.files.single.path!);
+                      String? path;
+                      if (widget.filePicker != null) {
+                        path = await widget.filePicker!.call();
+                        if (path == null) return;
+                      } else {
+                        final res = await FilePicker.platform.pickFiles();
+                        if (res == null || res.files.single.path == null) return;
+                        path = res.files.single.path!;
+                      }
+
+                      final file = File(path);
                       await _submitPaymentProof(file);
                     },
               icon: const Icon(Icons.upload_file),
