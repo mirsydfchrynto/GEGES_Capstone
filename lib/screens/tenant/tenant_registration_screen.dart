@@ -9,7 +9,8 @@ import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/widgets/document_upload_widget.dart';
 
 class TenantRegistrationScreen extends StatefulWidget {
-  const TenantRegistrationScreen({super.key});
+  final TenantService? tenantService;
+  const TenantRegistrationScreen({super.key, this.tenantService});
 
   @override
   State<TenantRegistrationScreen> createState() => _TenantRegistrationScreenState();
@@ -29,7 +30,7 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
   bool _submitting = false;
 
 
-  final TenantService _tenantService = TenantService();
+  TenantService get _tenantService => widget.tenantService ?? TenantService();
 
   @override
   void dispose() {

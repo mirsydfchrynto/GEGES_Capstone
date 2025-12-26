@@ -12,6 +12,10 @@ class DocumentUploadWidget extends StatefulWidget {
   final String? existingUrl;
   final void Function(String url) onUploaded;
 
+  /// Optional override for file picking in tests.
+  /// If provided, should return a path to the picked file, or null if cancelled.
+  final Future<String?> Function()? filePicker;
+
   const DocumentUploadWidget({
     super.key,
     required this.tenantId,
@@ -19,6 +23,7 @@ class DocumentUploadWidget extends StatefulWidget {
     required this.label,
     this.existingUrl,
     required this.onUploaded,
+    this.filePicker,
   });
 
   @override
@@ -30,11 +35,18 @@ class _DocumentUploadWidgetState extends State<DocumentUploadWidget> {
   String? _uploadedUrl;
 
   Future<void> _pickAndUpload() async {
-    final res = await FilePicker.platform.pickFiles(allowMultiple: false);
-    if (res == null) return; // cancelled
+    String? path;
+    if (widget.filePicker != null) {
+      path = await widget.filePicker!.call();
+      if (path == null) return;
+    } else {
+      final res = await FilePicker.platform.pickFiles(allowMultiple: false);
+      if (res == null) return; // cancelled
 
-    final path = res.files.single.path;
-    if (path == null) return;
+      path = res.files.single.path;
+      if (path == null) return;
+    }
+
     final file = File(path);
 
     setState(() {

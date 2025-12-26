@@ -163,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Terms of Service',
               icon: Icons.description_outlined,
               onTap: () {
-                Links.openUrl(Links.termsOfService);
+                Navigator.of(context).pushNamed('/legal/terms');
               },
             ),
 

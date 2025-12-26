@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 
 import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
-import 'package:geges_smartbarber/utils/links.dart';
 import 'package:geges_smartbarber/l10n/app_strings.dart';
 
 // penjelasan statefulwidget:
@@ -749,7 +748,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             recognizer: TapGestureRecognizer()
               ..onTap = () {
-                Links.openUrl(Links.termsOfService);
+                Navigator.of(context).pushNamed('/legal/terms');
               },
           ),
           const TextSpan(text: ' and '),
@@ -761,7 +760,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             recognizer: TapGestureRecognizer()
               ..onTap = () {
-                Links.openUrl(Links.privacyPolicy);
+                Navigator.of(context).pushNamed('/legal/privacy');
               },
           ),
         ],

@@ -14,7 +14,6 @@ import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/screens/customer/home_screen.dart';
 import 'package:geges_smartbarber/screens/admin/admin_dashboard.dart';
 import 'package:geges_smartbarber/screens/register_screen.dart';
-import 'package:geges_smartbarber/utils/links.dart';
 
 // penjelasan statefulwidget:
 // - loginscreen adalah statefulwidget karena ada state yang berubah (error message, loading, password visible)
@@ -621,8 +620,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
-                            // Open Terms of Service
-                            Links.openUrl(Links.termsOfService);
+                            // Open internal Terms of Service page
+                            Navigator.of(context).pushNamed('/legal/terms');
                           },
                       ),
                       const TextSpan(text: ' and '),
@@ -634,7 +633,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
-                            Links.openUrl(Links.privacyPolicy);
+                            Navigator.of(context).pushNamed('/legal/privacy');
                           },
                       ),
                     ],
