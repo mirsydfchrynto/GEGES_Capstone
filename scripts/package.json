@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^2.1.0",
+    "@firebase/rules-unit-testing": "^3.0.2",
     "firebase-admin": "^11.0.0"
   },
   "scripts": {
-    "test:storage": "node scripts/storage_rules_test.js"
+    "test:storage": "node storage_rules_test.js"
   }
 }

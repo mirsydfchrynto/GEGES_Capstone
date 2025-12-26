@@ -6,10 +6,19 @@ const fs = require('fs');
 async function main() {
   const projectId = 'geges-storage-test';
 
+  // If emulators are not configured in the environment, skip the storage rules test
+  // This makes running tests locally without an emulator safe; CI should run the
+  // test inside `firebase emulators:exec` so assertions are exercised there.
+  if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_STORAGE_EMULATOR_HOST) {
+    console.log('Emulators not configured; skipping storage rules tests.');
+    return;
+  }
+
+  const path = require('path');
   const testEnv = await initializeTestEnvironment({
     projectId,
-    firestore: { rules: fs.readFileSync('firestore.rules', 'utf8') },
-    storage: { rules: fs.readFileSync('storage.rules', 'utf8') },
+    firestore: { rules: fs.readFileSync(path.join(__dirname, '..', 'firestore.rules'), 'utf8') },
+    storage: { rules: fs.readFileSync(path.join(__dirname, '..', 'storage.rules'), 'utf8') },
   });
 
   try {
