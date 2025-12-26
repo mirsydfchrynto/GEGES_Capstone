@@ -1,0 +1,38 @@
+name: CI - Storage Rules & Functions Tests
+
+on:
+  push:
+    branches: [ 'pr/reactive-payment-ci', 'main', 'master' ]
+  pull_request:
+    branches: [ 'main', 'master' ]
+
+jobs:
+  storage-rules-test:
+    name: Storage rules tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '18'
+      - name: Run storage rules tests
+        working-directory: ./scripts
+        run: |
+          npm ci
+          npm run test:storage
+
+  functions-tests:
+    name: Functions unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '18'
+      - name: Run functions tests
+        working-directory: ./functions
+        run: |
+          npm ci
+          npm test
