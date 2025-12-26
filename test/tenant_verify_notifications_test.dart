@@ -41,7 +41,8 @@ void main() {
     // email queued
     expect(fakeOutbox.queued, isTrue);
     expect(fakeOutbox.lastArgs!['to'], 'owner@example.com');
-    expect((fakeOutbox.lastArgs!['subject'] as String).toLowerCase(), contains('approved') || contains('disetujui'));
+    final subjectLower = (fakeOutbox.lastArgs!['subject'] as String).toLowerCase();
+    expect(subjectLower.contains('approved') || subjectLower.contains('disetujui'), isTrue);
   });
 
   test('verifyTenant creates notification and queues email when owner info present (reject)', () async {
@@ -66,11 +67,13 @@ void main() {
     final notifs = await fs.collection('notifications').where('user_id', isEqualTo: 'owner456').get();
     expect(notifs.docs.length, 1);
     final notif = notifs.docs.first.data();
-    expect(notif['title'], contains('Ditolak') || contains('Ditolak'));
+    final title = (notif['title'] as String).toLowerCase();
+    expect(title.contains('ditolak') || title.contains('rejected'), isTrue);
 
     // email queued
     expect(fakeOutbox.queued, isTrue);
     expect(fakeOutbox.lastArgs!['to'], 'owner2@example.com');
-    expect((fakeOutbox.lastArgs!['subject'] as String).toLowerCase(), contains('rejected') || contains('ditolak'));
+    final subjLower = (fakeOutbox.lastArgs!['subject'] as String).toLowerCase();
+    expect(subjLower.contains('rejected') || subjLower.contains('ditolak'), isTrue);
   });
 }

@@ -34,9 +34,11 @@ async function main() {
     const ownerCtx = testEnv.authenticatedContext('user1');
     const otherCtx = testEnv.authenticatedContext('user2');
 
-    const ownerBucket = ownerCtx.storage().bucket();
-    const otherBucket = otherCtx.storage().bucket();
-    const adminBucket = adminCtx.storage().bucket();
+    console.log('ownerCtx.storage exists?', !!ownerCtx.storage, 'typeof:', typeof ownerCtx.storage);
+    if (ownerCtx.storage) console.log('ownerCtx.storage keys:', Object.keys(ownerCtx.storage));
+    const ownerBucket = ownerCtx.storage ? ownerCtx.storage().bucket() : null;
+    const otherBucket = otherCtx.storage ? otherCtx.storage().bucket() : null;
+    const adminBucket = adminCtx.storage ? adminCtx.storage().bucket() : null;
 
     const ownerFile = ownerBucket.file('tenants/tenant1/docs/owner_doc.png');
     const otherFile = otherBucket.file('tenants/tenant1/docs/other_doc.png');
