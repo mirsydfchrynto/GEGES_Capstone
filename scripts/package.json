@@ -7,6 +7,7 @@
     "firebase-admin": "^11.0.0"
   },
   "scripts": {
-    "test:storage": "node storage_rules_test.js"
+    "test:storage": "node storage_rules_test.js",
+    "test:integration-outbox": "node process_outbox_integration_test.js"
   }
 }

@@ -23,10 +23,10 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-      - name: Run storage rules tests (inside emulators)
+      - name: Run storage rules + outbox integration tests (inside emulators)
         run: |
-          firebase emulators:exec "bash -lc 'cd scripts && npm ci && npm run test:storage'" --only firestore,storage
-          # emulators:exec will set FIRESTORE_EMULATOR_HOST and FIREBASE_STORAGE_EMULATOR_HOST
+          firebase emulators:exec "bash -lc 'cd scripts && npm ci && npm run test:storage && npm run test:integration-outbox'" --only firestore,storage,functions
+          # emulators:exec will set FIRESTORE_EMULATOR_HOST, FIREBASE_STORAGE_EMULATOR_HOST, and start functions emulator
 
 
   functions-tests:
