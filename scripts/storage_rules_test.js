@@ -36,9 +36,32 @@ async function main() {
 
     console.log('ownerCtx.storage exists?', !!ownerCtx.storage, 'typeof:', typeof ownerCtx.storage);
     if (ownerCtx.storage) console.log('ownerCtx.storage keys:', Object.keys(ownerCtx.storage));
-    const ownerBucket = ownerCtx.storage ? ownerCtx.storage().bucket() : null;
-    const otherBucket = otherCtx.storage ? otherCtx.storage().bucket() : null;
-    const adminBucket = adminCtx.storage ? adminCtx.storage().bucket() : null;
+    try {
+      const storageObj = ownerCtx.storage();
+      console.log('owner storage prototype methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(storageObj)).slice(0,40));
+    } catch (e) {
+      console.log('ownerCtx.storage() call failed:', String(e));
+    }
+
+    // For the emulator, the storage client may expose different methods (ref/uploadBytes) instead of bucket()/file().
+    // We'll use a helper function that tries a few approaches and throws if none available.
+    function _getBuckets(ctx) {
+      if (!ctx.storage) return null;
+      const client = ctx.storage();
+      // If bucket() exists (GCS style), use it
+      if (typeof client.bucket === 'function') return { bucketFn: (name) => client.bucket(name) };
+      // If ref or uploadBytes style exists (Firebase SDK), use that
+      if (typeof client.ref === 'function') return { refFn: (path) => client.ref(path) };
+      return null;
+    }
+
+    const ownerBuckets = _getBuckets(ownerCtx);
+    const otherBuckets = _getBuckets(otherCtx);
+    const adminBuckets = _getBuckets(adminCtx);
+
+    const ownerBucket = ownerBuckets && ownerBuckets.bucketFn ? ownerBuckets.bucketFn() : ownerBuckets && ownerBuckets.refFn ? ownerBuckets : null;
+    const otherBucket = otherBuckets && otherBuckets.bucketFn ? otherBuckets.bucketFn() : otherBuckets && otherBuckets.refFn ? otherBuckets : null;
+    const adminBucket = adminBuckets && adminBuckets.bucketFn ? adminBuckets.bucketFn() : adminBuckets && adminBuckets.refFn ? adminBuckets : null;
 
     const ownerFile = ownerBucket.file('tenants/tenant1/docs/owner_doc.png');
     const otherFile = otherBucket.file('tenants/tenant1/docs/other_doc.png');
