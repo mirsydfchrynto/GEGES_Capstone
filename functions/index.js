@@ -15,13 +15,13 @@ async function _processOutboxEmailHandler(snap, context) {
   const body = data.body ?? '';
 
   // mark as processing
-  await snap.ref.update({ status: 'processing', processed_at: admin.firestore.Timestamp.now() });
+  await snap.ref.update({ status: 'processing', processed_at: new Date() });
 
   // attempt to send
   const result = await sendEmailViaSendGrid({ to, subject, body });
 
   if (result.status === 'sent') {
-    await snap.ref.update({ status: 'sent', sent_at: admin.firestore.Timestamp.now() });
+    await snap.ref.update({ status: 'sent', sent_at: new Date() });
   } else if (result.status === 'skipped') {
     await snap.ref.update({ status: 'skipped', reason: result.info });
   } else {
