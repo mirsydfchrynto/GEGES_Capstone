@@ -20,6 +20,9 @@
       }
     }
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "emulators": {
     "firestore": {
       "host": "localhost",
