@@ -23,13 +23,13 @@ async function main() {
 
   try {
     // Create an admin context and tenant document
-    const adminCtx = testEnv.authenticatedContext('admin1', { uid: 'admin1' });
+    const adminCtx = testEnv.authenticatedContext('admin1');
     await adminCtx.firestore().doc('users/admin1').set({ role: 'admin' });
     await adminCtx.firestore().doc('tenants/tenant1').set({ owner_uid: 'user1', owner_email: 'u1@example.com' });
 
     // Owner and other user contexts
-    const ownerCtx = testEnv.authenticatedContext('user1', { uid: 'user1' });
-    const otherCtx = testEnv.authenticatedContext('user2', { uid: 'user2' });
+    const ownerCtx = testEnv.authenticatedContext('user1');
+    const otherCtx = testEnv.authenticatedContext('user2');
 
     const ownerBucket = ownerCtx.storage().bucket();
     const otherBucket = otherCtx.storage().bucket();
