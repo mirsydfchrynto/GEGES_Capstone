@@ -152,7 +152,8 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: RadioListTile<String>(
+                    child: // ignore: deprecated_member_use
+                    RadioListTile<String>(
                       value: 'monthly',
                       groupValue: _plan,
                       title: const Text('Bulanan - Rp 300.000'),
@@ -160,7 +161,8 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                     ),
                   ),
                   Expanded(
-                    child: RadioListTile<String>(
+                    child: // ignore: deprecated_member_use
+                    RadioListTile<String>(
                       value: 'yearly',
                       groupValue: _plan,
                       title: const Text('Tahunan - Rp 3.000.000 (promo)'),

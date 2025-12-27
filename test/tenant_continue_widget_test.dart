@@ -36,11 +36,9 @@ void main() {
 
     final fakeService = FakeTenantService2(
       (id, path) async {
-        print('onUpload called for $id with $path');
         return 'https://example.com/$id/proof.jpg';
       },
       ({required String tenantId, required String proofUrl, required String userId}) async {
-        print('onSubmit called for $tenantId proofUrl=$proofUrl user=$userId');
         submitted = true;
         // write to firestore to emulate submit action
         await fs.collection('tenants').doc(tenantId).set({

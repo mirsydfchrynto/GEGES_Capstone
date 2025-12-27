@@ -91,7 +91,7 @@ class TenantService {
           final title = approve ? 'Pendaftaran Tenant Disetujui' : 'Pendaftaran Tenant Ditolak';
           final body = approve
               ? 'Pendaftaran tenant Anda telah disetujui. Anda sekarang dapat melanjutkan setup.'
-              : 'Pendaftaran tenant Anda ditolak oleh admin.' + (reason != null ? '\nAlasan: $reason' : '');
+              : 'Pendaftaran tenant Anda ditolak oleh admin.${reason != null ? '\nAlasan: $reason' : ''}';
 
           await _fs.collection('notifications').add({
             'user_id': ownerUid,
