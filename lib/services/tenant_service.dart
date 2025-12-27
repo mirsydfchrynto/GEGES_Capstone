@@ -81,7 +81,7 @@ class TenantService {
     // After updating tenant status, queue notification & email to owner
     try {
       final tenantDoc = await _fs.collection('tenants').doc(tenantId).get();
-      final data = tenantDoc.data() as Map<String, dynamic>?;
+      final Map<String, dynamic>? data = tenantDoc.data();
       if (data != null) {
         final ownerUid = data['owner_uid'] as String?;
         final ownerEmail = data['owner_email'] as String?;
@@ -91,7 +91,7 @@ class TenantService {
           final title = approve ? 'Pendaftaran Tenant Disetujui' : 'Pendaftaran Tenant Ditolak';
           final body = approve
               ? 'Pendaftaran tenant Anda telah disetujui. Anda sekarang dapat melanjutkan setup.'
-              : 'Pendaftaran tenant Anda ditolak oleh admin.' + ((reason != null) ? '\nAlasan: $reason' : '');
+              : 'Pendaftaran tenant Anda ditolak oleh admin.' + (reason != null ? '\nAlasan: $reason' : '');
 
           await _fs.collection('notifications').add({
             'user_id': ownerUid,

@@ -229,7 +229,7 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
         // In tests FirebaseAuth may not be initialized; fallback to 'unknown'
       }
 
-      await _tenant_service_submit(tenantId: widget.tenantId, proofUrl: proofUrl, userId: userId);
+      await _tenantServiceSubmit(tenantId: widget.tenantId, proofUrl: proofUrl, userId: userId);
 
       // update invoice status
       await _fs.collection('tenants').doc(widget.tenantId).set({
@@ -249,7 +249,7 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
     }
   }
 
-  Future<void> _tenant_service_submit({required String tenantId, required String proofUrl, required String userId}) async {
+  Future<void> _tenantServiceSubmit({required String tenantId, required String proofUrl, required String userId}) async {
     // extracted to allow overriding in tests if needed
     // debug print to help tests trace
     try {

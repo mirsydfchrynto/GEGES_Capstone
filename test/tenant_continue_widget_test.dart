@@ -13,8 +13,9 @@ class FakeTenantService2 extends TenantService {
   FakeTenantService2(this.onUpload, this.onSubmit) : super(firestore: FakeFirebaseFirestore(), storage: null);
 
   @override
-  Future<String> uploadTenantDocument(String tenantId, file, {String? filename}) async {
-    return onUpload(tenantId, file.path ?? file.toString());
+  Future<String> uploadTenantDocument(String tenantId, File file, {String? filename}) async {
+    final path = file.path;
+    return onUpload(tenantId, path);
   }
 
   @override

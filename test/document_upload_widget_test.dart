@@ -1,18 +1,18 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/widgets/document_upload_widget.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 
+import 'dart:io';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-
 class FakeTenantService extends TenantService {
   final Future<String> Function(String tenantId, String path) onUpload;
   FakeTenantService(this.onUpload) : super(firestore: FakeFirebaseFirestore(), storage: null);
 
   @override
-  Future<String> uploadTenantDocument(String tenantId, file, {String? filename}) async {
-    return onUpload(tenantId, file.path ?? file.toString());
+  Future<String> uploadTenantDocument(String tenantId, File file, {String? filename}) async {
+    final path = file.path;
+    return onUpload(tenantId, path);
   }
 }
 
@@ -21,7 +21,7 @@ void main() {
     String? uploadedUrl;
 
     final fakeService = FakeTenantService((tenantId, path) async {
-      return 'https://example.com/${tenantId}/doc.jpg';
+      return 'https://example.com/$tenantId/doc.jpg';
     });
 
     await tester.pumpWidget(MaterialApp(

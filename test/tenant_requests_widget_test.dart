@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,13 +5,15 @@ import 'package:geges_smartbarber/screens/admin/tenant_requests_screen.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 
 class FakeTenantService3 extends TenantService {
-  FakeTenantService3() : super(firestore: FakeFirebaseFirestore(), storage: null);
+  final FakeFirebaseFirestore _fsLocal;
+
+  FakeTenantService3(this._fsLocal) : super(firestore: _fsLocal, storage: null);
 
   bool approved = false;
 
   @override
   Future<void> verifyTenant({required String tenantId, required bool approve, String? verifiedBy, String? reason}) async {
-    final fs = firestore ?? FakeFirebaseFirestore();
+    final fs = _fsLocal;
     await fs.collection('tenants').doc(tenantId).update({
       'status': approve ? 'active' : 'rejected',
       'verified_by': verifiedBy,
@@ -31,9 +32,9 @@ void main() {
       'invoice': {'status': 'waiting_proof'},
     });
 
-    final fakeService = FakeTenantService3();
+    final fakeService = FakeTenantService3(fs);
 
-    await tester.pumpWidget(MaterialApp(home: TenantRequestsScreen(firestore: fs, tenantService: fakeService)));
+    await tester.pumpWidget(MaterialApp(home: TenantRequestsScreen(firestore: fs, tenantService: fakeService, currentUserId: 'admin-ui-1')));
 
     await tester.pumpAndSettle();
 

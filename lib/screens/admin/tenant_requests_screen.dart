@@ -6,8 +6,9 @@ import 'package:geges_smartbarber/services/tenant_service.dart';
 class TenantRequestsScreen extends StatefulWidget {
   final FirebaseFirestore? firestore;
   final TenantService? tenantService;
+  final String? currentUserId;
 
-  const TenantRequestsScreen({super.key, this.firestore, this.tenantService});
+  const TenantRequestsScreen({super.key, this.firestore, this.tenantService, this.currentUserId});
 
   @override
   State<TenantRequestsScreen> createState() => _TenantRequestsScreenState();
@@ -25,7 +26,7 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
   }
 
   Future<void> _approve(String tenantId) async {
-    final userId = FirebaseAuth.instance.currentUser?.uid ?? 'admin_unknown';
+    final userId = widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin_unknown';
     await _tenantService.verifyTenant(tenantId: tenantId, approve: true, verifiedBy: userId);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tenant approved')));
@@ -50,7 +51,7 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
 
     if (res != true) return;
 
-    await _tenantService.verifyTenant(tenantId: tenantId, approve: false, verifiedBy: FirebaseAuth.instance.currentUser?.uid, reason: reasonCtrl.text.trim());
+    await _tenantService.verifyTenant(tenantId: tenantId, approve: false, verifiedBy: widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid, reason: reasonCtrl.text.trim());
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tenant rejected')));
   }

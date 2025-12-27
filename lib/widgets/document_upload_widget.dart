@@ -38,13 +38,19 @@ class _DocumentUploadWidgetState extends State<DocumentUploadWidget> {
     String? path;
     if (widget.filePicker != null) {
       path = await widget.filePicker!.call();
-      if (path == null) return;
+      if (path == null) {
+        return;
+      }
     } else {
       final res = await FilePicker.platform.pickFiles(allowMultiple: false);
-      if (res == null) return; // cancelled
+      if (res == null) {
+        return; // cancelled
+      }
 
       path = res.files.single.path;
-      if (path == null) return;
+      if (path == null) {
+        return;
+      }
     }
 
     final file = File(path);
