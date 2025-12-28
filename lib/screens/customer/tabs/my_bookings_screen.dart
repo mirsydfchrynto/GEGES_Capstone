@@ -158,7 +158,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           queue.paymentProofBase64!.isEmpty) {
         return 'Menunggu Pembayaran';
       }
-      // Sudah upload bukti, menunggu verifikasi admin
+      // Bukti telah dikirim; verifikasi akan dilakukan oleh admin. Masukkan status/riwayat di History.
       if (queue.paymentProofBase64 != null &&
           queue.paymentProofBase64!.isNotEmpty &&
           (queue.verifiedBy == null || queue.verifiedBy!.isEmpty)) {
@@ -312,6 +312,67 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     final Stream<List<Queue>> queueStream = _queueService
         .streamQueuesForCustomer(_customerId, statusFilter: statuses);
 
+    // If this is the history tab (served), include tenant registration history above booking history
+    Widget tenantHistorySection = const SizedBox.shrink();
+    if (statuses.contains('served')) {
+      tenantHistorySection = StreamBuilder<QuerySnapshot>(
+        stream: _firestore
+            .collection('tenants')
+            .where('owner_uid', isEqualTo: _customerId)
+            .orderBy('created_at', descending: true)
+            .snapshots(),
+        builder: (context, snap) {
+          if (!snap.hasData || snap.data!.docs.isEmpty)
+            return const SizedBox.shrink();
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Text(
+                  'Pendaftaran Tenant / Partner',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: snap.data!.docs.length,
+                itemBuilder: (c, i) {
+                  final d = snap.data!.docs[i].data() as Map<String, dynamic>;
+                  final created = (d['created_at'] as Timestamp?)?.toDate();
+                  return ListTile(
+                    tileColor: kDarkGrey,
+                    title: Text(
+                      d['business_name'] ?? 'Tenant',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      'Status: ${d['status'] ?? '-'}',
+                      style: const TextStyle(color: kTextGrey),
+                    ),
+                    trailing: created != null
+                        ? Text(
+                            '${created.day}/${created.month}/${created.year}',
+                            style: const TextStyle(color: kTextGrey),
+                          )
+                        : null,
+                    onTap: () {
+                      // open tenant detail or payment page (not implemented here)
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          );
+        },
+      );
+    }
+
     return StreamBuilder<List<Queue>>(
       stream: queueStream,
       builder: (context, snapshot) {
@@ -340,12 +401,19 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           return _buildEmptyState(isCompleted);
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: filteredList.length,
-          itemBuilder: (context, index) =>
-              _buildBookingCard(context, filteredList[index]),
-          physics: const AlwaysScrollableScrollPhysics(),
+        return Column(
+          children: [
+            tenantHistorySection,
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: filteredList.length,
+                itemBuilder: (context, index) =>
+                    _buildBookingCard(context, filteredList[index]),
+                physics: const AlwaysScrollableScrollPhysics(),
+              ),
+            ),
+          ],
         );
       },
     );

@@ -15,6 +15,7 @@ class DocumentUploadWidget extends StatefulWidget {
   /// Optional override for file picking in tests.
   /// If provided, should return a path to the picked file, or null if cancelled.
   final Future<String?> Function()? filePicker;
+  final bool darkStyle;
 
   const DocumentUploadWidget({
     super.key,
@@ -24,6 +25,7 @@ class DocumentUploadWidget extends StatefulWidget {
     this.existingUrl,
     required this.onUploaded,
     this.filePicker,
+    this.darkStyle = false,
   });
 
   @override
@@ -86,31 +88,59 @@ class _DocumentUploadWidgetState extends State<DocumentUploadWidget> {
   @override
   Widget build(BuildContext context) {
     final displayUrl = _uploadedUrl ?? widget.existingUrl;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(widget.label, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            ElevatedButton.icon(
-              onPressed: _isUploading ? null : _pickAndUpload,
-              icon: const Icon(Icons.upload_file),
-              label: Text(_isUploading ? 'Mengunggah...' : 'Unggah'),
-            ),
-            const SizedBox(width: 12),
-            if (_isUploading) const CircularProgressIndicator(),
-            if (displayUrl != null) ...[
-              const SizedBox(width: 12),
-              const Icon(Icons.check_circle, color: Colors.green),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text('Tersimpan', overflow: TextOverflow.ellipsis),
+    final titleStyle = widget.darkStyle
+        ? const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
+        : const TextStyle(fontWeight: FontWeight.bold);
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: widget.darkStyle
+          ? BoxDecoration(
+              color: const Color(0xFF1B1B1B),
+              borderRadius: BorderRadius.circular(8),
+            )
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.label, style: titleStyle),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: _isUploading ? null : _pickAndUpload,
+                icon: const Icon(Icons.upload_file),
+                label: Text(
+                  _isUploading ? 'Mengunggah...' : 'Unggah',
+                  style: widget.darkStyle
+                      ? const TextStyle(color: Colors.black)
+                      : null,
+                ),
+                style: widget.darkStyle
+                    ? ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFB9976E),
+                      )
+                    : null,
               ),
+              const SizedBox(width: 12),
+              if (_isUploading) const CircularProgressIndicator(),
+              if (displayUrl != null) ...[
+                const SizedBox(width: 12),
+                const Icon(Icons.check_circle, color: Colors.green),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    widget.darkStyle ? 'Tersimpan' : 'Tersimpan',
+                    overflow: TextOverflow.ellipsis,
+                    style: widget.darkStyle
+                        ? const TextStyle(color: Colors.white)
+                        : null,
+                  ),
+                ),
+              ],
             ],
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }

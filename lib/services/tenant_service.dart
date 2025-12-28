@@ -123,6 +123,22 @@ class TenantService {
         .collection('tenants')
         .doc(tenantId)
         .set(payment, SetOptions(merge: true));
+
+    // append a simple history event so users can track their registration/payment lifecycle
+    try {
+      await _fs.collection('tenants').doc(tenantId).update({
+        'history': FieldValue.arrayUnion([
+          {
+            'type': 'registration_payment',
+            'status': 'pending',
+            'note': 'Bukti pembayaran terkirim dan sedang diproses',
+            'created_at': FieldValue.serverTimestamp(),
+          },
+        ]),
+      });
+    } catch (_) {
+      // best-effort: do not fail the main operation if history append fails
+    }
   }
 
   /// Admin verifies tenant (approve or reject)

@@ -67,12 +67,20 @@ void main() {
 
     // we proceed to submit — actual checkbox UI shouldn't block the test because initialAcceptedTerms is set
 
-    // Sanity: ensure selected file labels updated in UI
-    expect(find.textContaining('SIUP:'), findsOneWidget);
-    expect(find.textContaining('NPWP:'), findsOneWidget);
+    // Sanity: ensure selected file labels updated in UI (full names)
+    expect(
+      find.textContaining('Surat Izin Usaha Perdagangan (SIUP):'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Nomor Pokok Wajib Pajak (NPWP):'),
+      findsOneWidget,
+    );
 
     // submit
     final submitButton = find.textContaining('Daftar & Bayar');
+    await tester.ensureVisible(submitButton);
+    expect(submitButton, findsOneWidget);
     await tester.ensureVisible(submitButton);
     expect(submitButton, findsOneWidget);
     await tester.tap(submitButton);
@@ -88,6 +96,8 @@ void main() {
     expect(tenantDoc.containsKey('tax_doc_ref'), true);
     expect(tenantDoc['invoice'] != null, true);
     expect(tenantDoc['invoice']['status'], 'waiting_proof');
+    // invoice should have a payment deadline ~1 hour from creation
+    expect(tenantDoc['invoice']['payment_deadline'], isNotNull);
 
     // Should navigate to payment screen — simulate test submit via provided handler
     // in this test we provide testSubmitProofHandler that calls submitRegistrationPayment
@@ -113,6 +123,11 @@ void main() {
       true,
     );
     expect(tenantDoc['payment']['verificationStatus'], 'pending');
+
+    // History should contain a registration_payment event
+    expect(tenantDoc['history'] != null, true);
+    final history = tenantDoc['history'] as List<dynamic>;
+    expect(history.any((h) => h['type'] == 'registration_payment'), isTrue);
 
     // Check guidance message was shown (snackbar) — look for a short confirmation text in widget tree
     expect(

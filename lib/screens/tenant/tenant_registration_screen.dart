@@ -126,6 +126,63 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
         'accepted_terms': accepted,
       };
 
+      // Before creating a new tenant, check if a pending registration already exists for this user
+      final fs = _tenantService.firestore;
+      final existingQ = await fs
+          .collection('tenants')
+          .where('owner_uid', isEqualTo: userId)
+          .where(
+            'status',
+            whereIn: ['pending_payment', 'waiting_proof', 'payment_submitted'],
+          )
+          .get();
+
+      if (existingQ.docs.isNotEmpty) {
+        existingQ.docs.sort((a, b) {
+          final aTs =
+              (a.data()['created_at'] as Timestamp?)?.toDate() ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          final bTs =
+              (b.data()['created_at'] as Timestamp?)?.toDate() ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          return bTs.compareTo(aTs);
+        });
+        final existingId = existingQ.docs.first.id;
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => PaymentScreen(
+              orderId: existingId,
+              totalPrice:
+                  existingQ.docs.first.data()['invoice']?['amount'] ?? _price,
+              tenantId: existingId,
+              tenantPaymentHandler:
+                  ({
+                    required String tenantId,
+                    required String base64,
+                    required String userId,
+                  }) async {
+                    await _tenantService.submitRegistrationPayment(
+                      tenantId: tenantId,
+                      proofBase64: base64,
+                      userId: userId,
+                    );
+                  },
+              disableTimer: false,
+              paymentDeadline:
+                  (existingQ.docs.first.data()['invoice']?['payment_deadline']
+                          as Timestamp?)
+                      ?.toDate(),
+              testUserId: widget.currentUserId,
+              submitProofHandler: widget.testSubmitProofHandler != null
+                  ? () => widget.testSubmitProofHandler!(existingId)
+                  : null,
+            ),
+          ),
+        );
+        return;
+      }
+
       final tenantId = await _tenantService.createTenantApplication(data);
 
       // If user selected files earlier, upload them now and attach references to tenant doc
@@ -157,6 +214,9 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
           'currency': 'IDR',
           'status': 'waiting_proof',
           'created_at': Timestamp.now(),
+          'payment_deadline': Timestamp.fromDate(
+            DateTime.now().add(const Duration(hours: 1)),
+          ),
         },
       });
 
@@ -182,8 +242,9 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                     userId: userId,
                   );
                 },
-            // For registration flow we disable the short countdown so user can upload at their pace
-            disableTimer: true,
+            // For registration flow we enable the countdown (1 hour window)
+            disableTimer: false,
+            paymentDeadline: DateTime.now().add(const Duration(hours: 1)),
             testUserId: widget.currentUserId,
             submitProofHandler: widget.testSubmitProofHandler != null
                 ? () => widget.testSubmitProofHandler!(tenantId)
@@ -267,7 +328,7 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
 
               // --- New: Terms acceptance & document selections placed at the top ---
               Card(
-                color: Colors.grey.shade50,
+                color: const Color(0xFF1B1B1B), // dark card to match app theme
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
@@ -275,7 +336,10 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                     children: [
                       const Text(
                         'Persetujuan & Dokumen (wajib)',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -296,6 +360,7 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                                 'Saya telah membaca dan menyetujui Perjanjian Tenant dan Kebijakan Aplikasi (ketuk untuk baca)',
                                 style: TextStyle(
                                   decoration: TextDecoration.underline,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),
@@ -303,23 +368,24 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Unggah dokumen awal (SIUP & NPWP). Ukuran maksimal ~900KB per file.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
-                        ),
+                      const Text(
+                        'Unggah dokumen awal: Surat Izin Usaha Perdagangan (SIUP) & Nomor Pokok Wajib Pajak (NPWP). Ukuran maksimal ~900KB per file.',
+                        style: TextStyle(fontSize: 13, color: Colors.white70),
                       ),
                       const SizedBox(height: 6),
                       Row(
                         children: [
                           Expanded(
                             child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFB9976E),
+                              ),
                               icon: const Icon(Icons.upload_file),
                               label: Text(
                                 _companyDocFile == null
-                                    ? 'Pilih SIUP'
-                                    : 'SIUP: ${_companyDocFile!.path.split('/').last}',
+                                    ? 'Pilih Surat Izin Usaha Perdagangan (SIUP)'
+                                    : 'Surat Izin Usaha Perdagangan (SIUP): ${_companyDocFile!.path.split('/').last}',
+                                style: const TextStyle(color: Colors.black),
                               ),
                               onPressed: () async {
                                 String? pickedPath;
@@ -342,11 +408,15 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFB9976E),
+                              ),
                               icon: const Icon(Icons.upload_file),
                               label: Text(
                                 _taxDocFile == null
-                                    ? 'Pilih NPWP'
-                                    : 'NPWP: ${_taxDocFile!.path.split('/').last}',
+                                    ? 'Pilih Nomor Pokok Wajib Pajak (NPWP)'
+                                    : 'Nomor Pokok Wajib Pajak (NPWP): ${_taxDocFile!.path.split('/').last}',
+                                style: const TextStyle(color: Colors.black),
                               ),
                               onPressed: () async {
                                 String? pickedPath;
@@ -507,7 +577,7 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Bukti pembayaran terkirim. Menunggu verifikasi admin.',
+            'Bukti pembayaran terkirim. Pendaftaran dan dokumen sedang diproses (maks. 1 minggu). Anda akan diberi tahu via email dan notifikasi aplikasi.',
           ),
         ),
       );

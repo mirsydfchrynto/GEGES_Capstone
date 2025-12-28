@@ -603,7 +603,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         Navigator.of(context).pop(true);
       }
       _showSnack(
-        'Bukti pembayaran berhasil diunggah — menunggu verifikasi admin.',
+        'Bukti pembayaran berhasil dikirim. Verifikasi akan dilakukan oleh admin.',
         success: true,
       );
     } catch (e) {
@@ -906,6 +906,45 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildOrderDetailsCard() {
+    // For tenant registrations, show a professional registration breakdown
+    if (widget.tenantId != null) {
+      return _buildSectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Registration Details',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildDetailRow(
+              'Registration Fee',
+              _formatCurrency(widget.totalPrice),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Divider(color: Colors.white24),
+            ),
+            _buildDetailRow(
+              'Total',
+              _formatCurrency(widget.totalPrice),
+              isTotal: true,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'This is the registration fee for becoming a partner. Follow instructions above to complete payment and upload proof.',
+              style: TextStyle(color: kDisabledText, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // default booking order details
     final int totalOrderDetails = _dummyOrderDetails.values.fold(
       0,
       (acc, item) => acc + item,
@@ -995,13 +1034,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                   size: 42,
                                 ),
                                 const SizedBox(height: 8),
-                                const Text(
-                                  'Bukti pembayaran sudah diunggah',
-                                  style: TextStyle(color: Colors.white70),
+                                Text(
+                                  widget.tenantId != null
+                                      ? 'Bukti telah diunggah dan akan diproses. Anda akan diberi tahu via email dan notifikasi.'
+                                      : 'Bukti pembayaran sudah diunggah',
+                                  style: const TextStyle(color: Colors.white70),
+                                  textAlign: TextAlign.center,
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'Jika ada masalah, hubungi admin.',
+                                  widget.tenantId != null
+                                      ? ''
+                                      : 'Jika ada masalah, hubungi admin.',
                                   style: TextStyle(
                                     color: kDisabledText,
                                     fontSize: 12,
