@@ -268,7 +268,19 @@ Setelah testing berhasil:
 4. **Monitor** push delivery rates & errors
 
 ---
+CI & running slow/integration tests
 
+- The repo CI is split into **fast** (unit + widget) and **slow/integration** tests. Fast tests run on PRs and on push; slow/integration tests run on `main` or via manual workflow dispatch.
+- To run slow/integration tests locally, run only files that include `integration` or `e2e` in their names:
+
+```bash
+# run slow/integration tests locally
+flutter test "$(git ls-files 'test/**' | grep -E 'integration|e2e')"
+```
+
+- During local test development you can enable network calls for tests that require real HTTP by calling `enableNetworkCalls()` from `test/test_utils.dart` in your test setup or by running the integration workflow manually in CI.
+
+---
 **Happy Testing! 🚀**
 
 Jika ada error, check console logs:
