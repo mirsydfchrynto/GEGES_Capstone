@@ -6,7 +6,8 @@ class Links {
   static const String termsOfService = 'https://example.com/terms';
   static const String privacyPolicy = 'https://example.com/privacy';
   static const String helpCenter = 'https://example.com/help';
-  static const String barbershopRegister = 'https://example.com/register-barbershop';
+  static const String barbershopRegister =
+      'https://example.com/register-barbershop';
 
   static Future<void> openUrl(String url) async {
     final uri = Uri.parse(url);

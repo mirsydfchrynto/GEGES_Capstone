@@ -570,9 +570,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               return;
             }
             if (!mounted) return;
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => BarbershopSettingsScreen(barbershop: barbershop),
-            ));
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    BarbershopSettingsScreen(barbershop: barbershop),
+              ),
+            );
           },
         ),
         _buildMenuCard(
@@ -827,7 +830,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               .get();
           if (svcSnap.exists) {
             final sdata = svcSnap.data();
-            serviceName = (sdata?['name'] ?? sdata?['serviceName'] ?? serviceName).toString();
+            serviceName =
+                (sdata?['name'] ?? sdata?['serviceName'] ?? serviceName)
+                    .toString();
           }
         }
       } catch (_) {

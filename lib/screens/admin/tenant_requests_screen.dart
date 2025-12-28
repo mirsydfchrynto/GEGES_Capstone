@@ -9,7 +9,12 @@ class TenantRequestsScreen extends StatefulWidget {
   final TenantService? tenantService;
   final String? currentUserId;
 
-  const TenantRequestsScreen({super.key, this.firestore, this.tenantService, this.currentUserId});
+  const TenantRequestsScreen({
+    super.key,
+    this.firestore,
+    this.tenantService,
+    this.currentUserId,
+  });
 
   @override
   State<TenantRequestsScreen> createState() => _TenantRequestsScreenState();
@@ -27,10 +32,19 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
   }
 
   Future<void> _approve(String tenantId) async {
-    final userId = widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin_unknown';
-    await _tenantService.verifyTenant(tenantId: tenantId, approve: true, verifiedBy: userId);
+    final userId =
+        widget.currentUserId ??
+        FirebaseAuth.instance.currentUser?.uid ??
+        'admin_unknown';
+    await _tenantService.verifyTenant(
+      tenantId: tenantId,
+      approve: true,
+      verifiedBy: userId,
+    );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tenant approved')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Tenant approved')));
   }
 
   Future<void> _reject(String tenantId) async {
@@ -44,17 +58,31 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
           decoration: const InputDecoration(labelText: 'Reason (optional)'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Reject')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Reject'),
+          ),
         ],
       ),
     );
 
     if (res != true) return;
 
-    await _tenantService.verifyTenant(tenantId: tenantId, approve: false, verifiedBy: widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid, reason: reasonCtrl.text.trim());
+    await _tenantService.verifyTenant(
+      tenantId: tenantId,
+      approve: false,
+      verifiedBy:
+          widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid,
+      reason: reasonCtrl.text.trim(),
+    );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tenant rejected')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Tenant rejected')));
   }
 
   Widget _buildTenantTile(DocumentSnapshot doc) {
@@ -65,12 +93,15 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
     final status = data['status'] ?? 'unknown';
     final invoice = data['invoice'] ?? {};
     final invoiceStatus = invoice['status'] ?? 'none';
-    final docs = (data['company_doc_url'] != null || data['tax_doc_url'] != null);
+    final docs =
+        (data['company_doc_url'] != null || data['tax_doc_url'] != null);
 
     return Card(
       child: ListTile(
         title: Text('$businessName'),
-        subtitle: Text('Owner: $owner\nStatus: $status   Invoice: $invoiceStatus'),
+        subtitle: Text(
+          'Owner: $owner\nStatus: $status   Invoice: $invoiceStatus',
+        ),
         isThreeLine: true,
         trailing: Wrap(
           spacing: 8,
@@ -91,44 +122,58 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
                         const SizedBox(height: 8),
                         Text('Docs uploaded: ${docs ? 'Yes' : 'No'}'),
                         const SizedBox(height: 8),
-                        if (data['company_doc_url'] != null) TextButton.icon(
-                          icon: const Icon(Icons.insert_drive_file),
-                          label: const Text('View Company Doc'),
-                          onPressed: () => _openUrl(data['company_doc_url']),
-                        ),
-                        if (data['company_doc_ref'] != null) TextButton.icon(
-                          icon: const Icon(Icons.insert_drive_file),
-                          label: const Text('View Company Doc (Firestore)'),
-                          onPressed: () => _openDoc(data['company_doc_ref']),
-                        ),
-                        if (data['tax_doc_url'] != null) TextButton.icon(
-                          icon: const Icon(Icons.insert_drive_file),
-                          label: const Text('View Tax Doc'),
-                          onPressed: () => _openUrl(data['tax_doc_url']),
-                        ),
-                        if (data['tax_doc_ref'] != null) TextButton.icon(
-                          icon: const Icon(Icons.insert_drive_file),
-                          label: const Text('View Tax Doc (Firestore)'),
-                          onPressed: () => _openDoc(data['tax_doc_ref']),
-                        ),
-                        if (invoice['status'] == 'payment_submitted' && (invoice['payment_proof_base64'] == null || invoice['payment_proof_base64'] == ''))
+                        if (data['company_doc_url'] != null)
+                          TextButton.icon(
+                            icon: const Icon(Icons.insert_drive_file),
+                            label: const Text('View Company Doc'),
+                            onPressed: () => _openUrl(data['company_doc_url']),
+                          ),
+                        if (data['company_doc_ref'] != null)
+                          TextButton.icon(
+                            icon: const Icon(Icons.insert_drive_file),
+                            label: const Text('View Company Doc (Firestore)'),
+                            onPressed: () => _openDoc(data['company_doc_ref']),
+                          ),
+                        if (data['tax_doc_url'] != null)
+                          TextButton.icon(
+                            icon: const Icon(Icons.insert_drive_file),
+                            label: const Text('View Tax Doc'),
+                            onPressed: () => _openUrl(data['tax_doc_url']),
+                          ),
+                        if (data['tax_doc_ref'] != null)
+                          TextButton.icon(
+                            icon: const Icon(Icons.insert_drive_file),
+                            label: const Text('View Tax Doc (Firestore)'),
+                            onPressed: () => _openDoc(data['tax_doc_ref']),
+                          ),
+                        if (invoice['status'] == 'payment_submitted' &&
+                            (invoice['payment_proof_base64'] == null ||
+                                invoice['payment_proof_base64'] == ''))
                           Text('Payment submitted: yes (check tenant docs)'),
-                        if (invoice['status'] == 'payment_submitted' && invoice['payment_proof_url'] != null)
+                        if (invoice['status'] == 'payment_submitted' &&
+                            invoice['payment_proof_url'] != null)
                           TextButton.icon(
                             icon: const Icon(Icons.image),
                             label: const Text('View Payment Proof'),
-                            onPressed: () => _openUrl(invoice['payment_proof_url']),
+                            onPressed: () =>
+                                _openUrl(invoice['payment_proof_url']),
                           ),
-                        if (invoice['status'] == 'payment_submitted' && invoice['payment_proof_base64'] != null)
+                        if (invoice['status'] == 'payment_submitted' &&
+                            invoice['payment_proof_base64'] != null)
                           TextButton.icon(
                             icon: const Icon(Icons.image),
                             label: const Text('View Payment Proof (Base64)'),
-                            onPressed: () => _showBase64Image(invoice['payment_proof_base64']),
+                            onPressed: () => _showBase64Image(
+                              invoice['payment_proof_base64'],
+                            ),
                           ),
                       ],
                     ),
                     actions: [
-                      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Close'),
+                      ),
                     ],
                   ),
                 );
@@ -164,11 +209,23 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
         _showBase64Image(data['content_base64'] as String);
       } else {
         if (!mounted) return;
-        showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Document'), content: Text(data?.toString() ?? 'No data')));
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Document'),
+            content: Text(data?.toString() ?? 'No data'),
+          ),
+        );
       }
     } catch (e) {
       if (!mounted) return;
-      showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Error'), content: Text('Gagal membuka dokumen: $e')));
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Error'),
+          content: Text('Gagal membuka dokumen: $e'),
+        ),
+      );
     }
   }
 
@@ -176,9 +233,8 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
     final bytes = base64Decode(base64Str);
     showDialog(
       context: context,
-      builder: (_) => Dialog(
-        child: InteractiveViewer(child: Image.memory(bytes)),
-      ),
+      builder: (_) =>
+          Dialog(child: InteractiveViewer(child: Image.memory(bytes))),
     );
   }
 
@@ -187,12 +243,18 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Tenant Requests')),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _fs.collection('tenants').where('status', whereNotIn: ['active', 'rejected']).snapshots(),
+        stream: _fs
+            .collection('tenants')
+            .where('status', whereNotIn: ['active', 'rejected'])
+            .snapshots(),
         builder: (context, snap) {
-          if (snap.hasError) return const Center(child: Text('Error loading tenants'));
-          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          if (snap.hasError)
+            return const Center(child: Text('Error loading tenants'));
+          if (!snap.hasData)
+            return const Center(child: CircularProgressIndicator());
           final docs = snap.data!.docs;
-          if (docs.isEmpty) return const Center(child: Text('No pending tenant requests'));
+          if (docs.isEmpty)
+            return const Center(child: Text('No pending tenant requests'));
           return ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: docs.length,

@@ -56,8 +56,8 @@ class _LoginScreenState extends State<LoginScreen> {
   // - _obscurePassword: flag untuk menyembunyikan/menampilkan password (tombol mata)
   String _errorMessage = '';
   bool _isLoading = false;
-  bool _obscurePassword = true; // made mutable to allow toggling password visibility
-
+  bool _obscurePassword =
+      true; // made mutable to allow toggling password visibility
 
   // penjelasan warna tema:
   // - kBrownAccent: warna coklat utama dari design system
@@ -484,7 +484,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   icon: Icons.lock_outline,
                   obscureText: _obscurePassword,
                   focusNode: _passwordFocusNode,
-                  onPasswordToggle: () => setState(() => _obscurePassword = !_obscurePassword),
+                  onPasswordToggle: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
                 const SizedBox(height: 12),
 

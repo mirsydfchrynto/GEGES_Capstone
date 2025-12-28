@@ -55,9 +55,11 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   // State
   final List<Service> _selectedServices = [];
   Barberman? _selectedBarberman; // explicitly requested barber (special order)
-  Barberman? _assignedBarberman; // automatically assigned barber for default bookings
+  Barberman?
+  _assignedBarberman; // automatically assigned barber for default bookings
   final List<Barberman> _barbermenList = [];
-  bool _isSpecialOrder = false; // when true, customer requests a specific barber
+  bool _isSpecialOrder =
+      false; // when true, customer requests a specific barber
   late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
   DateTime? _estimatedFinishTime;
@@ -473,7 +475,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       'service_ids': _selectedServices.map((s) => s.id).toList(),
       'total_price': _totalPrice,
       'barber_selection_fee': _isSpecialOrder ? (_barberSelectionFee ?? 0) : 0,
-      'paid_barber_selection': _isSpecialOrder && (_barberSelectionFee ?? 0) > 0,
+      'paid_barber_selection':
+          _isSpecialOrder && (_barberSelectionFee ?? 0) > 0,
       'estimated_duration': _totalDuration,
       'booking_time': Timestamp.fromDate(bookingDate),
       // Direct payment-first flow: lock slot immediately and require payment
@@ -630,15 +633,17 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                           _isSpecialOrder
                               ? 'Special Order: pilih barber khusus'
                               : (_assignedBarberman != null
-                                  ? 'Barber akan diacak otomatis: ${_assignedBarberman!.name}'
-                                  : 'Barber akan diacak otomatis'),
+                                    ? 'Barber akan diacak otomatis: ${_assignedBarberman!.name}'
+                                    : 'Barber akan diacak otomatis'),
                           style: const TextStyle(color: Colors.white70),
                         ),
                         if (_isSpecialOrder && (_barberSelectionFee ?? 0) > 0)
                           Text(
                             'Biaya special order: ${_currencyFormat.format(_barberSelectionFee ?? 0)}',
                             style: const TextStyle(
-                                color: Colors.orangeAccent, fontSize: 12),
+                              color: Colors.orangeAccent,
+                              fontSize: 12,
+                            ),
                           ),
                       ],
                     ),
@@ -695,7 +700,10 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                       separatorBuilder: (_, __) => const SizedBox(width: 10),
                       itemBuilder: (c, i) {
                         final b = barbermen[i];
-                        final isSelected = (_selectedBarberman?.id ?? _assignedBarberman?.id) == b.id;
+                        final isSelected =
+                            (_selectedBarberman?.id ??
+                                _assignedBarberman?.id) ==
+                            b.id;
                         return _buildBarbermanTile(
                           b,
                           isSelected,
@@ -893,21 +901,29 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     );
   }
 
-  Widget _buildBarbermanTile(Barberman b, bool selected, {VoidCallback? onTap}) {
+  Widget _buildBarbermanTile(
+    Barberman b,
+    bool selected, {
+    VoidCallback? onTap,
+  }) {
     final avatarLetter = (b.name.isNotEmpty) ? b.name[0].toUpperCase() : '?';
     return GestureDetector(
-      onTap: onTap ?? () {
-        if (!_isSpecialOrder) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Aktifkan Special Order untuk memilih barber khusus'),
-              backgroundColor: Colors.orangeAccent,
-            ),
-          );
-          return;
-        }
-        _confirmSelectBarber(b);
-      },
+      onTap:
+          onTap ??
+          () {
+            if (!_isSpecialOrder) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Aktifkan Special Order untuk memilih barber khusus',
+                  ),
+                  backgroundColor: Colors.orangeAccent,
+                ),
+              );
+              return;
+            }
+            _confirmSelectBarber(b);
+          },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
         width: 110,
@@ -983,7 +999,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
   Future<void> _confirmSelectBarber(Barberman b) async {
     debugPrint('[AppointmentScreen] Opening confirm dialog for ${b.name}');
-    final btnLabel = 'Pilih Barber (${_currencyFormat.format(_barberSelectionFee ?? 0).replaceAll('\u00A0', ' ')})';
+    final btnLabel =
+        'Pilih Barber (${_currencyFormat.format(_barberSelectionFee ?? 0).replaceAll('\u00A0', ' ')})';
     debugPrint('[AppointmentScreen] Dialog actions label: $btnLabel');
     final result = await showDialog<String>(
       context: context,
@@ -1067,7 +1084,9 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
   Future<void> _fetchSpecialOrderFee() async {
     try {
-      final bs = await _barbershopService.getBarbershopById(widget.barbershop.id);
+      final bs = await _barbershopService.getBarbershopById(
+        widget.barbershop.id,
+      );
       if (bs == null) return;
 
       // Prefer the value already parsed into the Barbershop model. This avoids

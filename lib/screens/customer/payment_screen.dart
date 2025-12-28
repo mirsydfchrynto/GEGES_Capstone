@@ -15,9 +15,57 @@ import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/services/queue_service_contract.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 
+// Minimal no-op implementation of QueueServiceContract used by PaymentScreen when
+// operating in tenant-only mode (no queue access required). This keeps widget
+// tests hermetic and avoids creating real firestore-backed services.
+class _NoOpQueueService implements QueueServiceContract {
+  @override
+  Future<int> cancelExpiredAwaitingPaymentQueuesForCustomer(
+    String customerId,
+  ) async => 0;
+
+  @override
+  Future<void> cancelQueue(
+    String queueId, {
+    String reason = '',
+    String? cancelledBy,
+  }) async {}
+
+  @override
+  Future<Queue?> getQueueById(String id) async => null;
+
+  @override
+  Stream<Queue?> streamQueueById(String id) async* {
+    yield null;
+  }
+
+  @override
+  Future<Queue?> resolveQueueForCustomerByIdOrOrder(
+    String idOrOrderId,
+    String customerId,
+  ) async => null;
+
+  @override
+  Future<void> submitPaymentProofForQueue({
+    required String queueId,
+    required String userId,
+    required String base64Proof,
+  }) async {}
+}
+
 class PaymentScreen extends StatefulWidget {
-  final String orderId;
+  final String orderId; // For booking flow: order id
   final int totalPrice;
+
+  // Tenant payment mode: when tenantId is provided, PaymentScreen will use
+  // the tenant payment handler instead of queue-based submission.
+  final String? tenantId;
+  final Future<void> Function({
+    required String tenantId,
+    required String base64,
+    required String userId,
+  })?
+  tenantPaymentHandler;
 
   final String? barbershopId;
   final String? barbermanId;
@@ -31,10 +79,16 @@ class PaymentScreen extends StatefulWidget {
   /// Optional: inject a test-only user id to avoid depending on FirebaseAuth in widget tests
   final String? testUserId;
 
+  /// Optional: in tests we can bypass file picking and call this directly to simulate
+  /// proof submission. It should be a no-arg handler that triggers the same submission flow.
+  final Future<void> Function()? submitProofHandler;
+
   const PaymentScreen({
     super.key,
     required this.orderId,
     required this.totalPrice,
+    this.tenantId,
+    this.tenantPaymentHandler,
     this.barbershopId,
     this.barbermanId,
     this.bookingTime,
@@ -44,6 +98,7 @@ class PaymentScreen extends StatefulWidget {
     this.testUserId,
     this.imagePicker,
     this.disableTimer = false,
+    this.submitProofHandler,
   });
 
   /// Optional: inject a custom ImagePicker for testing (return controlled XFile values)
@@ -89,6 +144,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     'Service Fee': 2500,
   };
 
+  // Use a no-op implementation to avoid touching Firestore when running
+  // tenant registration flow in tests (widget.tenantId != null).
+  // This keeps the PaymentScreen hermetic when queue logic is not required.
   late final QueueServiceContract _queueService;
 
   @override
@@ -99,8 +157,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
     _initTimeRemaining();
     if (!widget.disableTimer) _startTimer();
-    // Allow injecting a QueueServiceContract for testing
-    _queueService = widget.queueService ?? QueueService();
+    // Allow injecting a QueueServiceContract for testing. If we're in tenant
+    // mode (no queue behavior needed), use the no-op implementation to avoid
+    // creating services that depend on the global Firebase instance.
+    _queueService =
+        widget.queueService ??
+        (widget.tenantId != null ? _NoOpQueueService() : QueueService());
     // Allow injecting a custom ImagePicker for tests
     _picker = widget.imagePicker ?? ImagePicker();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -401,6 +463,23 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _submitPaymentProof() async {
+    // Allow tests to bypass file picker and call a handler directly.
+    if (widget.submitProofHandler != null) {
+      await widget.submitProofHandler!();
+      // If we are in tenant mode, replicate the user feedback behavior used in the
+      // tenantPaymentHandler path: show a guidance snack and return to main screen.
+      if (widget.tenantId != null) {
+        if (mounted) {
+          _showSnack(
+            'Bukti pembayaran terkirim. Pendaftaran dan dokumen sedang diproses (maks. 1 minggu). Anda akan diberi tahu via email dan notifikasi aplikasi.',
+            success: true,
+          );
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      }
+      return;
+    }
+
     if (_timeRemaining.inSeconds == 0) {
       _showSnack('Payment time expired', isError: true);
       return;
@@ -424,8 +503,38 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
 
     try {
-      // Resolve queue by either queue id or order id and validate ownership
       final userId = userIdCheck;
+
+      // Tenant registration payment flow (delegated handler)
+      if (widget.tenantId != null && widget.tenantPaymentHandler != null) {
+        // convert image to base64 and validate
+        _pickedBase64 ??= await _convertImageToBase64(_pickedImage!);
+        const int limit = 950000;
+        if ((_pickedBase64?.length ?? 0) > limit) {
+          throw Exception(
+            'Ukuran file terlalu besar. Silakan kompres atau gunakan file yang lebih kecil.',
+          );
+        }
+
+        await widget.tenantPaymentHandler!(
+          tenantId: widget.tenantId!,
+          base64: _pickedBase64!,
+          userId: userId,
+        );
+
+        // Show guidance about processing time (max 1 week) and notify user
+        if (mounted) {
+          _showSnack(
+            'Bukti pembayaran terkirim. Pendaftaran dan dokumen sedang diproses (maks. 1 minggu). Anda akan diberi tahu via email dan notifikasi aplikasi.',
+            success: true,
+          );
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+
+        return;
+      }
+
+      // Fallback: booking flow (existing behavior)
       debugPrint(
         'PaymentScreen: resolving queue for order=${widget.orderId} user=$userId',
       );
@@ -840,23 +949,27 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Widget _buildUploadCard() {
     final isExpired = _timeRemaining.inSeconds == 0;
+    final title = widget.tenantId != null
+        ? 'Unggah Bukti Pembayaran'
+        : 'Upload Payment Proof';
+    final subtitle = widget.tenantId != null
+        ? 'Unggah screenshot/foto bukti transfer untuk mempercepat verifikasi.'
+        : 'Upload screenshot/photo of the transfer receipt to speed up verification.';
+
     return _buildSectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Upload Payment Proof',
-            style: TextStyle(
+          Text(
+            title,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Upload screenshot/photo of the transfer receipt to speed up verification.',
-            style: TextStyle(color: kDisabledText, fontSize: 13),
-          ),
+          Text(subtitle, style: TextStyle(color: kDisabledText, fontSize: 13)),
           const SizedBox(height: 12),
           GestureDetector(
             onTap: (isExpired || _isSubmitting || _hasUploadedProof)
@@ -1075,8 +1188,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
             _hasUploadedProof
                 ? 'Bukti Terunggah'
                 : (_isSubmitting
-                      ? 'Processing...'
-                      : 'Submit Proof & Create Queue'),
+                      ? (widget.tenantId != null
+                            ? 'Mengirim...'
+                            : 'Processing...')
+                      : (widget.tenantId != null
+                            ? 'Unggah Bukti Pembayaran'
+                            : 'Submit Proof & Create Queue')),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),

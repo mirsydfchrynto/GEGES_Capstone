@@ -13,7 +13,10 @@ class PrivacyPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: const [
-              Text('Privacy Policy', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(
+                'Privacy Policy',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               SizedBox(height: 12),
               Text('''
 GEGES SmartBarber - Privacy Policy (Draft)

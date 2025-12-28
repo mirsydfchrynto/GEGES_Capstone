@@ -8,28 +8,49 @@ import 'package:geges_smartbarber/services/tenant_service.dart';
 
 class FakeTenantService2 extends TenantService {
   final Future<String> Function(String tenantId, String path) onUpload;
-  final Future<void> Function({required String tenantId, required String proofBase64, required String userId}) onSubmit;
+  final Future<void> Function({
+    required String tenantId,
+    required String proofBase64,
+    required String userId,
+  })
+  onSubmit;
 
-  FakeTenantService2(this.onUpload, this.onSubmit) : super(firestore: FakeFirebaseFirestore(), storage: null);
+  FakeTenantService2(this.onUpload, this.onSubmit)
+    : super(firestore: FakeFirebaseFirestore(), storage: null);
 
   @override
-  Future<String> uploadTenantDocument(String tenantId, File file, {String? filename}) async {
+  Future<String> uploadTenantDocument(
+    String tenantId,
+    File file, {
+    String? filename,
+  }) async {
     final path = file.path;
     return onUpload(tenantId, path);
   }
 
   @override
-  Future<void> submitRegistrationPayment({required String tenantId, String? proofUrl, String? proofBase64, required String userId}) async {
-    return onSubmit(tenantId: tenantId, proofBase64: proofBase64 ?? '', userId: userId);
+  Future<void> submitRegistrationPayment({
+    required String tenantId,
+    String? proofUrl,
+    String? proofBase64,
+    required String userId,
+  }) async {
+    return onSubmit(
+      tenantId: tenantId,
+      proofBase64: proofBase64 ?? '',
+      userId: userId,
+    );
   }
 }
 
 void main() {
-  testWidgets('TenantContinueScreen uploads proof and updates invoice', (WidgetTester tester) async {
+  testWidgets('TenantContinueScreen uploads proof and updates invoice', (
+    WidgetTester tester,
+  ) async {
     final fs = FakeFirebaseFirestore();
     final tenantId = 'tenant123';
     await fs.collection('tenants').doc(tenantId).set({
-      'invoice': {'amount': 300000, 'status': 'waiting_proof'}
+      'invoice': {'amount': 300000, 'status': 'waiting_proof'},
     });
 
     var submitted = false;
@@ -38,31 +59,45 @@ void main() {
       (id, path) async {
         return 'firestore://$id/docs/fake';
       },
-      ({required String tenantId, required String proofBase64, required String userId}) async {
+      ({
+        required String tenantId,
+        required String proofBase64,
+        required String userId,
+      }) async {
         submitted = true;
         // write to firestore to emulate submit action (store proof as base64 field)
         await fs.collection('tenants').doc(tenantId).set({
-          'invoice': {'status': 'payment_submitted', 'submitted_at': Timestamp.now(), 'payment_proof_base64': proofBase64}
+          'invoice': {
+            'status': 'payment_submitted',
+            'submitted_at': Timestamp.now(),
+            'payment_proof_base64': proofBase64,
+          },
         }, SetOptions(merge: true));
       },
     );
 
     // Instead of exercising platform pickers, inject a submit handler that
     // calls the fake service and writes to firestore — this avoids UI timing issues.
-    await tester.pumpWidget(MaterialApp(
-      home: TenantContinueScreen(
-        tenantId: tenantId,
-        amount: 300000,
-        tenantService: fakeService,
-        firestore: fs,
-        submitProofHandler: () async {
-          submitted = true;
-          await fs.collection('tenants').doc(tenantId).set({
-            'invoice': {'status': 'payment_submitted', 'submitted_at': Timestamp.now(), 'payment_proof_base64': 'ZmFrZQ=='}
-          }, SetOptions(merge: true));
-        },
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TenantContinueScreen(
+          tenantId: tenantId,
+          amount: 300000,
+          tenantService: fakeService,
+          firestore: fs,
+          submitProofHandler: () async {
+            submitted = true;
+            await fs.collection('tenants').doc(tenantId).set({
+              'invoice': {
+                'status': 'payment_submitted',
+                'submitted_at': Timestamp.now(),
+                'payment_proof_base64': 'ZmFrZQ==',
+              },
+            }, SetOptions(merge: true));
+          },
+        ),
       ),
-    ));
+    );
 
     // find upload button
     final uploadButton = find.text('Unggah Bukti Pembayaran');
@@ -72,7 +107,6 @@ void main() {
     // Tap the button; with submitProofHandler injected this avoids platform pickers
     await tester.tap(uploadButton);
     await tester.pumpAndSettle();
-
 
     expect(submitted, isTrue);
 

@@ -13,7 +13,8 @@ class BarbershopSettingsScreen extends StatefulWidget {
   });
 
   @override
-  State<BarbershopSettingsScreen> createState() => _BarbershopSettingsScreenState();
+  State<BarbershopSettingsScreen> createState() =>
+      _BarbershopSettingsScreenState();
 }
 
 class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
@@ -42,13 +43,15 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
     try {
       await _svc.updateSpecialOrderFee(widget.barbershop.id, fee);
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Saved')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Saved')));
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to save: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -65,7 +68,10 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Special Order Fee (Rp)', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Special Order Fee (Rp)',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _feeController,
@@ -86,15 +92,19 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
                 children: [
                   ElevatedButton(
                     onPressed: _isSaving ? null : _save,
-                    child: _isSaving ? const CircularProgressIndicator() : const Text('Save'),
+                    child: _isSaving
+                        ? const CircularProgressIndicator()
+                        : const Text('Save'),
                   ),
                   const SizedBox(width: 12),
                   TextButton(
-                    onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+                    onPressed: _isSaving
+                        ? null
+                        : () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),

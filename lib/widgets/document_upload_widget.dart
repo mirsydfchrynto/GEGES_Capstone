@@ -61,13 +61,19 @@ class _DocumentUploadWidgetState extends State<DocumentUploadWidget> {
 
     try {
       // upload using TenantService; TenantService.uploadTenantDocument returns Firestore document path (e.g. 'tenants/{tenantId}/documents/{docId}')
-      final ref = await widget.tenantService.uploadTenantDocument(widget.tenantId, file);
+      final ref = await widget.tenantService.uploadTenantDocument(
+        widget.tenantId,
+        file,
+      );
       setState(() {
         _uploadedUrl = ref;
       });
       widget.onUploaded(ref);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload gagal: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Upload gagal: $e')));
     } finally {
       if (mounted) {
         setState(() {
@@ -98,8 +104,10 @@ class _DocumentUploadWidgetState extends State<DocumentUploadWidget> {
               const SizedBox(width: 12),
               const Icon(Icons.check_circle, color: Colors.green),
               const SizedBox(width: 6),
-              Expanded(child: Text('Tersimpan', overflow: TextOverflow.ellipsis)),
-            ]
+              Expanded(
+                child: Text('Tersimpan', overflow: TextOverflow.ellipsis),
+              ),
+            ],
           ],
         ),
       ],

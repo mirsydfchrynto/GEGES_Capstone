@@ -6,17 +6,22 @@ import 'package:http/http.dart' as http;
 // AIService supports an optional backend endpoint via --dart-define=AI_API_URL="https://...".
 // If the environment variable is not provided, it falls back to a local mock implementation to keep the app functional offline and in tests.
 class AIService {
-  final String _endpoint = const String.fromEnvironment('AI_API_URL', defaultValue: '');
+  final String _endpoint = const String.fromEnvironment(
+    'AI_API_URL',
+    defaultValue: '',
+  );
 
   /// Provides a response for the AI chatbot, using remote endpoint when configured.
   Future<String> getChatbotResponse(String message) async {
     if (_endpoint.isNotEmpty) {
       try {
-        final resp = await http.post(
-          Uri.parse(_endpoint),
-          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
-          body: jsonEncode({'message': message}),
-        ).timeout(const Duration(seconds: 6));
+        final resp = await http
+            .post(
+              Uri.parse(_endpoint),
+              headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+              body: jsonEncode({'message': message}),
+            )
+            .timeout(const Duration(seconds: 6));
         if (resp.statusCode == 200) {
           final body = jsonDecode(resp.body);
           return body['reply']?.toString() ?? 'Maaf, tidak ada jawaban.';
@@ -45,7 +50,9 @@ class AIService {
     if (_endpoint.isNotEmpty) {
       try {
         final bytes = await image.readAsBytes();
-        final resp = await http.post(Uri.parse('$_endpoint/style-scan'), body: bytes).timeout(const Duration(seconds: 8));
+        final resp = await http
+            .post(Uri.parse('$_endpoint/style-scan'), body: bytes)
+            .timeout(const Duration(seconds: 8));
         if (resp.statusCode == 200) {
           final body = jsonDecode(resp.body);
           return body['suggestion']?.toString() ?? _localStyleSuggestion();
@@ -59,5 +66,6 @@ class AIService {
     return _localStyleSuggestion();
   }
 
-  String _localStyleSuggestion() => 'Berdasarkan analisis bentuk wajah Anda, gaya rambut "Undercut" dengan sedikit "Fade" di bagian samping akan sangat cocok. Ini akan memberikan kesan rapi namun tetap modern dan stylish.';
+  String _localStyleSuggestion() =>
+      'Berdasarkan analisis bentuk wajah Anda, gaya rambut "Undercut" dengan sedikit "Fade" di bagian samping akan sangat cocok. Ini akan memberikan kesan rapi namun tetap modern dan stylish.';
 }

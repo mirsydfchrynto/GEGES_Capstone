@@ -9,6 +9,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/widgets/document_upload_widget.dart';
 import 'package:geges_smartbarber/screens/legal/terms_page.dart';
+import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
 
 class TenantRegistrationScreen extends StatefulWidget {
   final TenantService? tenantService;
@@ -18,6 +19,8 @@ class TenantRegistrationScreen extends StatefulWidget {
   final String? initialCompanyDocPath;
   final String? initialTaxDocPath;
 
+  final Future<void> Function(String tenantId)? testSubmitProofHandler;
+
   const TenantRegistrationScreen({
     super.key,
     this.tenantService,
@@ -26,10 +29,12 @@ class TenantRegistrationScreen extends StatefulWidget {
     this.initialAcceptedTerms = false,
     this.initialCompanyDocPath,
     this.initialTaxDocPath,
+    this.testSubmitProofHandler,
   });
 
   @override
-  State<TenantRegistrationScreen> createState() => _TenantRegistrationScreenState();
+  State<TenantRegistrationScreen> createState() =>
+      _TenantRegistrationScreenState();
 }
 
 class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
@@ -82,13 +87,24 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
     if (!_formKey.currentState!.validate()) return;
     final accepted = _acceptedTerms || widget.initialAcceptedTerms;
     if (!accepted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda harus menyetujui Perjanjian Tenant sebelum melanjutkan')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Anda harus menyetujui Perjanjian Tenant sebelum melanjutkan',
+          ),
+        ),
+      );
       return;
     }
 
-    final userId = widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    final userId =
+        widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Anda harus login untuk mendaftar sebagai tenant')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Anda harus login untuk mendaftar sebagai tenant'),
+        ),
+      );
       return;
     }
 
@@ -114,12 +130,24 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
 
       // If user selected files earlier, upload them now and attach references to tenant doc
       if (_companyDocFile != null) {
-        final ref = await _tenantService.uploadTenantDocument(tenantId, _companyDocFile!, filename: 'company_doc_${DateTime.now().millisecondsSinceEpoch}');
-        await _tenantService.updateTenantApplication(tenantId, {'company_doc_ref': ref});
+        final ref = await _tenantService.uploadTenantDocument(
+          tenantId,
+          _companyDocFile!,
+          filename: 'company_doc_${DateTime.now().millisecondsSinceEpoch}',
+        );
+        await _tenantService.updateTenantApplication(tenantId, {
+          'company_doc_ref': ref,
+        });
       }
       if (_taxDocFile != null) {
-        final ref = await _tenantService.uploadTenantDocument(tenantId, _taxDocFile!, filename: 'tax_doc_${DateTime.now().millisecondsSinceEpoch}');
-        await _tenantService.updateTenantApplication(tenantId, {'tax_doc_ref': ref});
+        final ref = await _tenantService.uploadTenantDocument(
+          tenantId,
+          _taxDocFile!,
+          filename: 'tax_doc_${DateTime.now().millisecondsSinceEpoch}',
+        );
+        await _tenantService.updateTenantApplication(tenantId, {
+          'tax_doc_ref': ref,
+        });
       }
 
       // Create a registration invoice entry (simple structure) using the tenant service so tests' firestore is used
@@ -129,18 +157,44 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
           'currency': 'IDR',
           'status': 'waiting_proof',
           'created_at': Timestamp.now(),
-        }
+        },
       });
 
-      // Navigate to step 2: upload documents & submit payment using real tenantId (optional - user may have uploaded already)
+      // Navigate directly to Payment screen so user sees detailed payment instructions
+      // and can upload proof in one flow (professional UX).
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => TenantContinueScreen(tenantId: tenantId, amount: _price, tenantService: _tenantService, firestore: _tenantService.firestore),
+          builder: (_) => PaymentScreen(
+            orderId:
+                tenantId, // using tenantId as identifier; PaymentScreen checks tenantId to switch mode
+            totalPrice: _price,
+            tenantId: tenantId,
+            tenantPaymentHandler:
+                ({
+                  required String tenantId,
+                  required String base64,
+                  required String userId,
+                }) async {
+                  await _tenantService.submitRegistrationPayment(
+                    tenantId: tenantId,
+                    proofBase64: base64,
+                    userId: userId,
+                  );
+                },
+            // For registration flow we disable the short countdown so user can upload at their pace
+            disableTimer: true,
+            testUserId: widget.currentUserId,
+            submitProofHandler: widget.testSubmitProofHandler != null
+                ? () => widget.testSubmitProofHandler!(tenantId)
+                : null,
+          ),
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mendaftar: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal mendaftar: $e')));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -159,30 +213,44 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
             children: [
               TextFormField(
                 controller: _businessNameCtrl,
-                decoration: const InputDecoration(labelText: 'Nama Bisnis (Barbershop)'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama bisnis wajib diisi' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Nama Bisnis (Barbershop)',
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Nama bisnis wajib diisi'
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _legalNameCtrl,
-                decoration: const InputDecoration(labelText: 'Nama Legal Perusahaan'),
+                decoration: const InputDecoration(
+                  labelText: 'Nama Legal Perusahaan',
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _ownerNameCtrl,
                 decoration: const InputDecoration(labelText: 'Nama Pemilik'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama pemilik wajib diisi' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Nama pemilik wajib diisi'
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _ownerEmailCtrl,
-                decoration: const InputDecoration(labelText: 'Email Pemilik (Google account)'),
-                validator: (v) => (v == null || !v.contains('@')) ? 'Email tidak valid' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Email Pemilik (Google account)',
+                ),
+                validator: (v) => (v == null || !v.contains('@'))
+                    ? 'Email tidak valid'
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _ownerPhoneCtrl,
-                decoration: const InputDecoration(labelText: 'Nomor Telepon Pemilik'),
+                decoration: const InputDecoration(
+                  labelText: 'Nomor Telepon Pemilik',
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -192,7 +260,9 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _taxIdCtrl,
-                decoration: const InputDecoration(labelText: 'NPWP / Tax ID (opsional)'),
+                decoration: const InputDecoration(
+                  labelText: 'NPWP / Tax ID (opsional)',
+                ),
               ),
 
               // --- New: Terms acceptance & document selections placed at the top ---
@@ -203,35 +273,64 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Persetujuan & Dokumen (wajib)', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Persetujuan & Dokumen (wajib)',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Checkbox(value: _acceptedTerms, onChanged: (v) => setState(() => _acceptedTerms = v ?? false)),
+                          Checkbox(
+                            value: _acceptedTerms,
+                            onChanged: (v) =>
+                                setState(() => _acceptedTerms = v ?? false),
+                          ),
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TermsPage())),
-                              child: const Text('Saya telah membaca dan menyetujui Perjanjian Tenant dan Kebijakan Aplikasi (ketuk untuk baca)', style: TextStyle(decoration: TextDecoration.underline)),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const TermsPage(),
+                                ),
+                              ),
+                              child: const Text(
+                                'Saya telah membaca dan menyetujui Perjanjian Tenant dan Kebijakan Aplikasi (ketuk untuk baca)',
+                                style: TextStyle(
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
                             ),
-                          )
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text('Unggah dokumen awal (SIUP & NPWP). Ukuran maksimal ~900KB per file.', style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+                      Text(
+                        'Unggah dokumen awal (SIUP & NPWP). Ukuran maksimal ~900KB per file.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
                       const SizedBox(height: 6),
                       Row(
                         children: [
                           Expanded(
                             child: ElevatedButton.icon(
                               icon: const Icon(Icons.upload_file),
-                              label: Text(_companyDocFile == null ? 'Pilih SIUP' : 'SIUP: ${_companyDocFile!.path.split('/').last}'),
+                              label: Text(
+                                _companyDocFile == null
+                                    ? 'Pilih SIUP'
+                                    : 'SIUP: ${_companyDocFile!.path.split('/').last}',
+                              ),
                               onPressed: () async {
                                 String? pickedPath;
                                 if (widget.filePicker != null) {
                                   pickedPath = await widget.filePicker!.call();
                                 } else {
-                                  final res = await FilePicker.platform.pickFiles();
-                                  if (res == null || res.files.single.path == null) return;
+                                  final res = await FilePicker.platform
+                                      .pickFiles();
+                                  if (res == null ||
+                                      res.files.single.path == null)
+                                    return;
                                   pickedPath = res.files.single.path;
                                 }
                                 if (pickedPath == null) return;
@@ -244,14 +343,21 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                           Expanded(
                             child: ElevatedButton.icon(
                               icon: const Icon(Icons.upload_file),
-                              label: Text(_taxDocFile == null ? 'Pilih NPWP' : 'NPWP: ${_taxDocFile!.path.split('/').last}'),
+                              label: Text(
+                                _taxDocFile == null
+                                    ? 'Pilih NPWP'
+                                    : 'NPWP: ${_taxDocFile!.path.split('/').last}',
+                              ),
                               onPressed: () async {
                                 String? pickedPath;
                                 if (widget.filePicker != null) {
                                   pickedPath = await widget.filePicker!.call();
                                 } else {
-                                  final res = await FilePicker.platform.pickFiles();
-                                  if (res == null || res.files.single.path == null) return;
+                                  final res = await FilePicker.platform
+                                      .pickFiles();
+                                  if (res == null ||
+                                      res.files.single.path == null)
+                                    return;
                                   pickedPath = res.files.single.path;
                                 }
                                 if (pickedPath == null) return;
@@ -268,7 +374,10 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
               ),
 
               const SizedBox(height: 16),
-              const Text('Pilih Paket', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Pilih Paket',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -294,7 +403,10 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
               ),
 
               const SizedBox(height: 16),
-              const Text('Setelah menekan Daftar, Anda akan diarahkan ke halaman lanjutan untuk mengunggah dokumen dan bukti pembayaran.', style: TextStyle(fontSize: 14)),
+              const Text(
+                'Setelah menekan Daftar, Anda akan diarahkan ke halaman lanjutan untuk mengunggah dokumen dan bukti pembayaran.',
+                style: TextStyle(fontSize: 14),
+              ),
               const SizedBox(height: 12),
               const SizedBox(height: 24),
               SizedBox(
@@ -350,13 +462,18 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
     try {
       // Convert to base64 and validate size (same safety limits as booking payment)
       // ignore: avoid_print
-      print('TenantContinueScreen: starting submitPaymentProof for ${widget.tenantId}');
+      print(
+        'TenantContinueScreen: starting submitPaymentProof for ${widget.tenantId}',
+      );
       final bytes = await proofFile.readAsBytes();
       // ignore: avoid_print
       print('TenantContinueScreen: read bytes length ${bytes.length}');
       final base64Proof = base64Encode(bytes);
       const int limit = 950000;
-      if (base64Proof.length > limit) throw Exception('Ukuran file terlalu besar. Silakan kompres atau crop gambar.');
+      if (base64Proof.length > limit)
+        throw Exception(
+          'Ukuran file terlalu besar. Silakan kompres atau crop gambar.',
+        );
 
       String userId = 'unknown';
       try {
@@ -367,7 +484,11 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
 
       // ignore: avoid_print
       print('TenantContinueScreen: calling submitRegistrationPayment');
-      await _tenantService.submitRegistrationPayment(tenantId: widget.tenantId, proofBase64: base64Proof, userId: userId);
+      await _tenantService.submitRegistrationPayment(
+        tenantId: widget.tenantId,
+        proofBase64: base64Proof,
+        userId: userId,
+      );
       // ignore: avoid_print
       print('TenantContinueScreen: submitRegistrationPayment returned');
 
@@ -376,25 +497,32 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
         'invoice': {
           'status': 'payment_submitted',
           'submitted_at': Timestamp.now(),
-        }
+        },
       }, SetOptions(merge: true));
 
       // ignore: avoid_print
       print('TenantContinueScreen: invoice updated in firestore');
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bukti pembayaran terkirim. Menunggu verifikasi admin.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Bukti pembayaran terkirim. Menunggu verifikasi admin.',
+          ),
+        ),
+      );
       Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       // ignore: avoid_print
       print('TenantContinueScreen: submitPaymentProof error: $e');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mengirim bukti pembayaran: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengirim bukti pembayaran: $e')),
+        );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -410,7 +538,9 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
               tenantService: _tenantService,
               label: 'Surat Izin Usaha / SIUP',
               onUploaded: (ref) async {
-                await _tenantService.updateTenantApplication(widget.tenantId, {'company_doc_ref': ref});
+                await _tenantService.updateTenantApplication(widget.tenantId, {
+                  'company_doc_ref': ref,
+                });
               },
             ),
             const SizedBox(height: 12),
@@ -419,11 +549,16 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
               tenantService: _tenantService,
               label: 'NPWP / Dokumen Pajak',
               onUploaded: (ref) async {
-                await _tenantService.updateTenantApplication(widget.tenantId, {'tax_doc_ref': ref});
+                await _tenantService.updateTenantApplication(widget.tenantId, {
+                  'tax_doc_ref': ref,
+                });
               },
             ),
             const SizedBox(height: 24),
-            Text('Pembayaran pendaftaran: Rp ${widget.amount}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'Pembayaran pendaftaran: Rp ${widget.amount}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: _isSubmitting
@@ -445,7 +580,8 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
                         if (path == null) return;
                       } else {
                         final res = await FilePicker.platform.pickFiles();
-                        if (res == null || res.files.single.path == null) return;
+                        if (res == null || res.files.single.path == null)
+                          return;
                         path = res.files.single.path!;
                       }
 
@@ -453,7 +589,9 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
                       await _submitPaymentProof(file);
                     },
               icon: const Icon(Icons.upload_file),
-              label: _isSubmitting ? const Text('Mengirim...') : const Text('Unggah Bukti Pembayaran'),
+              label: _isSubmitting
+                  ? const Text('Mengirim...')
+                  : const Text('Unggah Bukti Pembayaran'),
             ),
           ],
         ),

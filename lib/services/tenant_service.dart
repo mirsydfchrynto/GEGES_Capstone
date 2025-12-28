@@ -7,9 +7,16 @@ import 'package:firebase_storage/firebase_storage.dart';
 class TenantService {
   final FirebaseFirestore _fs;
   final FirebaseStorage? _storage; // ignore: unused_field
-  final dynamic _emailOutboxService; // keep dynamic to avoid import cycle in tests
+  final dynamic
+  _emailOutboxService; // keep dynamic to avoid import cycle in tests
 
-  TenantService({FirebaseFirestore? firestore, FirebaseStorage? storage, dynamic emailOutboxService}) : _fs = firestore ?? FirebaseFirestore.instance, _storage = storage, _emailOutboxService = emailOutboxService;
+  TenantService({
+    FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
+    dynamic emailOutboxService,
+  }) : _fs = firestore ?? FirebaseFirestore.instance,
+       _storage = storage,
+       _emailOutboxService = emailOutboxService;
 
   /// Expose the internal firestore instance for dependency injection and tests
   FirebaseFirestore get firestore => _fs;
@@ -30,10 +37,14 @@ class TenantService {
   }
 
   /// Update a tenant application with given data
-  Future<void> updateTenantApplication(String tenantId, Map<String, dynamic> data) async {
-    await _fs.collection('tenants').doc(tenantId).update(
-      {...data, 'updated_at': Timestamp.fromDate(DateTime.now())},
-    );
+  Future<void> updateTenantApplication(
+    String tenantId,
+    Map<String, dynamic> data,
+  ) async {
+    await _fs.collection('tenants').doc(tenantId).update({
+      ...data,
+      'updated_at': Timestamp.fromDate(DateTime.now()),
+    });
   }
 
   /// Upload a document file for tenant and return a string reference (stored in Firestore as base64).
@@ -42,7 +53,11 @@ class TenantService {
   /// - Saves a document under `tenants/{tenantId}/documents/{docId}` with fields:
   ///   `filename`, `content_base64`, `content_type`, `size`, `uploaded_by`, `created_at`.
   /// - Returns the document path (e.g. "tenants/{tenantId}/documents/{docId}") for reference.
-  Future<String> uploadTenantDocument(String tenantId, File file, {String? filename}) async {
+  Future<String> uploadTenantDocument(
+    String tenantId,
+    File file, {
+    String? filename,
+  }) async {
     final fileName = filename ?? file.path.split('/').last;
     final bytes = await file.readAsBytes();
     final base64Content = base64Encode(bytes);
@@ -50,13 +65,23 @@ class TenantService {
     // safety size limit: keep under ~950KB (payment flow uses 950000 limit)
     const int sizeLimit = 950000;
     if (base64Content.length > sizeLimit) {
-      throw Exception('Ukuran file terlalu besar. Silakan kompres atau gunakan file yang lebih kecil.');
+      throw Exception(
+        'Ukuran file terlalu besar. Silakan kompres atau gunakan file yang lebih kecil.',
+      );
     }
 
-    final docRef = _fs.collection('tenants').doc(tenantId).collection('documents').doc();
+    final docRef = _fs
+        .collection('tenants')
+        .doc(tenantId)
+        .collection('documents')
+        .doc();
     final userId = (() {
       try {
-        return FirebaseFirestore.instance.app.options.projectId; // fallback; tests override TenantService
+        return FirebaseFirestore
+            .instance
+            .app
+            .options
+            .projectId; // fallback; tests override TenantService
       } catch (_) {
         return null;
       }
@@ -91,10 +116,13 @@ class TenantService {
         'verificationStatus': 'pending',
         'paidBy': userId,
         'paidAt': Timestamp.fromDate(DateTime.now()),
-      }
+      },
     };
 
-    await _fs.collection('tenants').doc(tenantId).set(payment, SetOptions(merge: true));
+    await _fs
+        .collection('tenants')
+        .doc(tenantId)
+        .set(payment, SetOptions(merge: true));
   }
 
   /// Admin verifies tenant (approve or reject)
@@ -123,7 +151,9 @@ class TenantService {
 
         // create a user notification doc for FCM/local handling
         if (ownerUid != null) {
-          final title = approve ? 'Pendaftaran Tenant Disetujui' : 'Pendaftaran Tenant Ditolak';
+          final title = approve
+              ? 'Pendaftaran Tenant Disetujui'
+              : 'Pendaftaran Tenant Ditolak';
           final body = approve
               ? 'Pendaftaran tenant Anda telah disetujui. Anda sekarang dapat melanjutkan setup.'
               : 'Pendaftaran tenant Anda ditolak oleh admin.${reason != null ? '\nAlasan: $reason' : ''}';
@@ -139,13 +169,20 @@ class TenantService {
 
         // queue an email in outbox if available
         if (ownerEmail != null && _emailOutboxService != null) {
-          final subject = approve ? 'Tenant Registration Approved' : 'Tenant Registration Rejected';
+          final subject = approve
+              ? 'Tenant Registration Approved'
+              : 'Tenant Registration Rejected';
           final body = approve
               ? 'Selamat — tenant Anda telah disetujui. Silakan periksa dashboard untuk langkah selanjutnya.'
               : 'Maaf — tenant Anda ditolak. ${reason ?? ''}';
 
           try {
-            await _emailOutboxService.queueEmail(to: ownerEmail, subject: subject, body: body, metadata: {'tenantId': tenantId, 'approved': approve});
+            await _emailOutboxService.queueEmail(
+              to: ownerEmail,
+              subject: subject,
+              body: body,
+              metadata: {'tenantId': tenantId, 'approved': approve},
+            );
           } catch (_) {
             // best-effort: swallow email failures so admin flow is not blocked
           }

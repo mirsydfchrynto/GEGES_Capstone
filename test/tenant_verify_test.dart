@@ -11,7 +11,11 @@ void main() {
     final tenantRef = fs.collection('tenants').doc('t1');
     await tenantRef.set({'status': 'pending_payment'});
 
-    await service.verifyTenant(tenantId: 't1', approve: true, verifiedBy: 'admin1');
+    await service.verifyTenant(
+      tenantId: 't1',
+      approve: true,
+      verifiedBy: 'admin1',
+    );
 
     final doc = await tenantRef.get();
     expect(doc.data()!['status'], 'active');
@@ -26,7 +30,12 @@ void main() {
     final tenantRef = fs.collection('tenants').doc('t2');
     await tenantRef.set({'status': 'pending_payment'});
 
-    await service.verifyTenant(tenantId: 't2', approve: false, verifiedBy: 'admin2', reason: 'invalid docs');
+    await service.verifyTenant(
+      tenantId: 't2',
+      approve: false,
+      verifiedBy: 'admin2',
+      reason: 'invalid docs',
+    );
 
     final doc = await tenantRef.get();
     expect(doc.data()!['status'], 'rejected');

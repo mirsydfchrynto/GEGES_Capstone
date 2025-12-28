@@ -8,7 +8,10 @@ void main() {
       final fakeFs = FakeFirebaseFirestore();
       final service = TenantService(firestore: fakeFs);
 
-      final id = await service.createTenantApplication({'business_name': 'Toko Test', 'owner_email': 'a@b.c'});
+      final id = await service.createTenantApplication({
+        'business_name': 'Toko Test',
+        'owner_email': 'a@b.c',
+      });
 
       expect(id, isNotNull);
       final doc = await fakeFs.collection('tenants').doc(id).get();

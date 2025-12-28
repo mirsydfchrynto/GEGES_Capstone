@@ -9,7 +9,12 @@ class FakeEmailOutbox {
   String? body;
   Map<String, dynamic>? metadata;
 
-  Future<void> queueEmail({required String to, required String subject, required String body, Map<String, dynamic>? metadata}) async {
+  Future<void> queueEmail({
+    required String to,
+    required String subject,
+    required String body,
+    Map<String, dynamic>? metadata,
+  }) async {
     queued = true;
     this.to = to;
     this.subject = subject;
@@ -32,14 +37,25 @@ void main() {
 
     final fakeEmail = FakeEmailOutbox();
 
-    final service = TenantService(firestore: fs, storage: null, emailOutboxService: fakeEmail);
+    final service = TenantService(
+      firestore: fs,
+      storage: null,
+      emailOutboxService: fakeEmail,
+    );
 
-    await service.verifyTenant(tenantId: tenantId, approve: true, verifiedBy: 'admin1');
+    await service.verifyTenant(
+      tenantId: tenantId,
+      approve: true,
+      verifiedBy: 'admin1',
+    );
 
     final tenant = await fs.collection('tenants').doc(tenantId).get();
     expect(tenant.data()!['status'], 'active');
 
-    final notifs = await fs.collection('notifications').where('user_id', isEqualTo: 'u1').get();
+    final notifs = await fs
+        .collection('notifications')
+        .where('user_id', isEqualTo: 'u1')
+        .get();
     expect(notifs.docs, isNotEmpty);
 
     expect(fakeEmail.queued, isTrue);

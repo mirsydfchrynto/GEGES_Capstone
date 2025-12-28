@@ -73,7 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // UI strings moved to AppStrings to prepare for localization. See lib/l10n/app_strings.dart
   // Note: full ARB/localization migration to follow as a separate task.
-  
+
   @override
   void initState() {
     super.initState();

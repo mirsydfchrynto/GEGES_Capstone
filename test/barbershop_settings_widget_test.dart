@@ -34,9 +34,11 @@ void main() {
 
     final svc = BarbershopService(firestore: fs);
 
-    await tester.pumpWidget(MaterialApp(
-      home: BarbershopSettingsScreen(barbershop: shop, service: svc),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BarbershopSettingsScreen(barbershop: shop, service: svc),
+      ),
+    );
 
     await tester.pumpAndSettle();
 

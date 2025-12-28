@@ -12,7 +12,12 @@ class FakeTenantService3 extends TenantService {
   bool approved = false;
 
   @override
-  Future<void> verifyTenant({required String tenantId, required bool approve, String? verifiedBy, String? reason}) async {
+  Future<void> verifyTenant({
+    required String tenantId,
+    required bool approve,
+    String? verifiedBy,
+    String? reason,
+  }) async {
     final fs = _fsLocal;
     await fs.collection('tenants').doc(tenantId).update({
       'status': approve ? 'active' : 'rejected',
@@ -23,7 +28,9 @@ class FakeTenantService3 extends TenantService {
 }
 
 void main() {
-  testWidgets('TenantRequestsScreen lists pending tenants and allows approve', (WidgetTester tester) async {
+  testWidgets('TenantRequestsScreen lists pending tenants and allows approve', (
+    WidgetTester tester,
+  ) async {
     final fs = FakeFirebaseFirestore();
     await fs.collection('tenants').doc('t1').set({
       'business_name': 'Toko 1',
@@ -34,7 +41,15 @@ void main() {
 
     final fakeService = FakeTenantService3(fs);
 
-    await tester.pumpWidget(MaterialApp(home: TenantRequestsScreen(firestore: fs, tenantService: fakeService, currentUserId: 'admin-ui-1')));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TenantRequestsScreen(
+          firestore: fs,
+          tenantService: fakeService,
+          currentUserId: 'admin-ui-1',
+        ),
+      ),
+    );
 
     await tester.pumpAndSettle();
 

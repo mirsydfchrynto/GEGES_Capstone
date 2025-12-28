@@ -162,13 +162,17 @@ class _PaymentScreenImprovedState extends State<PaymentScreenImproved> {
   Future<void> _pickAndUploadAndSubmit() async {
     try {
       final picker = ImagePicker();
-      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
       if (picked == null) return; // user cancelled
 
       setState(() => _isSubmitting = true);
 
       final bytes = await picked.readAsBytes();
-      final path = 'bookings/${widget.bookingId}/proof_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final path =
+          'bookings/${widget.bookingId}/proof_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final ref = FirebaseStorage.instance.ref().child(path);
       await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
       final downloadUrl = await ref.getDownloadURL();

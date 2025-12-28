@@ -13,7 +13,10 @@ class TermsPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: const [
-              Text('Terms of Service', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(
+                'Terms of Service',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               SizedBox(height: 12),
               Text('''
 GEGES SmartBarber - Terms of Service (Draft)
