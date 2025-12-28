@@ -91,7 +91,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // For deterministic testing, create the queue directly instead of going through the BOOK NOW UI flow.
-    final bookingDate = DateTime.now().add(const Duration(days: 1, hours: 1));
+    // Use a fixed booking time inside the shop's open hours (10:00 next day) to avoid time-dependent failures.
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final bookingDate = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 10, 0);
     final paymentDue = DateTime.now().add(const Duration(minutes: 10));
     final orderId = 'ORD-TEST-UI-1';
 

@@ -1069,24 +1069,17 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     try {
       final bs = await _barbershopService.getBarbershopById(widget.barbershop.id);
       if (bs == null) return;
-      // Read either camelCase or snake_case field
-      final doc = await FirebaseFirestore.instance
-          .collection('barbershops')
-          .doc(widget.barbershop.id)
-          .get();
-      final data = doc.data() ?? {};
-      final raw = data['special_order_fee'] ?? data['specialOrderFee'];
-      int fee = 5000; // default fallback
-      if (raw != null) {
-        if (raw is num) fee = raw.toInt();
-        if (raw is String) fee = int.tryParse(raw) ?? fee;
-      }
+
+      // Prefer the value already parsed into the Barbershop model. This avoids
+      // direct references to `FirebaseFirestore.instance` during widget tests
+      // and keeps behavior deterministic.
+      final int fee = bs.specialOrderFee ?? 5000;
+
       if (!mounted) return;
       setState(() => _barberSelectionFee = fee);
     } catch (e) {
       debugPrint('Failed to read specialOrderFee: $e');
       if (!mounted) return;
-      // fallback fee for compatibility with existing tests
       setState(() => _barberSelectionFee = 5000);
     }
   }

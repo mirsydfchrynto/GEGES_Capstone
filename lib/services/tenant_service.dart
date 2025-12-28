@@ -1,14 +1,18 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class TenantService {
   final FirebaseFirestore _fs;
-  final FirebaseStorage? _storage;
+  final FirebaseStorage? _storage; // ignore: unused_field
   final dynamic _emailOutboxService; // keep dynamic to avoid import cycle in tests
 
   TenantService({FirebaseFirestore? firestore, FirebaseStorage? storage, dynamic emailOutboxService}) : _fs = firestore ?? FirebaseFirestore.instance, _storage = storage, _emailOutboxService = emailOutboxService;
+
+  /// Expose the internal firestore instance for dependency injection and tests
+  FirebaseFirestore get firestore => _fs;
 
   /// Create a tenant application document and return the new doc id.
   Future<String> createTenantApplication(Map<String, dynamic> data) async {
@@ -32,26 +36,57 @@ class TenantService {
     );
   }
 
-  /// Upload a document file for tenant and return download URL.
+  /// Upload a document file for tenant and return a string reference (stored in Firestore as base64).
+  ///
+  /// Implementation notes:
+  /// - Saves a document under `tenants/{tenantId}/documents/{docId}` with fields:
+  ///   `filename`, `content_base64`, `content_type`, `size`, `uploaded_by`, `created_at`.
+  /// - Returns the document path (e.g. "tenants/{tenantId}/documents/{docId}") for reference.
   Future<String> uploadTenantDocument(String tenantId, File file, {String? filename}) async {
     final fileName = filename ?? file.path.split('/').last;
-    final st = _storage ?? FirebaseStorage.instance;
-    final ref = st.ref().child('tenants/$tenantId/docs/$fileName');
-    final task = await ref.putFile(file);
-    final url = await task.ref.getDownloadURL();
-    return url;
+    final bytes = await file.readAsBytes();
+    final base64Content = base64Encode(bytes);
+
+    // safety size limit: keep under ~950KB (payment flow uses 950000 limit)
+    const int sizeLimit = 950000;
+    if (base64Content.length > sizeLimit) {
+      throw Exception('Ukuran file terlalu besar. Silakan kompres atau gunakan file yang lebih kecil.');
+    }
+
+    final docRef = _fs.collection('tenants').doc(tenantId).collection('documents').doc();
+    final userId = (() {
+      try {
+        return FirebaseFirestore.instance.app.options.projectId; // fallback; tests override TenantService
+      } catch (_) {
+        return null;
+      }
+    })();
+
+    await docRef.set({
+      'filename': fileName,
+      'content_base64': base64Content,
+      'size': bytes.length,
+      'content_type': fileName.split('.').last,
+      'uploaded_by': userId,
+      'created_at': FieldValue.serverTimestamp(),
+    });
+
+    return docRef.path;
   }
 
-  /// Submit registration payment proof (manual proof upload)
+  /// Submit registration payment proof (manual proof upload).
+  /// Accepts either a 'proofUrl' (legacy/storage) OR a 'proofBase64' payload (preferred - stores in tenant doc).
   Future<void> submitRegistrationPayment({
     required String tenantId,
-    required String proofUrl,
+    String? proofUrl,
+    String? proofBase64,
     required String userId,
   }) async {
     final payment = {
       'payment': {
         'method': 'manual',
         'proofUrl': proofUrl,
+        'payment_proof_base64': proofBase64,
         'proofLocked': true,
         'verificationStatus': 'pending',
         'paidBy': userId,

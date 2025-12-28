@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -95,18 +96,34 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
                           label: const Text('View Company Doc'),
                           onPressed: () => _openUrl(data['company_doc_url']),
                         ),
+                        if (data['company_doc_ref'] != null) TextButton.icon(
+                          icon: const Icon(Icons.insert_drive_file),
+                          label: const Text('View Company Doc (Firestore)'),
+                          onPressed: () => _openDoc(data['company_doc_ref']),
+                        ),
                         if (data['tax_doc_url'] != null) TextButton.icon(
                           icon: const Icon(Icons.insert_drive_file),
                           label: const Text('View Tax Doc'),
                           onPressed: () => _openUrl(data['tax_doc_url']),
                         ),
-                        if (invoice['status'] == 'payment_submitted' && invoice['payment_proof_url'] == null)
+                        if (data['tax_doc_ref'] != null) TextButton.icon(
+                          icon: const Icon(Icons.insert_drive_file),
+                          label: const Text('View Tax Doc (Firestore)'),
+                          onPressed: () => _openDoc(data['tax_doc_ref']),
+                        ),
+                        if (invoice['status'] == 'payment_submitted' && (invoice['payment_proof_base64'] == null || invoice['payment_proof_base64'] == ''))
                           Text('Payment submitted: yes (check tenant docs)'),
                         if (invoice['status'] == 'payment_submitted' && invoice['payment_proof_url'] != null)
                           TextButton.icon(
                             icon: const Icon(Icons.image),
                             label: const Text('View Payment Proof'),
                             onPressed: () => _openUrl(invoice['payment_proof_url']),
+                          ),
+                        if (invoice['status'] == 'payment_submitted' && invoice['payment_proof_base64'] != null)
+                          TextButton.icon(
+                            icon: const Icon(Icons.image),
+                            label: const Text('View Payment Proof (Base64)'),
+                            onPressed: () => _showBase64Image(invoice['payment_proof_base64']),
                           ),
                       ],
                     ),
@@ -135,6 +152,34 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
     if (url == null) return;
     // For now, just launch externally
     // Links.openUrl(url);
+  }
+
+  Future<void> _openDoc(String? path) async {
+    if (path == null || path.isEmpty) return;
+    try {
+      final doc = await _fs.doc(path).get();
+      if (!mounted) return;
+      final data = doc.data();
+      if (data != null && data['content_base64'] != null) {
+        _showBase64Image(data['content_base64'] as String);
+      } else {
+        if (!mounted) return;
+        showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Document'), content: Text(data?.toString() ?? 'No data')));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Error'), content: Text('Gagal membuka dokumen: $e')));
+    }
+  }
+
+  void _showBase64Image(String base64Str) {
+    final bytes = base64Decode(base64Str);
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        child: InteractiveViewer(child: Image.memory(bytes)),
+      ),
+    );
   }
 
   @override

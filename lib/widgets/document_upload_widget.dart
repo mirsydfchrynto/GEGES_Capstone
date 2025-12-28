@@ -60,12 +60,12 @@ class _DocumentUploadWidgetState extends State<DocumentUploadWidget> {
     });
 
     try {
-      // upload using TenantService; TenantService.uploadTenantDocument returns URL
-      final url = await widget.tenantService.uploadTenantDocument(widget.tenantId, file);
+      // upload using TenantService; TenantService.uploadTenantDocument returns Firestore document path (e.g. 'tenants/{tenantId}/documents/{docId}')
+      final ref = await widget.tenantService.uploadTenantDocument(widget.tenantId, file);
       setState(() {
-        _uploadedUrl = url;
+        _uploadedUrl = ref;
       });
-      widget.onUploaded(url);
+      widget.onUploaded(ref);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload gagal: $e')));
     } finally {
