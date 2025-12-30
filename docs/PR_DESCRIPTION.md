@@ -35,7 +35,7 @@ Next steps (recommended)
 - Draft PR branch and open PR with this description and links to key tests.
 - Add CHANGELOG entry and concise migration notes in `CHANGELOG.md`.
 - Implement E2E test for closed-app resume + server-side verify (integration harness/emulator).
-- Added GitHub Actions workflow `.github/workflows/integration-e2e.yml` to start the Firestore emulator and run `integration_test/e2e_resume_payment_test.dart` on Android emulator for PRs and pushes. The workflow includes caching, retry logic (3 attempts), log collection, and an increased timeout to reduce flakiness.
+- Added GitHub Actions workflow `.github/workflows/integration-e2e.yml` to start the Firestore emulator and run `integration_test/e2e_resume_payment_test.dart` on Android emulator. This workflow is configured as **manual** (`workflow_dispatch`) so it does not run automatically on PRs — the CI will continue to run **unit & widget tests** on PRs to preserve quick feedback loops. The workflow includes caching, retry logic (3 attempts), log collection, and an increased timeout to reduce flakiness.
 
 Contact
 - If you want, I can create the PR branch and open the PR — confirm and I'll proceed to push and open it.

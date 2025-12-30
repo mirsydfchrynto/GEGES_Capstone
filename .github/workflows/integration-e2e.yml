@@ -1,10 +1,9 @@
 name: Integration E2E Tests
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  workflow_dispatch: {}
+
+# NOTE: Integration E2E runs are manual only to avoid flakiness on PRs. Unit & widget tests run automatically via the `Flutter tests` workflow.
 
 jobs:
   android-integration:
