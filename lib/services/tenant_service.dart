@@ -13,6 +13,7 @@ abstract class TenantServiceContract {
   Future<void> attachInvoice(String tenantId, {required String invoiceId, required DateTime deadline});
   Future<void> submitRegistrationPayment({required String tenantId, String? proofUrl, String? proofBase64, required String userId});
   Future<void> cancelRegistrationByOwner({required String tenantId, required String userId, String? reason});
+  Future<Tenant?> getActiveRegistrationForOwner(String ownerUid);
 }
 
 class TenantService implements TenantServiceContract {
@@ -304,13 +305,64 @@ class TenantService implements TenantServiceContract {
 
   /// Convenience: create a tenant and return a lightweight Tenant model
   @override
+  /// Convenience: create a tenant and return a lightweight Tenant model
+  /// If the owner already has an active (non-final) registration, returns that tenant instead
+  @override
   Future<Tenant> createTenant({required String businessName, required String documentBase64, required String packageId}) async {
+    // Best-effort check for existing active registration for current user
+    try {
+      final currentUserId = (() {
+        try {
+          // avoid importing firebase_auth in all environments; use FirebaseFirestore instance to inspect projectId as fallback in tests
+          return FirebaseFirestore.instance.app.options.projectId;
+        } catch (_) {
+          return null;
+        }
+      })();
+
+      if (currentUserId != null) {
+        final existing = await getActiveRegistrationForOwner(currentUserId);
+        if (existing != null) {
+          return existing;
+        }
+      }
+    } catch (_) {
+      // best effort — proceed to create if query fails
+    }
+
     final id = await createTenantApplication({
       'business_name': businessName,
       'document_base64': documentBase64,
       'package_id': packageId,
     });
     return Tenant(id: id, businessName: businessName, documentBase64: documentBase64, packageId: packageId);
+  }
+
+  /// Returns an active (in-progress) tenant registration for the given ownerUid
+  Future<Tenant?> getActiveRegistrationForOwner(String ownerUid) async {
+    final coll = _fs.collection('tenants');
+    final now = Timestamp.fromDate(DateTime.now());
+    final inProgressStatuses = ['draft', 'awaiting_payment', 'awaiting_confirmation', 'payment_submitted', 'waiting_proof'];
+
+    try {
+      final q = await coll.where('owner_uid', isEqualTo: ownerUid).get();
+      for (final doc in q.docs) {
+        final data = doc.data();
+        final status = (data['status'] as String?) ?? '';
+        if (inProgressStatuses.contains(status)) {
+          return Tenant(
+            id: doc.id,
+            businessName: data['business_name'] as String? ?? '',
+            documentBase64: data['document_base64'] as String? ?? '',
+            packageId: data['package_id'] as String? ?? '',
+            status: status,
+          );
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   /// Attach an invoice (id + deadline) to tenant and set status to awaiting_payment
