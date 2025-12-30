@@ -23,8 +23,9 @@ void main() {
     // Initialize Firebase and connect to emulator (if configured).
     await initFirebaseForIntegrationTests();
 
-    // TODO: Launch the app: import your app's main and call `app.main()`.
-
+    // Note: this test pumps `MyBookingsScreen` directly for faster E2E runs.
+    // To run a full-app E2E instead, import your `main.dart` and call `main()` at the top of the test,
+    // then drive interactions through the real app entrypoint.
     // If the emulator isn't configured, skip the heavy E2E steps.
     final emulator = const String.fromEnvironment('FIRESTORE_EMULATOR_HOST', defaultValue: '');
     if (emulator.isEmpty) {
