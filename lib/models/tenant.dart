@@ -28,9 +28,10 @@ class Invoice {
   final String tenantId;
   final DateTime deadline;
   final int? amount;
-  final String? status;
+  String? status;
+  bool paid;
 
-  Invoice({required this.id, required this.tenantId, required this.deadline, this.amount, this.status});
+  Invoice({required this.id, required this.tenantId, required this.deadline, this.amount, this.status, this.paid = false});
 
   factory Invoice.fromMap(String id, Map<String, dynamic> data) => Invoice(
         id: id,
@@ -38,6 +39,7 @@ class Invoice {
         deadline: (data['payment_deadline'] as DateTime?) ?? DateTime.now(),
         amount: data['amount'] as int?,
         status: data['status'] as String?,
+        paid: data['paid'] as bool? ?? false,
       );
 
   Map<String, dynamic> toJson() => {
@@ -45,5 +47,6 @@ class Invoice {
         'payment_deadline': deadline.toIso8601String(),
         'amount': amount,
         'status': status,
+        'paid': paid,
       };
 }
