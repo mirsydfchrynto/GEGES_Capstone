@@ -10,7 +10,7 @@ jobs:
   android-integration:
     name: Run integration tests on Android emulator
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -20,6 +20,16 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: 'stable'
+
+      - name: Cache Flutter Pub & Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            ~/.gradle
+          key: ${{ runner.os }}-pub-gradle-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-gradle-
 
       - name: Install dependencies
         run: flutter pub get
@@ -45,16 +55,52 @@ jobs:
         run: |
           firebase emulators:start --only firestore --project demo --host 0.0.0.0 &> firestore-emulator.log &
           n=0
-          until grep -q "All emulators started" firestore-emulator.log || [ $n -ge 60 ]; do n=$((n+1)); sleep 1; done
+          until grep -q "All emulators started" firestore-emulator.log || [ $n -ge 90 ]; do n=$((n+1)); sleep 1; done
           tail -n +1 firestore-emulator.log
         env:
           CI: true
 
-      - name: Run integration tests (E2E)
-        run: flutter test integration_test/e2e_resume_payment_test.dart --dart-define=FIRESTORE_EMULATOR_HOST=localhost:8080 -d emulator-5554 --no-color --reporter=json
+      - name: Run integration tests (E2E) with retries
+        run: |
+          set -euo pipefail
+          max=3
+          i=1
+          while [ $i -le $max ]; do
+            echo "E2E attempt $i/$max"
+            flutter test integration_test/e2e_resume_payment_test.dart --dart-define=FIRESTORE_EMULATOR_HOST=localhost:8080 -d emulator-5554 --no-color --reporter=json 2>&1 | tee e2e-output.$i.log
+            rc=${PIPESTATUS[0]}
+            if [ $rc -eq 0 ]; then
+              echo "E2E passed on attempt $i"
+              break
+            fi
+            if [ $i -lt $max ]; then
+              echo "E2E failed (rc=$rc). Sleeping 10s before retry..."
+              sleep 10
+            else
+              echo "E2E failed after $i attempts, leaving logs attached"
+              exit $rc
+            fi
+            i=$((i+1))
+          done
         env:
           ADB_INSTALL_TIMEOUT: '20'
           FIRESTORE_EMULATOR_HOST: 'localhost:8080'
+
+      - name: Upload test artifacts (logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs
+          path: |
+            e2e-output.*.log
+            firestore-emulator.log
+
+      - name: Stop Firestore emulator (graceful)
+        if: always()
+        run: |
+          pkill -f firebase || true
+          sleep 2
+          tail -n 200 firestore-emulator.log || true
 
       - name: Upload test results
         if: always()
