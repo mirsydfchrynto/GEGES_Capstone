@@ -1,10 +1,28 @@
 name: Integration E2E Tests
 
+concurrency:
+  group: "integration-e2e-${{ github.ref }}"
+  cancel-in-progress: true
+
 on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'integration_test/**'
+      - 'lib/**'
+      - 'backend/functions/**'
+      - 'pubspec.yaml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'integration_test/**'
+      - 'lib/**'
+      - 'backend/functions/**'
+      - 'pubspec.yaml'
   workflow_dispatch: {}
 
-# NOTE: Integration E2E runs are manual only to avoid flakiness on PRs. Unit & widget tests run automatically via the `Flutter tests` workflow.
-
+# Integration E2E runs automatically for PRs and pushes that change integration-related files.
+# We limit triggers by path to reduce unnecessary runs and reduce flakiness risk.
 jobs:
   android-integration:
     name: Run integration tests on Android emulator
