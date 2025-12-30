@@ -79,6 +79,18 @@ class PaymentScreen extends StatefulWidget {
   /// Optional: inject a test-only user id to avoid depending on FirebaseAuth in widget tests
   final String? testUserId;
 
+  /// Optional: in tenant registration mode, PaymentScreen may receive a `tenantId` and
+  /// handlers that delegate submission/cancel operations to the caller (keeps UI hermetic).
+  final String? tenantId;
+
+  /// Handler for tenant registration payment submission. Expected to accept named args
+  /// `{ required tenantId, required base64, required userId }` and return a Future.
+  final Future<void> Function({required String tenantId, required String base64, required String userId})? tenantPaymentHandler;
+
+  /// Handler for tenant cancel operation. Expected to accept named args
+  /// `{ required tenantId, required userId, String? reason }` and return a Future.
+  final Future<void> Function({required String tenantId, required String userId, String? reason})? cancelTenantHandler;
+
   /// Optional: in tests we can bypass file picking and call this directly to simulate
   /// proof submission. It should be a no-arg handler that triggers the same submission flow.
   final Future<void> Function()? submitProofHandler;
