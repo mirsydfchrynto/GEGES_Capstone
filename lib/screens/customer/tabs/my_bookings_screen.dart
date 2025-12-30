@@ -7,6 +7,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:geges_smartbarber/screens/tenant_registration_screen.dart';
+import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
+import 'package:geges_smartbarber/services/tenant_service.dart';
+import 'package:geges_smartbarber/models/tenant.dart';
 import '../booking_detail_screen.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
@@ -15,7 +19,20 @@ const Color kSurface = Colors.black;
 const Color kTextGrey = Colors.white70;
 
 class MyBookingsScreen extends StatefulWidget {
-  const MyBookingsScreen({super.key});
+  final FirebaseFirestore? firestore;
+  final QueueService? queueService;
+  final String? currentUserId;
+  final PaymentService? paymentService;
+  final NotificationService? notificationService;
+
+  const MyBookingsScreen({
+    super.key,
+    this.firestore,
+    this.queueService,
+    this.currentUserId,
+    this.paymentService,
+    this.notificationService,
+  });
 
   @override
   State<MyBookingsScreen> createState() => _MyBookingsScreenState();
@@ -24,12 +41,19 @@ class MyBookingsScreen extends StatefulWidget {
 class _MyBookingsScreenState extends State<MyBookingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final QueueService _queueService = QueueService();
-  final String? _customerId = FirebaseAuth.instance.currentUser?.uid;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Injected services for easier testing
+  QueueService get _queueService => widget.queueService ?? QueueService();
+  String? get _customerId => widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid;
+  FirebaseFirestore get _firestore => widget.firestore ?? FirebaseFirestore.instance;
+
   final Map<String, String> _nameCache = {};
   final GlobalKey<RefreshIndicatorState> _refreshKey =
       GlobalKey<RefreshIndicatorState>();
+
+  PaymentService get _paymentService => widget.paymentService ?? DummyPaymentService();
+  NotificationService get _notificationService => widget.notificationService ?? DummyNotificationService();
+  TenantServiceContract get _tenantServiceForTenants => TenantService(firestore: _firestore);
 
   @override
   void initState() {
@@ -40,11 +64,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     if (_customerId != null) {
       // best-effort: cancel any expired requests (waiting) and expired awaiting payments
       _queueService
-          .cancelExpiredWaitingQueuesForCustomer(_customerId)
+          .cancelExpiredWaitingQueuesForCustomer(_customerId!)
           .then((c) => debugPrint('cancelled waiting: $c'))
           .catchError((e) => debugPrint('cancelWaiting err: $e'));
       _queueService
-          .cancelExpiredAwaitingPaymentQueuesForCustomer(_customerId)
+          .cancelExpiredAwaitingPaymentQueuesForCustomer(_customerId!)
           .then((c) => debugPrint('cancelled awaiting: $c'))
           .catchError((e) => debugPrint('cancelAwaiting err: $e'));
     }
@@ -55,9 +79,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     if (_customerId != null) {
       try {
         await Future.wait([
-          _queueService.cancelExpiredWaitingQueuesForCustomer(_customerId),
+          _queueService.cancelExpiredWaitingQueuesForCustomer(_customerId!),
           _queueService.cancelExpiredAwaitingPaymentQueuesForCustomer(
-            _customerId,
+            _customerId!,
           ),
         ]);
       } catch (e) {
@@ -310,20 +334,21 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     }
 
     final Stream<List<Queue>> queueStream = _queueService
-        .streamQueuesForCustomer(_customerId, statusFilter: statuses);
+        .streamQueuesForCustomer(_customerId!, statusFilter: statuses);
 
-    // If this is the history tab (served), include tenant registration history above booking history
+    // If this is the history tab (served) or the awaiting_payment tab, include tenant registration history above booking history
     Widget tenantHistorySection = const SizedBox.shrink();
-    if (statuses.contains('served')) {
+    if (statuses.contains('served') || statuses.contains('awaiting_payment')) {
       tenantHistorySection = StreamBuilder<QuerySnapshot>(
         stream: _firestore
             .collection('tenants')
-            .where('owner_uid', isEqualTo: _customerId)
+            .where('owner_uid', isEqualTo: _customerId!)
             .orderBy('created_at', descending: true)
             .snapshots(),
         builder: (context, snap) {
-          if (!snap.hasData || snap.data!.docs.isEmpty)
+          if (!snap.hasData || snap.data!.docs.isEmpty) {
             return const SizedBox.shrink();
+          }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -342,8 +367,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: snap.data!.docs.length,
                 itemBuilder: (c, i) {
-                  final d = snap.data!.docs[i].data() as Map<String, dynamic>;
+                  final docSnap = snap.data!.docs[i];
+                  final d = docSnap.data() as Map<String, dynamic>;
                   final created = (d['created_at'] as Timestamp?)?.toDate();
+                  final status = d['status'] as String? ?? '-';
                   return ListTile(
                     tileColor: kDarkGrey,
                     title: Text(
@@ -351,17 +378,84 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                       style: const TextStyle(color: Colors.white),
                     ),
                     subtitle: Text(
-                      'Status: ${d['status'] ?? '-'}',
+                      'Status: $status',
                       style: const TextStyle(color: kTextGrey),
                     ),
-                    trailing: created != null
-                        ? Text(
-                            '${created.day}/${created.month}/${created.year}',
-                            style: const TextStyle(color: kTextGrey),
-                          )
-                        : null,
+                    trailing: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (created != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4.0),
+                            child: Text(
+                              '${created.day}/${created.month}/${created.year}',
+                              style: const TextStyle(color: kTextGrey, fontSize: 12),
+                            ),
+                          ),
+                        if (status == 'awaiting_payment' && d['invoice_id'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: SizedBox(
+                              height: 28,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  textStyle: const TextStyle(fontSize: 12),
+                                ),
+                                onPressed: () async {
+                                  final invId = d['invoice_id'] as String;
+                                  final deadlineTs = d['payment_deadline'] as Timestamp?;
+                                  final invoice = Invoice(id: invId, tenantId: docSnap.id, deadline: deadlineTs?.toDate() ?? DateTime.now());
+                                  final paid = await showDialog<bool>(context: context, builder: (_) => PaymentDialog(invoice: invoice, paymentService: _paymentService));
+                                  if (paid == true) {
+                                    if (!mounted) {
+                                      // widget unmounted — still mark paid and notify, but avoid using context
+                                      await _tenantServiceForTenants.markPaid(docSnap.id, invoice.id);
+                                      _notificationService.notify('Pendaftaran berhasil', 'Tunggu konfirmasi maksimal 1 minggu');
+                                      return;
+                                    }
+                                    await _tenantServiceForTenants.markPaid(docSnap.id, invoice.id);
+                                    _notificationService.notify('Pendaftaran berhasil', 'Tunggu konfirmasi maksimal 1 minggu');
+                                    // ignore: use_build_context_synchronously
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran berhasil — tunggu konfirmasi (maks 1 minggu)')));
+                                  }
+                                },
+                                child: const Text('Lanjutkan Pembayaran'),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                     onTap: () {
-                      // open tenant detail or payment page (not implemented here)
+                      // Navigate to PaymentScreen to resume registration payment
+                      final deadlineTs = d['payment_deadline'] as Timestamp?;
+                      final amount = (d['invoice'] != null && d['invoice']['amount'] != null)
+                          ? (d['invoice']['amount'] as int)
+                          : (d['registration_fee'] as int?) ?? 0;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PaymentScreen(
+                            orderId: docSnap.id,
+                            totalPrice: amount,
+                            tenantId: docSnap.id,
+                            tenantPaymentHandler: ({required String tenantId, required String base64, required String userId}) async {
+                              await _tenantServiceForTenants.submitRegistrationPayment(
+                                tenantId: tenantId,
+                                proofBase64: base64,
+                                userId: userId,
+                              );
+                            },
+                            cancelTenantHandler: ({required String tenantId, required String userId, String? reason}) async {
+                              await _tenantServiceForTenants.cancelRegistrationByOwner(tenantId: tenantId, userId: userId, reason: reason);
+                            },
+                            disableTimer: false,
+                            paymentDeadline: deadlineTs?.toDate(),
+                            testUserId: _customerId,
+                          ),
+                        ),
+                      );
                     },
                   );
                 },
@@ -391,28 +485,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         }
 
         final filteredList = snapshot.data ?? [];
-        if (filteredList.isEmpty) {
-          // choose an empty state message based on first status
-          final first = statuses.isNotEmpty ? statuses.first : '';
-          final isCompleted =
-              (first == 'served' ||
-              first == 'cancelled' ||
-              first == 'refund_pending');
-          return _buildEmptyState(isCompleted);
-        }
+        // choose an empty state message based on first status
+        final first = statuses.isNotEmpty ? statuses.first : '';
+        final isCompleted =
+            (first == 'served' || first == 'cancelled' || first == 'refund_pending');
 
-        return Column(
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
             tenantHistorySection,
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: filteredList.length,
-                itemBuilder: (context, index) =>
-                    _buildBookingCard(context, filteredList[index]),
-                physics: const AlwaysScrollableScrollPhysics(),
-              ),
-            ),
+            if (filteredList.isEmpty) _buildEmptyState(isCompleted) else ...filteredList.map((q) => _buildBookingCard(context, q)),
           ],
         );
       },

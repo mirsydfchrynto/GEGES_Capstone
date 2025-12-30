@@ -3,8 +3,19 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:geges_smartbarber/models/tenant.dart';
 
-class TenantService {
+
+
+abstract class TenantServiceContract {
+  Future<Tenant> createTenant({required String businessName, required String documentBase64, required String packageId});
+  Future<void> markPaid(String tenantId, String invoiceId);
+  Future<void> attachInvoice(String tenantId, {required String invoiceId, required DateTime deadline});
+  Future<void> submitRegistrationPayment({required String tenantId, String? proofUrl, String? proofBase64, required String userId});
+  Future<void> cancelRegistrationByOwner({required String tenantId, required String userId, String? reason});
+}
+
+class TenantService implements TenantServiceContract {
   final FirebaseFirestore _fs;
   final FirebaseStorage? _storage; // ignore: unused_field
   final dynamic
@@ -101,6 +112,7 @@ class TenantService {
 
   /// Submit registration payment proof (manual proof upload).
   /// Accepts either a 'proofUrl' (legacy/storage) OR a 'proofBase64' payload (preferred - stores in tenant doc).
+  @override
   Future<void> submitRegistrationPayment({
     required String tenantId,
     String? proofUrl,
@@ -139,6 +151,27 @@ class TenantService {
     } catch (_) {
       // best-effort: do not fail the main operation if history append fails
     }
+  }
+
+  /// Owner cancels registration/payment
+  @override
+  Future<void> cancelRegistrationByOwner({
+    required String tenantId,
+    required String userId,
+    String? reason,
+  }) async {
+    await _fs.collection('tenants').doc(tenantId).update({
+      'invoice.status': 'cancelled_by_owner',
+      'invoice.cancelled_by': userId,
+      'invoice.cancel_reason': reason ?? 'Dibatalkan oleh pemilik',
+      'history': FieldValue.arrayUnion([
+        {
+          'type': 'registration_cancelled_by_owner',
+          'note': reason ?? 'Dibatalkan oleh pemilik',
+          'created_at': FieldValue.serverTimestamp(),
+        }
+      ]),
+    });
   }
 
   /// Admin verifies tenant (approve or reject)
@@ -208,4 +241,97 @@ class TenantService {
       // best-effort
     }
   }
+
+  /// Cancel tenant invoices whose payment_deadline has passed and are still pending proof.
+  /// Returns the number of invoices cancelled.
+  Future<int> cancelExpiredInvoices() async {
+    final now = Timestamp.fromDate(DateTime.now());
+    final coll = _fs.collection('tenants');
+
+    int updated = 0;
+
+    // Query for tenants with invoice.payment_deadline < now
+    try {
+      final q = await coll.where('invoice.payment_deadline', isLessThan: now).get();
+      for (final doc in q.docs) {
+        final data = doc.data();
+        final invoice = data['invoice'] as Map<String, dynamic>?;
+        if (invoice == null) continue;
+        final status = (invoice['status'] ?? '').toString();
+        if (status == 'waiting_proof' || status == 'waiting' || status == 'payment_submitted') {
+          await doc.reference.update({
+            'invoice.status': 'payment_timeout_cancelled',
+            'history': FieldValue.arrayUnion([
+              {
+                'type': 'registration_payment_timeout',
+                'note': 'Pendaftaran dibatalkan karena waktu pembayaran habis',
+                'created_at': FieldValue.serverTimestamp(),
+              }
+            ]),
+          });
+          updated += 1;
+        }
+      }
+    } catch (e) {
+      // best-effort: if query fails due to index requirements, fallback to scanning all tenants (small-scale assumption)
+      final all = await coll.get();
+      for (final doc in all.docs) {
+        final data = doc.data();
+        final invoice = data['invoice'] as Map<String, dynamic>?;
+        if (invoice == null) continue;
+        final deadline = invoice['payment_deadline'] as Timestamp?;
+        if (deadline != null && deadline.compareTo(now) < 0) {
+          final status = (invoice['status'] ?? '').toString();
+          if (status == 'waiting_proof' || status == 'waiting' || status == 'payment_submitted') {
+            await doc.reference.update({
+              'invoice.status': 'payment_timeout_cancelled',
+              'history': FieldValue.arrayUnion([
+                {
+                  'type': 'registration_payment_timeout',
+                  'note': 'Pendaftaran dibatalkan karena waktu pembayaran habis',
+                  'created_at': FieldValue.serverTimestamp(),
+                }
+              ]),
+            });
+            updated += 1;
+          }
+        }
+      }
+    }
+
+    return updated;
+  }
+
+  /// Convenience: create a tenant and return a lightweight Tenant model
+  @override
+  Future<Tenant> createTenant({required String businessName, required String documentBase64, required String packageId}) async {
+    final id = await createTenantApplication({
+      'business_name': businessName,
+      'document_base64': documentBase64,
+      'package_id': packageId,
+    });
+    return Tenant(id: id, businessName: businessName, documentBase64: documentBase64, packageId: packageId);
+  }
+
+  /// Attach an invoice (id + deadline) to tenant and set status to awaiting_payment
+  @override
+  Future<void> attachInvoice(String tenantId, {required String invoiceId, required DateTime deadline}) async {
+    await _fs.collection('tenants').doc(tenantId).update({
+      'invoice_id': invoiceId,
+      'payment_deadline': Timestamp.fromDate(deadline),
+      'status': 'awaiting_payment',
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Mark tenant invoice as paid (owner/view will call this after successful payment)
+  @override
+  Future<void> markPaid(String tenantId, String invoiceId) async {
+    await _fs.collection('tenants').doc(tenantId).update({
+      'status': 'awaiting_confirmation',
+      'invoice_id': invoiceId,
+      'paid_at': FieldValue.serverTimestamp(),
+    });
+  }
 }
+
