@@ -28,5 +28,6 @@ Future<void> seedAwaitingPaymentTenant({
     },
     'owner_uid': 'test-owner',
     'owner_email': 'owner@example.test',
+    'created_at': Timestamp.fromDate(DateTime.now()),
   });
 }
