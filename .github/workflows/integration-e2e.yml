@@ -38,10 +38,23 @@ jobs:
       - name: Wait for emulator
         run: flutter devices
 
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Start Firestore emulator
+        run: |
+          firebase emulators:start --only firestore --project demo --host 0.0.0.0 &> firestore-emulator.log &
+          n=0
+          until grep -q "All emulators started" firestore-emulator.log || [ $n -ge 60 ]; do n=$((n+1)); sleep 1; done
+          tail -n +1 firestore-emulator.log
+        env:
+          CI: true
+
       - name: Run integration tests (E2E)
-        run: flutter test integration_test/payment_full_ui_e2e_test.dart -d emulator-5554 --no-color --reporter=json
+        run: flutter test integration_test/e2e_resume_payment_test.dart --dart-define=FIRESTORE_EMULATOR_HOST=localhost:8080 -d emulator-5554 --no-color --reporter=json
         env:
           ADB_INSTALL_TIMEOUT: '20'
+          FIRESTORE_EMULATOR_HOST: 'localhost:8080'
 
       - name: Upload test results
         if: always()
