@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+- Centralize tenant Firestore operations into `lib/services/tenant_service.dart`.
+- Add `lib/models/tenant.dart` for shared models.
+- Implement scheduled Cloud Function to auto-cancel expired tenant invoices (`backend/functions/src`).
+- Add/adjusted widget/unit tests; full Flutter test suite passes locally.
+- Add integration E2E test draft for closed-app resume/payment flow (see `integration_test/e2e_resume_payment_test.dart`).
+
+## Notes
+- Deploy `backend/functions` with Node 18 runtime; ensure Firebase project selected and `firebase-tools` configured.
+- Monitor function logs after deploy and create an alert for >X cancellations per hour if desired.
+# Changelog
+
 ## Unreleased
 
 ### Added
