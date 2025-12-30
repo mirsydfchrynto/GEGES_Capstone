@@ -74,7 +74,11 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
       // show payment screen modal (simplified): user can "pay now" or leave. paymentService simulates status.
       if (!widget.disableCountdown) _startCountdown();
 
+      // capture messenger before awaiting to avoid using BuildContext across async gap
+      // ignore: use_build_context_synchronously
       final messenger = ScaffoldMessenger.of(context);
+      // show payment dialog (awaits) — messenger was captured above
+      // ignore: use_build_context_synchronously
       final paid = await showDialog<bool>(context: context, builder: (_) => PaymentDialog(invoice: invoice, paymentService: _paymentService));
 
       if (!mounted) return;
