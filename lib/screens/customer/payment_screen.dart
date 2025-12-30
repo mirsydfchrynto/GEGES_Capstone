@@ -57,15 +57,6 @@ class PaymentScreen extends StatefulWidget {
   final String orderId; // For booking flow: order id
   final int totalPrice;
 
-  // Tenant payment mode: when tenantId is provided, PaymentScreen will use
-  // the tenant payment handler instead of queue-based submission.
-  final String? tenantId;
-  final Future<void> Function({
-    required String tenantId,
-    required String base64,
-    required String userId,
-  })?
-  tenantPaymentHandler;
 
   final String? barbershopId;
   final String? barbermanId;
@@ -101,6 +92,7 @@ class PaymentScreen extends StatefulWidget {
     required this.totalPrice,
     this.tenantId,
     this.tenantPaymentHandler,
+    this.cancelTenantHandler,
     this.barbershopId,
     this.barbermanId,
     this.bookingTime,
