@@ -339,9 +339,9 @@ class TenantService implements TenantServiceContract {
   }
 
   /// Returns an active (in-progress) tenant registration for the given ownerUid
+  @override
   Future<Tenant?> getActiveRegistrationForOwner(String ownerUid) async {
     final coll = _fs.collection('tenants');
-    final now = Timestamp.fromDate(DateTime.now());
     final inProgressStatuses = ['draft', 'awaiting_payment', 'awaiting_confirmation', 'payment_submitted', 'waiting_proof'];
 
     try {

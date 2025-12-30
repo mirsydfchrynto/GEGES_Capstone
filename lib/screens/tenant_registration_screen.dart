@@ -198,7 +198,7 @@ if (_activeInvoice == null) return '';
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(_activeTenant?.status == 'draft' ? 'Anda memiliki pendaftaran yang belum selesai' : 'Anda memiliki pendaftaran dalam proses', style: const TextStyle(color: Colors.amber)),
+                      Text(((_activeTenant?.status ?? '') == 'draft') ? 'Anda memiliki pendaftaran yang belum selesai' : 'Anda memiliki pendaftaran dalam proses', style: const TextStyle(color: Colors.amber)),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -210,13 +210,15 @@ if (_activeInvoice == null) return '';
                                 if (_activeTenant!.status == 'draft') {
                                   // keep form prefilled; scroll to top so user can edit
                                   // no-op here — form already prefilled
+                                  if (!mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lanjutkan mengisi formulir pendaftaran')));
                                 } else {
                                   // open payment screen for tenant
+                                  if (!mounted) return;
                                   Navigator.push(context, MaterialPageRoute(builder: (_) => PaymentScreen(orderId: _activeTenant!.id, totalPrice: 0, tenantId: _activeTenant!.id)));
                                 }
                               },
-                              child: Text(_activeTenant?.status == 'draft' ? 'Lanjutkan Pendaftaran' : 'Lanjutkan Pembayaran'),
+                              child: Text(((_activeTenant?.status ?? '') == 'draft') ? 'Lanjutkan Pendaftaran' : 'Lanjutkan Pembayaran'),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -232,6 +234,7 @@ if (_activeInvoice == null) return '';
                                 userId = 'test-owner';
                               }
                               await _tenantService.cancelRegistrationByOwner(tenantId: _activeTenant!.id, userId: userId);
+                              if (!mounted) return;
                               setState(() { _hasActiveRegistration = false; _activeTenant = null; });
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pendaftaran dibatalkan')));
                             },
