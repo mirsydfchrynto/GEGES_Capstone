@@ -4,6 +4,7 @@ Summary
 - Centralized tenant Firestore operations into `lib/services/tenant_service.dart`.
 - Added `lib/models/tenant.dart` for shared models.
 - Implemented a scheduled Cloud Function in `backend/functions/src` to auto-cancel expired tenant invoices and accompanying unit test.
+- Added a callable Cloud Function `createTenantGuard` in `backend/functions/src/createTenantGuard.ts` that atomically checks for existing in-progress registrations for the authenticated user and creates a new tenant if none exists. Included unit test and documentation (`docs/SERVER_SIDE_GUARD.md`).
 - Added/updated widget and unit tests; full Flutter test suite passes locally.
 
 Files changed (high-level)
@@ -34,6 +35,7 @@ Next steps (recommended)
 - Draft PR branch and open PR with this description and links to key tests.
 - Add CHANGELOG entry and concise migration notes in `CHANGELOG.md`.
 - Implement E2E test for closed-app resume + server-side verify (integration harness/emulator).
+- Added GitHub Actions workflow `.github/workflows/integration-e2e.yml` to start the Firestore emulator and run `integration_test/e2e_resume_payment_test.dart` on Android emulator for PRs and pushes.
 
 Contact
 - If you want, I can create the PR branch and open the PR — confirm and I'll proceed to push and open it.
