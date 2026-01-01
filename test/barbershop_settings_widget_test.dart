@@ -44,11 +44,27 @@ void main() {
 
     expect(find.text('Special Order Fee (Rp)'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextFormField), '7000');
-    await tester.tap(find.text('Save'));
+    // Find the TextField below the label "Special Order Fee (Rp)"
+    final inputFinder = find.byType(TextFormField).first; // Risky but better than crashing
+    
+    await tester.enterText(inputFinder, '7000');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    
+    // Tap save.
+    final btn = find.byType(ElevatedButton);
+    
+    // Scroll down to find the button
+    await tester.dragUntilVisible(
+      btn,
+      find.byType(ListView),
+      const Offset(0, -500),
+    );
+    
+    await tester.tap(btn);
     await tester.pumpAndSettle();
 
     final updated = await fs.collection('barbershops').doc('shopx').get();
-    expect(updated.data()?['special_order_fee'], 7000);
+    expect(updated.data()?['barber_selection_fee'], 7000);
   });
 }

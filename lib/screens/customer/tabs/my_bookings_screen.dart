@@ -2,15 +2,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
-import 'package:geges_smartbarber/screens/tenant_registration_screen.dart';
-import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
-import 'package:geges_smartbarber/services/tenant_service.dart';
-import 'package:geges_smartbarber/models/tenant.dart';
+import 'package:geges_smartbarber/screens/customer/special_orders_screen.dart';
 import '../booking_detail_screen.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
@@ -22,16 +18,12 @@ class MyBookingsScreen extends StatefulWidget {
   final FirebaseFirestore? firestore;
   final QueueService? queueService;
   final String? currentUserId;
-  final PaymentService? paymentService;
-  final NotificationService? notificationService;
 
   const MyBookingsScreen({
     super.key,
     this.firestore,
     this.queueService,
     this.currentUserId,
-    this.paymentService,
-    this.notificationService,
   });
 
   @override
@@ -42,234 +34,30 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Injected services for easier testing
-  QueueService get _queueService => widget.queueService ?? QueueService();
-  String? get _customerId => widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid;
-  FirebaseFirestore get _firestore => widget.firestore ?? FirebaseFirestore.instance;
-
-  final Map<String, String> _nameCache = {};
-  final GlobalKey<RefreshIndicatorState> _refreshKey =
-      GlobalKey<RefreshIndicatorState>();
-
-  PaymentService get _paymentService => widget.paymentService ?? DummyPaymentService();
-  NotificationService get _notificationService => widget.notificationService ?? DummyNotificationService();
-  TenantServiceContract get _tenantServiceForTenants => TenantService(firestore: _firestore);
+  QueueService get _queueService =>
+      widget.queueService ?? QueueService(firestore: widget.firestore);
+  String? get _customerId =>
+      widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid;
+  FirebaseFirestore get _firestore =>
+      widget.firestore ?? FirebaseFirestore.instance;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
 
-    // On screen init, trigger cancel checks for expired waiting / awaiting_payment
-    if (_customerId != null) {
-      // best-effort: cancel any expired requests (waiting) and expired awaiting payments
-      _queueService
-          .cancelExpiredWaitingQueuesForCustomer(_customerId!)
-          .then((c) => debugPrint('cancelled waiting: $c'))
-          .catchError((e) => debugPrint('cancelWaiting err: $e'));
-      _queueService
-          .cancelExpiredAwaitingPaymentQueuesForCustomer(_customerId!)
-          .then((c) => debugPrint('cancelled awaiting: $c'))
-          .catchError((e) => debugPrint('cancelAwaiting err: $e'));
-    }
-  }
-
-  Future<void> _handleRefresh() async {
-    // Manual refresh: trigger expiry checks and rebuild stream
-    if (_customerId != null) {
-      try {
-        await Future.wait([
-          _queueService.cancelExpiredWaitingQueuesForCustomer(_customerId!),
-          _queueService.cancelExpiredAwaitingPaymentQueuesForCustomer(
-            _customerId!,
-          ),
-        ]);
-      } catch (e) {
-        debugPrint('Refresh error: $e');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_customerId != null) {
+        _queueService.cancelExpiredWaitingQueuesForCustomer(_customerId!);
+        _queueService.cancelExpiredAwaitingPaymentQueuesForCustomer(_customerId!);
       }
-    }
-    // StreamBuilder will rebuild automatically
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  Future<String> _getBarbershopName(String barbershopId) async {
-    if (_nameCache.containsKey('bs_$barbershopId')) {
-      return _nameCache['bs_$barbershopId']!;
-    }
-    try {
-      final doc = await _firestore
-          .collection('barbershops')
-          .doc(barbershopId)
-          .get();
-      final name = doc.data()?['name'] ?? 'Barbershop Dihapus';
-      _nameCache['bs_$barbershopId'] = name;
-      return name;
-    } catch (_) {
-      return 'Barbershop Dihapus';
-    }
-  }
-
-  Future<String> _getBarbermanName(String barbermanId) async {
-    if (_nameCache.containsKey('bm_$barbermanId')) {
-      return _nameCache['bm_$barbermanId']!;
-    }
-    try {
-      final doc = await _firestore
-          .collection('barbermen')
-          .doc(barbermanId)
-          .get();
-      final name = doc.data()?['name'] ?? 'Barberman Dihapus';
-      _nameCache['bm_$barbermanId'] = name;
-      return name;
-    } catch (_) {
-      return 'Barberman Dihapus';
-    }
-  }
-
-  Future<String> _getServiceNames(List<String> serviceIds) async {
-    if (serviceIds.isEmpty) return 'Layanan Tidak Tersedia';
-    try {
-      final docs = await Future.wait(
-        serviceIds.map((id) => _firestore.collection('services').doc(id).get()),
-      );
-      final names = docs
-          .where((doc) => doc.exists)
-          .map((doc) => doc.data()?['name'] as String? ?? 'Layanan')
-          .toList();
-      if (names.isEmpty) return 'Layanan Tidak Tersedia';
-      if (names.length == 1) return names[0];
-      return '${names[0]} (+${names.length - 1})';
-    } catch (_) {
-      return 'Layanan Tidak Tersedia';
-    }
-  }
-
-  Future<String> _getBarbershopImage(String barbershopId) async {
-    const String defaultImage =
-        'https://cdn-icons-png.flaticon.com/512/706/706830.png';
-    if (_nameCache.containsKey('img_$barbershopId')) {
-      return _nameCache['img_$barbershopId']!;
-    }
-    try {
-      final doc = await _firestore
-          .collection('barbershops')
-          .doc(barbershopId)
-          .get();
-      final image = doc.data()?['imageUrl'] ?? defaultImage;
-      _nameCache['img_$barbershopId'] = image;
-      return image;
-    } catch (_) {
-      return defaultImage;
-    }
-  }
-
-  String _formatStatusForQueue(Queue queue) {
-    // Prioritize definitive workflow statuses first
-    if (queue.status == QueueStatus.cancelled) return 'Dibatalkan';
-    if (queue.status == QueueStatus.served) return 'Selesai';
-    if (queue.status == QueueStatus.ongoing) return 'Sedang Dicukur';
-
-    // Handle awaiting_payment state (admin confirmed, waiting for payment)
-    if (queue.requestStatus == RequestStatus.approved &&
-        queue.paymentDeadline != null) {
-      // If belum upload bukti pembayaran
-      if (queue.paymentProofBase64 == null ||
-          queue.paymentProofBase64!.isEmpty) {
-        return 'Menunggu Pembayaran';
-      }
-      // Bukti telah dikirim; verifikasi akan dilakukan oleh admin. Masukkan status/riwayat di History.
-      if (queue.paymentProofBase64 != null &&
-          queue.paymentProofBase64!.isNotEmpty &&
-          (queue.verifiedBy == null || queue.verifiedBy!.isEmpty)) {
-        return 'Pembayaran Dikirim';
-      }
-      // Sudah diverifikasi admin
-      if (queue.verifiedBy != null && queue.verifiedBy!.isNotEmpty) {
-        return 'Pembayaran Terverifikasi';
-      }
-    }
-
-    // Handle booked state (legacy)
-    if (queue.status == QueueStatus.booked) {
-      if (queue.verifiedBy != null && queue.verifiedBy!.isNotEmpty) {
-        return 'Pembayaran Terverifikasi';
-      }
-      if (queue.paymentProofBase64 != null &&
-          queue.paymentProofBase64!.isNotEmpty) {
-        return 'Pembayaran Dikirim';
-      }
-      return 'Booked';
-    }
-
-    // Default for waiting / other states
-    if (queue.status == QueueStatus.waiting) return 'Menunggu Konfirmasi';
-    return queue.status.name;
-  }
-
-  bool _isAwaitingPaymentForQueue(Queue q) {
-    return q.requestStatus == RequestStatus.approved &&
-        q.paymentDeadline != null &&
-        (q.paymentProofBase64 == null || q.paymentProofBase64!.isEmpty);
-  }
-
-  Color _getColorForQueue(Queue q) {
-    // Verified payments -> green
-    if (q.verifiedBy != null && q.verifiedBy!.isNotEmpty) return Colors.green;
-    // Proof uploaded and awaiting admin -> amber
-    if (q.requestStatus == RequestStatus.approved &&
-        q.paymentProofBase64 != null &&
-        q.paymentProofBase64!.isNotEmpty) {
-      return Colors.amber;
-    }
-    // Otherwise rely on status color
-    return _getStatusColor(q.status);
-  }
-
-  String _formatRemaining(Timestamp? ts) {
-    if (ts == null) return '';
-    final rem = ts.toDate().difference(DateTime.now());
-    if (rem.inSeconds <= 0) return '00:00:00';
-    final h = rem.inHours;
-    final m = rem.inMinutes.remainder(60);
-    final s = rem.inSeconds.remainder(60);
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${two(h)}:${two(m)}:${two(s)}';
-  }
-
-  Color _getStatusColor(QueueStatus status) {
-    switch (status) {
-      case QueueStatus.waiting:
-        return Colors.orange;
-      case QueueStatus.booked:
-        return kBrownAccent;
-      case QueueStatus.ongoing:
-        return Colors.blue;
-      case QueueStatus.served:
-        return Colors.green;
-      case QueueStatus.cancelled:
-        return Colors.red;
-    }
-  }
-
-  Future<Map<String, dynamic>> _fetchQueueDetails(Queue queue) async {
-    final results = await Future.wait([
-      _getBarbershopName(queue.barbershopId),
-      _getBarbermanName(queue.barbermanId),
-      _getServiceNames(queue.serviceIds ?? []),
-      _getBarbershopImage(queue.barbershopId),
-    ]);
-
-    return {
-      'barbershopName': results[0],
-      'barbermanName': results[1],
-      'serviceName': results[2],
-      'image': results[3],
-    };
   }
 
   @override
@@ -280,443 +68,166 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         backgroundColor: kSurface,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'My Bookings',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
-        ),
+        title: const Text('My Orders', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => SpecialOrdersScreen(firestore: _firestore, currentUserId: _customerId)));
+            },
+            icon: const Icon(Icons.stars, color: kBrownAccent),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
           indicatorColor: kBrownAccent,
           labelColor: kBrownAccent,
           unselectedLabelColor: kTextGrey,
-          labelStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           tabs: const [
-            Tab(text: 'Menunggu Konfirmasi'),
-            Tab(text: 'Menunggu Pembayaran'),
-            Tab(text: 'Pembayaran Terverifikasi'),
-            Tab(text: 'Sedang Dicukur'),
-            Tab(text: 'Riwayat'),
+            Tab(text: 'Belum Bayar'), 
+            Tab(text: 'Terjadwal'),   
+            Tab(text: 'Sedang Proses'),
+            Tab(text: 'Selesai'),
             Tab(text: 'Dibatalkan'),
           ],
         ),
       ),
-      body: RefreshIndicator(
-        key: _refreshKey,
-        onRefresh: _handleRefresh,
-        color: kBrownAccent,
-        backgroundColor: kDarkGrey,
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildBookingListWithStatuses(statuses: ['waiting']),
-            _buildBookingListWithStatuses(statuses: ['awaiting_payment']),
-            _buildBookingListWithStatuses(statuses: ['booked']),
-            _buildBookingListWithStatuses(statuses: ['ongoing']),
-            _buildBookingListWithStatuses(
-              statuses: ['served', 'refund_pending'],
-            ),
-            _buildBookingListWithStatuses(statuses: ['cancelled']),
-          ],
-        ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // 1. Belum Bayar (Termasuk yang Menunggu Verifikasi)
+          _BookingTabContent(
+            statuses: const ['awaiting_payment', 'waiting'],
+            filterPaid: null, // Show all (unpaid & waiting verification)
+            services: _ServiceBundle(firestore: _firestore, queueService: _queueService),
+            customerId: _customerId,
+          ),
+          // 2. Terjadwal (Sudah Diverifikasi / Booked)
+          _BookingTabContent(
+            statuses: const ['booked', 'cancellationRequested', 'cancellation_requested'],
+            filterPaid: null, 
+            services: _ServiceBundle(firestore: _firestore, queueService: _queueService),
+            customerId: _customerId,
+          ),
+          _BookingTabContent(statuses: const ['ongoing'], services: _ServiceBundle(firestore: _firestore, queueService: _queueService), customerId: _customerId),
+          _BookingTabContent(statuses: const ['served'], services: _ServiceBundle(firestore: _firestore, queueService: _queueService), customerId: _customerId),
+          _BookingTabContent(statuses: const ['cancelled', 'refund_completed'], services: _ServiceBundle(firestore: _firestore, queueService: _queueService), customerId: _customerId),
+        ],
       ),
     );
   }
+}
 
-  Widget _buildBookingListWithStatuses({required List<String> statuses}) {
-    if (_customerId == null) {
-      return const Center(
-        child: Text('Anda harus login', style: TextStyle(color: kTextGrey)),
-      );
-    }
+class _ServiceBundle {
+  final FirebaseFirestore firestore;
+  final QueueService queueService;
+  _ServiceBundle({required this.firestore, required this.queueService});
+}
 
-    final Stream<List<Queue>> queueStream = _queueService
-        .streamQueuesForCustomer(_customerId!, statusFilter: statuses);
+class _BookingTabContent extends StatefulWidget {
+  final List<String> statuses;
+  final bool? filterPaid; // Not used anymore for splitting tabs, but kept for compatibility if needed
+  final _ServiceBundle services;
+  final String? customerId;
 
-    // If this is the history tab (served) or the awaiting_payment tab, include tenant registration history above booking history
-    Widget tenantHistorySection = const SizedBox.shrink();
-    if (statuses.contains('served') || statuses.contains('awaiting_payment')) {
-      tenantHistorySection = StreamBuilder<QuerySnapshot>(
-        stream: _firestore
-            .collection('tenants')
-            .where('owner_uid', isEqualTo: _customerId!)
-            .orderBy('created_at', descending: true)
-            .snapshots(),
-        builder: (context, snap) {
-          if (!snap.hasData || snap.data!.docs.isEmpty) {
-            return const SizedBox.shrink();
-          }
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Text(
-                  'Pendaftaran Tenant / Partner',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: snap.data!.docs.length,
-                itemBuilder: (c, i) {
-                  final docSnap = snap.data!.docs[i];
-                  final d = docSnap.data() as Map<String, dynamic>;
-                  final created = (d['created_at'] as Timestamp?)?.toDate();
-                  final status = d['status'] as String? ?? '-';
-                  return ListTile(
-                    tileColor: kDarkGrey,
-                    title: Text(
-                      d['business_name'] ?? 'Tenant',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    subtitle: Text(
-                      'Status: $status',
-                      style: const TextStyle(color: kTextGrey),
-                    ),
-                    trailing: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (created != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4.0),
-                            child: Text(
-                              '${created.day}/${created.month}/${created.year}',
-                              style: const TextStyle(color: kTextGrey, fontSize: 12),
-                            ),
-                          ),
-                        if (status == 'awaiting_payment' && d['invoice_id'] != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: SizedBox(
-                              height: 28,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  textStyle: const TextStyle(fontSize: 12),
-                                ),
-                                onPressed: () async {
-                                  final invId = d['invoice_id'] as String;
-                                  final deadlineTs = d['payment_deadline'] as Timestamp?;
-                                  final invoice = Invoice(id: invId, tenantId: docSnap.id, deadline: deadlineTs?.toDate() ?? DateTime.now());
-                                  final paid = await showDialog<bool>(context: context, builder: (_) => PaymentDialog(invoice: invoice, paymentService: _paymentService));
-                                  if (paid == true) {
-                                    if (!mounted) {
-                                      // widget unmounted — still mark paid and notify, but avoid using context
-                                      await _tenantServiceForTenants.markPaid(docSnap.id, invoice.id);
-                                      _notificationService.notify('Pendaftaran berhasil', 'Tunggu konfirmasi maksimal 1 minggu');
-                                      return;
-                                    }
-                                    await _tenantServiceForTenants.markPaid(docSnap.id, invoice.id);
-                                    _notificationService.notify('Pendaftaran berhasil', 'Tunggu konfirmasi maksimal 1 minggu');
-                                    // ignore: use_build_context_synchronously
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran berhasil — tunggu konfirmasi (maks 1 minggu)')));
-                                  }
-                                },
-                                child: const Text('Lanjutkan Pembayaran'),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    onTap: () {
-                      // Navigate to PaymentScreen to resume registration payment
-                      final deadlineTs = d['payment_deadline'] as Timestamp?;
-                      final amount = (d['invoice'] != null && d['invoice']['amount'] != null)
-                          ? (d['invoice']['amount'] as int)
-                          : (d['registration_fee'] as int?) ?? 0;
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PaymentScreen(
-                            orderId: docSnap.id,
-                            totalPrice: amount,
-                            tenantId: docSnap.id,
-                            tenantPaymentHandler: ({required String tenantId, required String base64, required String userId}) async {
-                              await _tenantServiceForTenants.submitRegistrationPayment(
-                                tenantId: tenantId,
-                                proofBase64: base64,
-                                userId: userId,
-                              );
-                            },
-                            cancelTenantHandler: ({required String tenantId, required String userId, String? reason}) async {
-                              await _tenantServiceForTenants.cancelRegistrationByOwner(tenantId: tenantId, userId: userId, reason: reason);
-                            },
-                            disableTimer: false,
-                            paymentDeadline: deadlineTs?.toDate(),
-                            testUserId: _customerId,
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
-          );
-        },
-      );
-    }
+  const _BookingTabContent({required this.statuses, this.filterPaid, required this.services, required this.customerId});
+
+  @override
+  State<_BookingTabContent> createState() => _BookingTabContentState();
+}
+
+class _BookingTabContentState extends State<_BookingTabContent> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    if (widget.customerId == null) return const Center(child: Text('Login required'));
 
     return StreamBuilder<List<Queue>>(
-      stream: queueStream,
+      stream: widget.services.queueService.streamQueuesForCustomer(widget.customerId!, statusFilter: widget.statuses),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: kBrownAccent),
-          );
-        }
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Error: ${snapshot.error}',
-              style: const TextStyle(color: Colors.red),
-            ),
-          );
-        }
+        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: kBrownAccent));
+        
+        var list = snapshot.data ?? [];
+        list.sort((a, b) => b.bookingTime.compareTo(a.bookingTime));
 
-        final filteredList = snapshot.data ?? [];
-        // choose an empty state message based on first status
-        final first = statuses.isNotEmpty ? statuses.first : '';
-        final isCompleted =
-            (first == 'served' || first == 'cancelled' || first == 'refund_pending');
+        if (list.isEmpty) return const Center(child: Text('Tidak ada pesanan', style: TextStyle(color: kTextGrey)));
 
-        return ListView(
+        return ListView.builder(
           padding: const EdgeInsets.all(16),
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            tenantHistorySection,
-            if (filteredList.isEmpty) _buildEmptyState(isCompleted) else ...filteredList.map((q) => _buildBookingCard(context, q)),
-          ],
+          itemCount: list.length,
+          itemBuilder: (context, index) => _BookingCard(queue: list[index], firestore: widget.services.firestore),
         );
       },
     );
   }
+}
 
-  Widget _buildEmptyState(bool isCompleted) {
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+class _BookingCard extends StatelessWidget {
+  final Queue queue;
+  final FirebaseFirestore firestore;
+  const _BookingCard({required this.queue, required this.firestore});
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasPaid = (queue.paymentProofBase64 != null && queue.paymentProofBase64!.isNotEmpty) ||
+                         (queue.paymentProofUrl != null && queue.paymentProofUrl!.isNotEmpty);
+    
+    // Status Logic
+    String label = 'BELUM BAYAR';
+    Color color = Colors.orange;
+
+    if (queue.status == QueueStatus.cancelled || queue.status.value == 'cancelled') {
+      label = 'DIBATALKAN'; color = Colors.red;
+    } else if (queue.status == QueueStatus.cancellationRequested || queue.status.value == 'cancellation_requested') {
+      label = 'PERMOHONAN PEMBATALAN'; color = Colors.orange;
+    } else if (queue.status == QueueStatus.served || queue.status.value == 'served') {
+      label = 'SELESAI'; color = Colors.green;
+    } else if (queue.status == QueueStatus.ongoing || queue.status.value == 'ongoing') {
+      label = 'SEDANG DIPROSES'; color = Colors.blue;
+    } else if (queue.status == QueueStatus.booked || queue.status.value == 'booked') {
+      label = 'TERJADWAL'; color = Colors.green;
+    } else if (hasPaid) {
+      // If none of the above (so likely 'waiting' or 'awaiting_payment') AND has paid:
+      label = 'MENUNGGU VERIFIKASI'; color = Colors.amber;
+    } else {
+      // Default fallback
+      label = 'BELUM BAYAR'; color = Colors.orange;
+    }
+
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BookingDetailScreen(queueId: queue.id))),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: kDarkGrey, 
+          borderRadius: BorderRadius.circular(12), 
+          border: Border.all(color: color.withValues(alpha: 0.3))
+        ),
+        child: Row(
           children: [
-            const SizedBox(height: 100),
-            Icon(
-              isCompleted ? Icons.history : Icons.calendar_month,
-              color: kTextGrey,
-              size: 60,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Booking #${queue.id.substring(0,5).toUpperCase()}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(DateFormat('dd MMM, HH:mm').format(queue.bookingTime.toDate()), style: const TextStyle(color: kTextGrey, fontSize: 12)),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              isCompleted
-                  ? 'Tidak ada riwayat booking.'
-                  : 'Anda tidak memiliki booking aktif.',
-              style: const TextStyle(color: kTextGrey, fontSize: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+              child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
       ),
     );
-  }
-
-  Widget _buildBookingCard(BuildContext context, Queue queue) {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _fetchQueueDetails(queue),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Container(
-            height: 200,
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: kDarkGrey,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-              child: CircularProgressIndicator(color: kBrownAccent),
-            ),
-          );
-        }
-
-        if (snapshot.hasError || !snapshot.hasData) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: kDarkGrey,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red),
-            ),
-            child: Text(
-              'Error loading: ${queue.id}',
-              style: const TextStyle(color: Colors.red),
-            ),
-          );
-        }
-
-        final details = snapshot.data!;
-        final statusColor = _getColorForQueue(queue);
-
-        return GestureDetector(
-          onTap: () => _showBookingDetail(context, queue, details),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: kDarkGrey,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Image header
-                Stack(
-                  children: [
-                    Container(
-                      height: 160,
-                      width: double.infinity,
-                      color: Colors.grey[900],
-                      child: CachedNetworkImage(
-                        imageUrl: details['image'] ?? '',
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => const Icon(
-                          Icons.storefront,
-                          color: kTextGrey,
-                          size: 60,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: statusColor,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              _formatStatusForQueue(queue),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (_isAwaitingPaymentForQueue(queue))
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
-                                child: Text(
-                                  _formatRemaining(queue.paymentDeadline),
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                // Content
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        details['barbershopName'] ?? 'Loading',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildDetailRow(
-                        'Layanan',
-                        details['serviceName'] ?? 'Loading',
-                      ),
-                      const SizedBox(height: 6),
-                      _buildDetailRow(
-                        'Barberman',
-                        details['barbermanName'] ?? 'Loading',
-                      ),
-                      const SizedBox(height: 6),
-                      _buildDetailRow(
-                        'Waktu',
-                        _formatTimestamp(queue.bookingTime),
-                      ),
-                      if (queue.totalPrice != null) ...[
-                        const SizedBox(height: 6),
-                        _buildDetailRow(
-                          'Total',
-                          NumberFormat.currency(
-                            locale: 'id_ID',
-                            symbol: 'Rp ',
-                            decimalDigits: 0,
-                          ).format(queue.totalPrice),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(color: kTextGrey, fontSize: 12)),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-            textAlign: TextAlign.right,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showBookingDetail(
-    BuildContext context,
-    Queue queue,
-    Map<String, dynamic> details,
-  ) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => BookingDetailScreen(queueId: queue.id)),
-    );
-  }
-
-  String _formatTimestamp(Timestamp ts) {
-    return DateFormat('EEE, d MMM HH:mm').format(ts.toDate());
   }
 }

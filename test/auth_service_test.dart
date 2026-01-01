@@ -15,7 +15,7 @@ import 'package:geges_smartbarber/services/auth_service.dart';
   DocumentReference,
   DocumentSnapshot,
 ])
-import 'auth_service_test.mocks.dart';
+import 'auth_service_mocks.dart';
 
 void main() {
   late AuthService authService;

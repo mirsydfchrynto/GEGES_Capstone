@@ -1,18 +1,129 @@
 // lib/services/queue_service.dart
 import 'dart:async';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 
 import 'queue_service_contract.dart';
 
 class QueueService implements QueueServiceContract {
   final FirebaseFirestore _firestore;
+  final FirebaseAuth _auth;
   final Map<String, int> _serviceDurationCache = {};
 
-  QueueService({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  QueueService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _auth = auth ?? FirebaseAuth.instance;
+
+  // -----------------------
+  // 🧠 FAIR ASSIGNMENT ALGORITHM
+  // -----------------------
+
+  /// Mencari barberman terbaik secara otomatis berdasarkan:
+  /// 1. Ketersediaan (tidak libur & tidak ada booking bentrok)
+  /// 2. Keadilan (prioritas barber dengan jumlah potong bulanan paling sedikit)
+  Future<String?> getFairAvailableBarberman({
+    required String barbershopId,
+    required DateTime bookingTime,
+    required List<String> serviceIds,
+  }) async {
+    try {
+      // 1. Ambil semua hairstylist AKTIF di barbershop tersebut
+      final barbersDocs = await _firestore
+          .collection('barbermen')
+          .where('barbershop_id', isEqualTo: barbershopId)
+          .where('isActive', isEqualTo: true)
+          .get();
+
+      if (barbersDocs.docs.isEmpty) {
+        debugPrint("getFairAvailableBarberman: No active hairstylists found for shop $barbershopId");
+        return null;
+      }
+
+      final List<Map<String, dynamic>> eligibleBarbers = [];
+      final List<Map<String, dynamic>> fallbackBarbers = [];
+
+      for (var doc in barbersDocs.docs) {
+        final barberData = doc.data();
+        final barberId = doc.id;
+        final barberName = barberData['name'] ?? 'Unknown';
+        
+        final monthlyCount = (barberData['monthly_haircut_count'] as num?)?.toInt() ?? 
+                             (barberData['monthlyHaircutCount'] as num?)?.toInt() ?? 0;
+        
+        final barberInfo = {
+          'id': barberId,
+          'monthlyCount': monthlyCount,
+          'name': barberName,
+        };
+
+        // Simpan semua sebagai fallback jika yang ideal tidak ketemu
+        fallbackBarbers.add(barberInfo);
+
+        // 2. Filter Ideal (Ketersediaan & Libur)
+        bool isOnLeave = barberData['onLeave'] ?? false;
+        if (isOnLeave) {
+          debugPrint("getFairAvailableBarberman: $barberName is on leave (ideal skip)");
+          continue;
+        }
+
+        final dayName = DateFormat('EEEE', 'en_US').format(bookingTime).toLowerCase();
+        final List<dynamic> offDays = barberData['offDays'] ?? [];
+        if (offDays.contains(dayName)) {
+          debugPrint("getFairAvailableBarberman: $barberName is off on $dayName (ideal skip)");
+          continue;
+        }
+
+        final dateStr = DateFormat('yyyy-MM-dd').format(bookingTime);
+        final List<dynamic> specificOffDays = barberData['specificOffDays'] ?? [];
+        if (specificOffDays.contains(dateStr)) {
+          debugPrint("getFairAvailableBarberman: $barberName has holiday on $dateStr (ideal skip)");
+          continue;
+        }
+
+        // 3. Cek bentrokan jadwal (Termasuk Ghost check)
+        final isAvailable = await isSlotAvailable(
+          barbershopId: barbershopId,
+          barbermanId: barberId,
+          bookingTime: bookingTime,
+          serviceIds: serviceIds,
+        );
+
+        if (!isAvailable) {
+          debugPrint("getFairAvailableBarberman: $barberName has conflict (ideal skip)");
+          continue;
+        }
+
+        // Hairstylist lolos semua kriteria ideal
+        eligibleBarbers.add(barberInfo);
+      }
+
+      // RUMUS FLEKSIBEL:
+      // Gunakan yang ideal jika ada. Jika tidak ada yang ideal (semua libur/sibuk), 
+      // gunakan fallback (semua yang aktif) agar user tetap bisa dapet jadwal.
+      final List<Map<String, dynamic>> finalCandidates = 
+          eligibleBarbers.isNotEmpty ? eligibleBarbers : fallbackBarbers;
+
+      if (finalCandidates.isEmpty) return null;
+
+      // 4. Keadilan & Pengacakan:
+      // Kocok urutan agar jika monthlyCount sama, hasilnya acak (Fair Random).
+      finalCandidates.shuffle(Random());
+
+      // 5. Sorting berdasarkan Monthly Count (Paling sedikit diprioritaskan)
+      finalCandidates.sort((a, b) => (a['monthlyCount'] as int).compareTo(b['monthlyCount'] as int));
+
+      final selectedId = finalCandidates.first['id'] as String;
+      debugPrint("getFairAvailableBarberman: Selected ${eligibleBarbers.isNotEmpty ? 'IDEAL' : 'FALLBACK'} hairstylist: ${finalCandidates.first['name']} ($selectedId)");
+      return selectedId;
+    } catch (e, st) {
+      debugPrint("Error in getFairAvailableBarberman: $e\n$st");
+      return null;
+    }
+  }
 
   // -----------------------
   // 🔁 STREAM LISTENERS
@@ -165,7 +276,7 @@ class QueueService implements QueueServiceContract {
   }) async {
     try {
       final by =
-          cancelledBy ?? FirebaseAuth.instance.currentUser?.uid ?? 'system';
+          cancelledBy ?? _auth.currentUser?.uid ?? 'system';
       await _firestore.collection('queues').doc(queueId).update({
         'status': 'cancelled',
         'cancellation_reason': reason,
@@ -201,7 +312,7 @@ class QueueService implements QueueServiceContract {
     String? adminUid,
   }) async {
     final confirmedBy =
-        adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+        adminUid ?? _auth.currentUser?.uid ?? 'admin';
     try {
       final ref = await _resolveQueueDocRef(queueId);
       await _firestore.runTransaction((tx) async {
@@ -232,6 +343,17 @@ class QueueService implements QueueServiceContract {
     }
   }
 
+  /// Delete queue document (Customer Action - Hapus Pesanan)
+  /// Only allowed for served or cancelled status to clean up history
+  Future<void> deleteQueue(String queueId) async {
+    try {
+      await _firestore.collection('queues').doc(queueId).delete();
+    } catch (e) {
+      debugPrint("Error deleting queue $queueId: $e");
+      rethrow;
+    }
+  }
+
   // -----------------------
   // 🧾 CREATE QUEUE (CUSTOMER)
   // -----------------------
@@ -256,7 +378,7 @@ class QueueService implements QueueServiceContract {
       'customer_id':
           queueData['customer_id'] ??
           queueData['customerId'] ??
-          FirebaseAuth.instance.currentUser?.uid,
+          _auth.currentUser?.uid,
       'barberman_id': queueData['barberman_id'] ?? queueData['barbermanId'],
       'service_ids':
           queueData['service_ids'] ??
@@ -485,7 +607,7 @@ class QueueService implements QueueServiceContract {
               'customer_id':
                   queueData['customer_id'] ??
                   queueData['customerId'] ??
-                  FirebaseAuth.instance.currentUser?.uid,
+                  _auth.currentUser?.uid,
               'barberman_id':
                   queueData['barberman_id'] ?? queueData['barbermanId'],
               'service_ids':
@@ -565,17 +687,40 @@ class QueueService implements QueueServiceContract {
         Duration(minutes: estimatedDurationMinutes),
       );
 
+      // Optimasi: Ambil antrean dalam rentang +/- 12 jam dari waktu booking
+      // untuk menangkap potensi overlap yang melewati tengah malam tanpa membebani performa.
+      final DateTime startRange = bookingTime.subtract(const Duration(hours: 12));
+      final DateTime endRange = bookingTime.add(const Duration(hours: 12));
+
       // include 'awaiting_payment' because awaiting payment should lock the slot
       final QuerySnapshot<Map<String, dynamic>> qs = await _firestore
           .collection('queues')
           .where('barbershop_id', isEqualTo: barbershopId)
           .where('barberman_id', isEqualTo: barbermanId)
           .where('status', whereIn: ['booked', 'ongoing', 'awaiting_payment'])
+          .where('booking_time', isGreaterThanOrEqualTo: Timestamp.fromDate(startRange))
+          .where('booking_time', isLessThanOrEqualTo: Timestamp.fromDate(endRange))
           .get();
 
       for (final doc in qs.docs) {
-        final queue = Queue.fromFirestore(doc);
+        final data = doc.data();
+        final status = data['status'] as String?;
+        
+        // --- SMART GHOST CHECK ---
+        // Abaikan booking 'awaiting_payment' yang sudah lewat deadline-nya (kadaluarsa)
+        // Ini mencegah slot terkunci selamanya jika customer tidak bayar.
+        if (status == 'awaiting_payment') {
+          final deadline = data['payment_deadline'] as Timestamp?;
+          final hasProof = (data['payment_proof_base64'] != null && data['payment_proof_base64'].toString().isNotEmpty) ||
+                           (data['payment'] != null && (data['payment']['proofUrl'] != null));
+          
+          if (deadline != null && deadline.toDate().isBefore(DateTime.now()) && !hasProof) {
+            debugPrint("isSlotAvailable: Skipping expired ghost booking ${doc.id}");
+            continue; 
+          }
+        }
 
+        final queue = Queue.fromFirestore(doc);
         final DateTime existingStart = queue.bookingTime.toDate();
         int existingDuration = queue.estimatedDuration ?? 0;
 
@@ -593,7 +738,7 @@ class QueueService implements QueueServiceContract {
         }
 
         final DateTime existingEnd = existingStart.add(
-          Duration(minutes: existingDuration),
+          Duration(minutes: existingDuration + 15), // 15 min buffer
         );
         final bool overlaps =
             bookingStart.isBefore(existingEnd) &&
@@ -736,7 +881,7 @@ class QueueService implements QueueServiceContract {
     String? adminNotes,
   }) async {
     final confirmedBy =
-        adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+        adminUid ?? _auth.currentUser?.uid ?? 'admin';
 
     try {
       final ref = await _resolveQueueDocRef(queueId);
@@ -767,6 +912,12 @@ class QueueService implements QueueServiceContract {
           'booked_at': FieldValue.serverTimestamp(),
           'booked_by': confirmedBy,
           'updated_at': FieldValue.serverTimestamp(),
+          // Unified Schema synchronization
+          'payment.verificationStatus': 'accepted',
+          'payment.verificationAcceptedAt': FieldValue.serverTimestamp(),
+          'payment.verificationAcceptedBy': confirmedBy,
+          'payment.verificationNotes': adminNotes,
+          'payment_verification_status': 'accepted',
         });
       });
       // after successful transaction, notify customer
@@ -794,7 +945,7 @@ class QueueService implements QueueServiceContract {
     String? adminUid,
   }) async {
     final confirmedBy =
-        adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+        adminUid ?? _auth.currentUser?.uid ?? 'admin';
 
     try {
       final ref = await _resolveQueueDocRef(queueId);
@@ -809,6 +960,13 @@ class QueueService implements QueueServiceContract {
           'cancelled_by_uid': confirmedBy,
           'cancelled_at': FieldValue.serverTimestamp(),
           'updated_at': FieldValue.serverTimestamp(),
+          // Unified Schema synchronization
+          'payment.verificationStatus': 'rejected',
+          'payment.verificationRejectedAt': FieldValue.serverTimestamp(),
+          'payment.verificationRejectedBy': confirmedBy,
+          'payment.rejectionReason': reason,
+          'payment.proofLocked': false, // Allow re-upload
+          'payment_verification_status': 'rejected',
         });
       });
       final afterDoc = await ref.get();
@@ -839,7 +997,7 @@ class QueueService implements QueueServiceContract {
     String? adminUid,
   }) async {
     final refundedBy =
-        adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+        adminUid ?? _auth.currentUser?.uid ?? 'admin';
 
     try {
       final ref = await _resolveQueueDocRef(queueId);
@@ -925,7 +1083,7 @@ class QueueService implements QueueServiceContract {
     required String reason,
     String? customerId,
   }) async {
-    final uid = customerId ?? FirebaseAuth.instance.currentUser?.uid;
+    final uid = customerId ?? _auth.currentUser?.uid;
     if (uid == null) throw Exception('User not authenticated');
 
     try {
@@ -935,9 +1093,17 @@ class QueueService implements QueueServiceContract {
         if (!snap.exists) throw Exception('Queue not found: $queueId');
         final data = snap.data() ?? {};
 
-        if ((data['status'] as String?) != 'booked') {
+        final status = data['status'] as String?;
+        final payment = data['payment'] as Map<String, dynamic>?;
+        final hasProof = (data['payment_proof_base64'] != null &&
+                data['payment_proof_base64'].toString().isNotEmpty) ||
+            (payment?['proofUrl'] != null);
+
+        // Allow cancellation if booked OR (awaiting_payment AND hasProof)
+        if (status != 'booked' &&
+            !(status == 'awaiting_payment' && hasProof)) {
           throw Exception(
-            'Can only cancel from booked status (current: ${data['status']})',
+            'Cannot request cancellation for status: $status (Proof uploaded: $hasProof)',
           );
         }
 
@@ -961,6 +1127,86 @@ class QueueService implements QueueServiceContract {
     }
   }
 
+  /// Customer withdraws cancellation request: cancellation_requested → booked
+  Future<void> withdrawCancellationRequest(String queueId) async {
+    try {
+      final ref = await _resolveQueueDocRef(queueId);
+      await _firestore.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        if (!snap.exists) throw Exception('Queue not found: $queueId');
+        final data = snap.data() ?? {};
+
+        if ((data['status'] as String?) != 'cancellation_requested') {
+          throw Exception('Hanya bisa menarik pengajuan yang sedang diproses');
+        }
+
+        tx.update(ref, {
+          'status': 'booked',
+          'cancellation_reason': FieldValue.delete(),
+          'cancellation_requested_at': FieldValue.delete(),
+          'cancellation_requested_by': FieldValue.delete(),
+          'refund_amount': FieldValue.delete(),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+      });
+    } catch (e, st) {
+      debugPrint('Error withdrawCancellationRequest($queueId): $e\n$st');
+      rethrow;
+    }
+  }
+
+  /// Admin process refund: cancellation_requested → refund_completed
+  Future<void> adminProcessRefund(
+    String queueId, {
+    required String refundProofBase64,
+    String? adminUid,
+    String? adminNotes,
+  }) async {
+    final processedBy =
+        adminUid ?? _auth.currentUser?.uid ?? 'admin';
+
+    try {
+      final ref = await _resolveQueueDocRef(queueId);
+      await _firestore.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        if (!snap.exists) throw Exception('Queue not found: $queueId');
+        final data = snap.data() ?? {};
+
+        if ((data['status'] as String?) != 'cancellation_requested') {
+          throw Exception(
+            'Queue is not in cancellation_requested status (current: ${data['status']})',
+          );
+        }
+
+        tx.update(ref, {
+          'status': 'refund_completed', // New status for completed refunds
+          'refund_proof_base64': refundProofBase64,
+          'refund_processed_at': FieldValue.serverTimestamp(),
+          'refund_processed_by': processedBy,
+          'admin_refund_notes': adminNotes,
+          'is_refunded': true,
+          'payment_proof_base64': FieldValue.delete(), // Delete old payment proof
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+      });
+
+      // Notify customer
+      final doc = await ref.get();
+      final customerId = doc.data()?['customer_id'] as String?;
+      if (customerId != null) {
+        await _createNotificationForUser(
+          customerId,
+          'Refund Berhasil',
+          'Refund Anda telah diproses. Silakan cek bukti transfer di detail pesanan.',
+          queueId,
+        );
+      }
+    } catch (e, st) {
+      debugPrint('Error adminProcessRefund($queueId): $e\n$st');
+      rethrow;
+    }
+  }
+
   /// Admin approves cancellation: cancellation_requested → refund_pending
   Future<void> adminApproveCancellation(
     String queueId, {
@@ -968,7 +1214,7 @@ class QueueService implements QueueServiceContract {
     String? adminUid,
   }) async {
     final approvedBy =
-        adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+        adminUid ?? _auth.currentUser?.uid ?? 'admin';
     try {
       final ref = await _resolveQueueDocRef(queueId);
       await _firestore.runTransaction((tx) async {
@@ -1004,7 +1250,7 @@ class QueueService implements QueueServiceContract {
     String? adminUid,
   }) async {
     final rejectedBy =
-        adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+        adminUid ?? _auth.currentUser?.uid ?? 'admin';
     try {
       final ref = await _resolveQueueDocRef(queueId);
       await _firestore.runTransaction((tx) async {
@@ -1045,7 +1291,7 @@ class QueueService implements QueueServiceContract {
     String? comment,
     String? customerId,
   }) async {
-    final uid = customerId ?? FirebaseAuth.instance.currentUser?.uid;
+    final uid = customerId ?? _auth.currentUser?.uid;
     if (uid == null) throw Exception('User not authenticated');
 
     if (rating < 1 || rating > 5) {
@@ -1188,61 +1434,23 @@ class QueueService implements QueueServiceContract {
 
   /// Submit payment proof for an existing queue document in a transaction.
   ///
-  /// Validations:
-  /// - Queue must exist
-  /// - queue.customer_id must match userId
-  /// - Will update only payment-related fields (won't change status)
-  ///
-  /// This moves the transactional logic out of UI and centralizes tests.
+  /// This delegates to BookingAntiDuplicateService logic to ensure:
+  /// 1. Schema consistency (using nested 'payment' map)
+  /// 2. Locking mechanism (prevent double submit)
+  /// 3. Proper status transition (pending verification)
   @override
   Future<void> submitPaymentProofForQueue({
     required String queueId,
     required String userId,
     required String base64Proof,
   }) async {
+    // Direct usage of BookingAntiDuplicateService logic within the transaction context
+    // of the original method to maintain the existing interface but fix the schema.
+
     final firestore = _firestore;
     final queueRef = firestore.collection('queues').doc(queueId);
 
     try {
-      // FakeFirebaseFirestore's runTransaction can behave differently in tests,
-      // so for test-friendly behavior detect fake instances and perform a
-      // simple get+update instead of a transaction to avoid deadlocks.
-      final isFake = _firestore.runtimeType.toString().toLowerCase().contains(
-        'fake',
-      );
-      if (isFake) {
-        debugPrint(
-          'submitPaymentProofForQueue: fake path start for $queueId by $userId',
-        );
-        final qSnap = await queueRef.get();
-        if (!qSnap.exists) {
-          throw Exception('Queue dokumen tidak ditemukan: $queueId');
-        }
-        final qData = qSnap.data();
-        if (qData == null) throw Exception('Queue data kosong');
-        final customerId = qData['customer_id'] as String?;
-        if (customerId == null || customerId != userId) {
-          throw Exception('Unauthorized: booking bukan milik Anda');
-        }
-        await queueRef.update({
-          'payment_proof_base64': base64Proof,
-          'payment_method': 'bank_transfer',
-          'payment_amount':
-              (qData['total_price'] as num?)?.toInt() ??
-              qData['payment_amount'] ??
-              0,
-          'payment_submitted_at': FieldValue.serverTimestamp(),
-          'updated_at': FieldValue.serverTimestamp(),
-        });
-        debugPrint(
-          'submitPaymentProofForQueue: fake path complete for $queueId',
-        );
-        return;
-      }
-
-      debugPrint(
-        'submitPaymentProofForQueue: transaction path start for $queueId by $userId',
-      );
       await firestore.runTransaction((tx) async {
         final qSnap = await tx.get(queueRef);
         if (!qSnap.exists) {
@@ -1257,7 +1465,24 @@ class QueueService implements QueueServiceContract {
           throw Exception('Unauthorized: booking bukan milik Anda');
         }
 
+        final paymentMap = Map<String, dynamic>.from(qData['payment'] ?? {});
+        if (paymentMap['proofLocked'] == true) {
+          throw Exception('Upload sudah terkunci (proofLocked=true)');
+        }
+
+        // Apply Unified Schema (Nested 'payment' map)
+        // Also keep legacy root fields for backward compatibility if needed by other readers,
+        // but the authoritative source is now the 'payment' map.
         tx.update(queueRef, {
+          // 1. Nested Schema (Authoritative)
+          'payment.proofUrl': base64Proof, // Storing base64 in proofUrl field for now as per legacy
+          'payment.proofUploadedAt': FieldValue.serverTimestamp(),
+          'payment.proofUploadedBy': userId,
+          'payment.proofUploadAttemptCount': FieldValue.increment(1),
+          'payment.proofLocked': true,
+          'payment.verificationStatus': 'pending',
+
+          // 2. Legacy Flat Schema (Backward Compatibility)
           'payment_proof_base64': base64Proof,
           'payment_method': 'bank_transfer',
           'payment_amount':
@@ -1265,11 +1490,16 @@ class QueueService implements QueueServiceContract {
               qData['payment_amount'] ??
               0,
           'payment_submitted_at': FieldValue.serverTimestamp(),
+
+          // 3. Status Maintenance
+          // We do NOT change main status to 'booked' here. It stays 'awaiting_payment'
+          // until Admin verifies it. But we ensure verificationStatus is 'pending'.
           'updated_at': FieldValue.serverTimestamp(),
         });
       });
+
       debugPrint(
-        'submitPaymentProofForQueue: transaction path complete for $queueId',
+        'submitPaymentProofForQueue (Unified Schema): transaction complete for $queueId',
       );
     } catch (e) {
       debugPrint('Error submitPaymentProofForQueue($queueId): $e');
@@ -1318,7 +1548,7 @@ class QueueService implements QueueServiceContract {
   }
 
   /// Cancel waiting queues for a customer whose payment_due_at has passed.
-  /// Returns number of cancelled documents.
+  /// Re-enabled for Spark (Free) Plan compatibility.
   Future<int> cancelExpiredWaitingQueuesForCustomer(String customerId) async {
     final nowTs = Timestamp.fromDate(DateTime.now());
     try {
@@ -1331,9 +1561,18 @@ class QueueService implements QueueServiceContract {
 
       int count = 0;
       for (final doc in qs.docs) {
+        final data = doc.data();
+        final hasProof = (data['payment_proof_base64'] != null &&
+                data['payment_proof_base64'].toString().isNotEmpty) ||
+            (data['payment'] != null &&
+                (data['payment']['proofUrl'] != null ||
+                    data['payment']['payment_proof_base64'] != null));
+
+        if (hasProof) continue;
+
         await doc.reference.update({
           'status': 'cancelled',
-          'cancellation_reason': 'Payment timeout',
+          'cancellation_reason': 'Payment timeout (Client-side)',
           'cancelled_by_uid': 'system',
           'cancelled_at': FieldValue.serverTimestamp(),
           'updated_at': FieldValue.serverTimestamp(),
@@ -1341,53 +1580,46 @@ class QueueService implements QueueServiceContract {
         count++;
       }
       return count;
-    } catch (e, st) {
-      // If Firestore requires a composite index for this query, fall back to a safe client-side filter
-      // so the app behaves correctly even if the project doesn't have the composite index configured.
-      if (e is FirebaseException && e.code == 'failed-precondition') {
-        debugPrint(
-          'Firestore index required for cancelExpiredWaitingQueuesForCustomer: ${e.message} — falling back to client-side filter (consider creating the composite index for better performance)',
-        );
-        try {
-          final qs = await _firestore
-              .collection('queues')
-              .where('customer_id', isEqualTo: customerId)
-              .get();
-          int count = 0;
-          for (final doc in qs.docs) {
-            final data = doc.data();
-            final status = data['status'] as String?;
-            final paymentDeadline = data['payment_deadline'] as Timestamp?;
-            if (status == 'waiting' &&
-                paymentDeadline != null &&
-                paymentDeadline.compareTo(nowTs) < 0) {
-              await doc.reference.update({
-                'status': 'cancelled',
-                'cancellation_reason': 'Payment timeout',
-                'cancelled_by_uid': 'system',
-                'cancelled_at': FieldValue.serverTimestamp(),
-                'updated_at': FieldValue.serverTimestamp(),
-              });
-              count++;
-            }
+    } catch (e) {
+      // Fallback: handle missing index by filtering client-side
+      try {
+        final qs = await _firestore
+            .collection('queues')
+            .where('customer_id', isEqualTo: customerId)
+            .get();
+        int count = 0;
+        for (final doc in qs.docs) {
+          final d = doc.data();
+          final deadline = d['payment_deadline'] as Timestamp?;
+          final hasProof = (d['payment_proof_base64'] != null &&
+                  d['payment_proof_base64'].toString().isNotEmpty) ||
+              (d['payment'] != null &&
+                  (d['payment']['proofUrl'] != null ||
+                      d['payment']['payment_proof_base64'] != null));
+
+          if (d['status'] == 'waiting' &&
+              deadline != null &&
+              deadline.compareTo(nowTs) < 0 &&
+              !hasProof) {
+            await doc.reference.update({
+              'status': 'cancelled',
+              'cancellation_reason': 'Payment timeout (Client-side Fallback)',
+              'cancelled_by_uid': 'system',
+              'cancelled_at': FieldValue.serverTimestamp(),
+              'updated_at': FieldValue.serverTimestamp(),
+            });
+            count++;
           }
-          return count;
-        } catch (e2, st2) {
-          debugPrint(
-            'Fallback cancelExpiredWaitingQueuesForCustomer failed for $customerId: $e2\n$st2',
-          );
-          return 0;
         }
+        return count;
+      } catch (_) {
+        return 0;
       }
-      debugPrint(
-        'Error cancelling expired waiting queues for customer $customerId: $e\n$st',
-      );
-      return 0;
     }
   }
 
   /// Cancel awaiting_payment queues for a customer whose payment_due_at has passed.
-  /// Returns number of cancelled documents.
+  /// Re-enabled for Spark (Free) Plan compatibility.
   @override
   Future<int> cancelExpiredAwaitingPaymentQueuesForCustomer(
     String customerId,
@@ -1403,9 +1635,18 @@ class QueueService implements QueueServiceContract {
 
       int count = 0;
       for (final doc in qs.docs) {
+        final data = doc.data();
+        final hasProof = (data['payment_proof_base64'] != null &&
+                data['payment_proof_base64'].toString().isNotEmpty) ||
+            (data['payment'] != null &&
+                (data['payment']['proofUrl'] != null ||
+                    data['payment']['payment_proof_base64'] != null));
+
+        if (hasProof) continue;
+
         await doc.reference.update({
           'status': 'cancelled',
-          'cancellation_reason': 'Payment timeout',
+          'cancellation_reason': 'Payment timeout (Client-side)',
           'cancelled_by_uid': 'system',
           'cancelled_at': FieldValue.serverTimestamp(),
           'updated_at': FieldValue.serverTimestamp(),
@@ -1413,48 +1654,41 @@ class QueueService implements QueueServiceContract {
         count++;
       }
       return count;
-    } catch (e, st) {
-      // If Firestore requires a composite index for this query, fall back to a safe client-side filter
-      // so the app behaves correctly even if the project doesn't have the composite index configured.
-      if (e is FirebaseException && e.code == 'failed-precondition') {
-        debugPrint(
-          'Firestore index required for cancelExpiredAwaitingPaymentQueuesForCustomer: ${e.message} — falling back to client-side filter (consider creating the composite index for better performance)',
-        );
-        try {
-          final qs = await _firestore
-              .collection('queues')
-              .where('customer_id', isEqualTo: customerId)
-              .get();
-          int count = 0;
-          for (final doc in qs.docs) {
-            final data = doc.data();
-            final status = data['status'] as String?;
-            final paymentDeadline = data['payment_deadline'] as Timestamp?;
-            if (status == 'awaiting_payment' &&
-                paymentDeadline != null &&
-                paymentDeadline.compareTo(nowTs) < 0) {
-              await doc.reference.update({
-                'status': 'cancelled',
-                'cancellation_reason': 'Payment timeout',
-                'cancelled_by_uid': 'system',
-                'cancelled_at': FieldValue.serverTimestamp(),
-                'updated_at': FieldValue.serverTimestamp(),
-              });
-              count++;
-            }
+    } catch (e) {
+      // Fallback: handle missing index
+      try {
+        final qs = await _firestore
+            .collection('queues')
+            .where('customer_id', isEqualTo: customerId)
+            .get();
+        int count = 0;
+        for (final doc in qs.docs) {
+          final d = doc.data();
+          final deadline = d['payment_deadline'] as Timestamp?;
+          final hasProof = (d['payment_proof_base64'] != null &&
+                  d['payment_proof_base64'].toString().isNotEmpty) ||
+              (d['payment'] != null &&
+                  (d['payment']['proofUrl'] != null ||
+                      d['payment']['payment_proof_base64'] != null));
+
+          if (d['status'] == 'awaiting_payment' &&
+              deadline != null &&
+              deadline.compareTo(nowTs) < 0 &&
+              !hasProof) {
+            await doc.reference.update({
+              'status': 'cancelled',
+              'cancellation_reason': 'Payment timeout (Client-side Fallback)',
+              'cancelled_by_uid': 'system',
+              'cancelled_at': FieldValue.serverTimestamp(),
+              'updated_at': FieldValue.serverTimestamp(),
+            });
+            count++;
           }
-          return count;
-        } catch (e2, st2) {
-          debugPrint(
-            'Fallback cancelExpiredAwaitingPaymentQueuesForCustomer failed for $customerId: $e2\n$st2',
-          );
-          return 0;
         }
+        return count;
+      } catch (_) {
+        return 0;
       }
-      debugPrint(
-        'Error cancelling expired awaiting_payment queues for customer $customerId: $e\n$st',
-      );
-      return 0;
     }
   }
 
@@ -1489,7 +1723,7 @@ class QueueService implements QueueServiceContract {
   /// customer a limited window (e.g. 10 minutes) to upload payment proof.
   Future<void> adminConfirmRequest(String queueId, {String? adminUid}) async {
     try {
-      final uid = adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+      final uid = adminUid ?? _auth.currentUser?.uid ?? 'admin';
       // Determine per-shop payment window and set awaiting_payment with deadline
       final ref = await _resolveQueueDocRef(queueId);
       final qdoc = await ref.get();
@@ -1533,7 +1767,7 @@ class QueueService implements QueueServiceContract {
     String? adminUid,
   }) async {
     try {
-      final uid = adminUid ?? FirebaseAuth.instance.currentUser?.uid ?? 'admin';
+      final uid = adminUid ?? _auth.currentUser?.uid ?? 'admin';
       final ref = await _resolveQueueDocRef(queueId);
       await ref.update({
         'status': 'cancelled',

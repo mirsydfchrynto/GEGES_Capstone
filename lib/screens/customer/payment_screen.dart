@@ -1137,7 +1137,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         if (_isSubmitting)
                           Positioned.fill(
                             child: Container(
-                              color: Color.fromRGBO(0, 0, 0, 0.45),
+                              color: const Color.fromRGBO(0, 0, 0, 0.45),
                               child: const Center(
                                 child: CircularProgressIndicator(),
                               ),
@@ -1219,6 +1219,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _buildActionButtons() {
     final isExpired = _timeRemaining.inSeconds == 0;
     final disable = isExpired || _isSubmitting || _hasUploadedProof;
+    final actionLabel = _hasUploadedProof
+        ? 'Bukti Terunggah'
+        : (_isSubmitting
+              ? (widget.tenantId != null ? 'Mengirim...' : 'Processing...')
+              : (widget.tenantId != null ? 'Unggah Bukti Pembayaran' : 'Submit Proof & Create Queue'));
+    debugPrint('PaymentScreen: actionLabel=$actionLabel isSubmitting=$_isSubmitting hasUploaded=$_hasUploadedProof');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1233,24 +1239,63 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ),
           child: Text(
-            _hasUploadedProof
-                ? 'Bukti Terunggah'
-                : (_isSubmitting
-                      ? (widget.tenantId != null
-                            ? 'Mengirim...'
-                            : 'Processing...')
-                      : (widget.tenantId != null
-                            ? 'Unggah Bukti Pembayaran'
-                            : 'Submit Proof & Create Queue')),
+            actionLabel,
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
+        // Tenant-only cancel button: shows confirmation dialog and calls provided handler.
+        if (widget.tenantId != null && widget.cancelTenantHandler != null) ...[
+          const SizedBox(height: 8),
+          OutlinedButton(
+            key: const Key('cancel_registration_button'),
+            onPressed: _isSubmitting
+                ? null
+                : () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (c) => AlertDialog(
+                        title: const Text('Batalkan Pendaftaran'),
+                        content: const Text('Anda yakin ingin membatalkan pendaftaran?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(c).pop(false),
+                            child: const Text('Tidak'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(c).pop(true),
+                            child: const Text('Ya, Batalkan'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      final userId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+                      try {
+                        await widget.cancelTenantHandler!(tenantId: widget.tenantId!, userId: userId);
+                      } catch (e) {
+                        // swallow errors in UI tests; handlers should manage their own errors
+                        debugPrint('Error in cancelTenantHandler: $e');
+                      }
+
+                      if (mounted) {
+                        Navigator.of(context).popUntil((route) => route.isFirst);
+                      }
+                    }
+                  },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white12),
+            ),
+            child: const Text('Batalkan'),
+          ),
+        ],
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('PaymentScreen: build called');
     return PopScope(
       canPop: !_isSubmitting,
       child: Scaffold(

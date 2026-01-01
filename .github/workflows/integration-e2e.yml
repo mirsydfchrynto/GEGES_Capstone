@@ -62,6 +62,9 @@ jobs:
           target: google_apis
           arch: x86_64
           emulator-options: -no-window -no-audio
+          # The action allows running a script inside the runner; include a minimal no-op script to satisfy schema validators
+          script: |
+            echo "emulator ready"
 
       - name: Wait for emulator
         run: flutter devices

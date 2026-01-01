@@ -5,11 +5,11 @@ import 'package:geges_smartbarber/screens/admin/tenant_requests_screen.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 
 class FakeTenantService3 extends TenantService {
-  final FakeFirebaseFirestore _fsLocal;
 
-  FakeTenantService3(this._fsLocal) : super(firestore: _fsLocal, storage: null);
+  FakeTenantService3(FakeFirebaseFirestore fs) : super(firestore: fs, storage: null);
 
-  bool approved = false;
+  bool verifyCalled = false;
+  bool? lastApprove;
 
   @override
   Future<void> verifyTenant({
@@ -17,13 +17,11 @@ class FakeTenantService3 extends TenantService {
     required bool approve,
     String? verifiedBy,
     String? reason,
+    String? adminEmail,
+    String? tempPassword,
   }) async {
-    final fs = _fsLocal;
-    await fs.collection('tenants').doc(tenantId).update({
-      'status': approve ? 'active' : 'rejected',
-      'verified_by': verifiedBy,
-    });
-    approved = approve;
+    verifyCalled = true;
+    lastApprove = approve;
   }
 }
 
@@ -62,8 +60,12 @@ void main() {
     await tester.tap(approveBtn.first);
     await tester.pumpAndSettle();
 
-    final doc = await fs.collection('tenants').doc('t1').get();
-    expect(doc.data()!['status'], 'active');
-    expect(fakeService.approved, isTrue);
+    // Since we now have a credentials dialog, we must handle it in the test
+    expect(find.text('Approve Partnership'), findsOneWidget);
+    await tester.tap(find.text('Approve & Kirim Akun'));
+    await tester.pumpAndSettle();
+
+    expect(fakeService.verifyCalled, isTrue);
+    expect(fakeService.lastApprove, isTrue);
   });
 }

@@ -62,7 +62,7 @@ void main() {
       expect(chosen!.id, 'b1');
     });
 
-    test('falls back to min-bookings barber when none free', () async {
+    test('returns null when none free', () async {
       final now = DateTime.now();
       final bookingTime = DateTime(
         now.year,
@@ -107,9 +107,7 @@ void main() {
         lookaheadMinutes: 60,
       );
 
-      expect(chosen, isNotNull);
-      // b1 should have fewer bookings in the next 24h than b2
-      expect(chosen!.id, 'b1');
+      expect(chosen, isNull);
     });
   });
 }

@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geges_smartbarber/models/barberman.dart';
 
 // penjelasan class barberman_leave:
 // - menyimpan record cuti/libur untuk satu barberman
 // - bisa untuk cuti tahunan, cuti sakit, atau libur khusus
 // - setiap record punya tanggal mulai dan tanggal selesai
 // - status bisa pending (pending approval), approved, or rejected
+
+enum LeaveType { annual, sick, special }
+
 class BarbermanLeave {
   final String id;
   final String barbermanId;

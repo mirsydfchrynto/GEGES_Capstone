@@ -10,6 +10,9 @@ class InMemoryTenantService implements TenantServiceContract {
   final Map<String, Map<String, dynamic>> _m = {};
 
   @override
+  Future<int> cancelExpiredInvoices() async => 0;
+
+  @override
   Future<Tenant> createTenant({required String businessName, required String documentBase64, required String packageId}) async {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     _m[id] = {

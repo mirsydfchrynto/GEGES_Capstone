@@ -1,10 +1,8 @@
 // lib/services/barbershop_service.dart
 import 'dart:async';
-import 'dart:math';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'; // for debugPrint
+import 'package:intl/intl.dart'; // for DateFormat
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-// Import model
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/models/barberman.dart';
 import 'package:geges_smartbarber/models/service.dart';
@@ -101,6 +99,80 @@ class BarbershopService {
     } catch (e) {
       debugPrint('Error getBarbermanById: $e');
       return null;
+    }
+  }
+
+  Future<void> saveService(Service service) async {
+    try {
+      final data = service.toJson();
+      if (service.id.isEmpty) {
+        await _firestore.collection('services').add(data);
+      } else {
+        await _firestore.collection('services').doc(service.id).set(data, SetOptions(merge: true));
+      }
+    } catch (e) {
+      debugPrint('Error saveService: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteService(String id) async {
+    try {
+      await _firestore.collection('services').doc(id).delete();
+    } catch (e) {
+      debugPrint('Error deleteService: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateBarbershopSettings(String id, Map<String, dynamic> settings) async {
+    try {
+      await _firestore.collection('barbershops').doc(id).update({
+        ...settings,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error updateBarbershopSettings: $e');
+      rethrow;
+    }
+  }
+
+  // -----------------------
+  // BARBERMAN CRUD FUNCTIONS
+  // -----------------------
+
+  Future<void> saveBarberman(Barberman barber) async {
+    try {
+      final data = barber.toJson();
+      if (barber.id.isEmpty) {
+        await _firestore.collection('barbermen').add(data);
+      } else {
+        await _firestore.collection('barbermen').doc(barber.id).set(data, SetOptions(merge: true));
+      }
+    } catch (e) {
+      debugPrint('Error saveBarberman: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteBarberman(String id) async {
+    try {
+      // We perform a soft-delete by marking as inactive to preserve history
+      await _firestore.collection('barbermen').doc(id).update({'isActive': false});
+    } catch (e) {
+      debugPrint('Error deleteBarberman: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateBarbermanLeave(String id, {required bool onLeave, List<String>? specificOffDays}) async {
+    try {
+      final Map<String, dynamic> update = {'onLeave': onLeave};
+      if (specificOffDays != null) update['specificOffDays'] = specificOffDays;
+      await _firestore.collection('barbermen').doc(id).update(update);
+    } catch (e) {
+      debugPrint('Error updateBarbermanLeave: $e');
+      rethrow;
     }
   }
 
@@ -322,77 +394,69 @@ class BarbershopService {
     }
   }
 
-  /// Pilih barber default sesuai kriteria:
-  /// - active, tidak onLeave, tidak offDay pada tanggal terpilih
-  /// - tidak punya booking dalam window 1 jam ke depan
-  /// - jika ada beberapa kandidat bebas -> pilih acak
-  /// - jika tidak ada kandidat bebas -> pilih yang memiliki jumlah booking paling sedikit dalam 24 jam ke depan
   Future<Barberman?> pickDefaultBarber(
     String barbershopId,
     DateTime bookingTime, {
-    int lookaheadMinutes = 60,
+    int? durationMinutes,
+    int? lookaheadMinutes, // compatibility alias
   }) async {
+    final int duration = durationMinutes ?? lookaheadMinutes ?? 30;
     try {
       final all = await getBarbermenByShop(barbershopId);
+      
+      // 1. Filter Ketersediaan Dasar (Status & Libur)
+      final dateStr = DateFormat('yyyy-MM-dd').format(bookingTime);
       final dayName = DayOfWeek.values[bookingTime.weekday - 1];
-      final candidates = all.where((b) {
+
+      final List<Barberman> candidates = all.where((b) {
         if (!b.isActive) return false;
-        if (b.onLeave == true) return false;
+        if (b.onLeave) return false;
+        // Cek Libur Mingguan
         if (b.offDays != null && b.offDays!.contains(dayName)) return false;
+        // Cek Libur Spesifik Tanggal
+        if (b.specificOffDays.contains(dateStr)) return false;
         return true;
       }).toList();
 
       if (candidates.isEmpty) return null;
 
-      final windowStart = Timestamp.fromDate(bookingTime);
-      final windowEnd = Timestamp.fromDate(
-        bookingTime.add(Duration(minutes: lookaheadMinutes)),
-      );
+      // 2. Filter Bentrokan Jadwal
+      final windowEnd = Timestamp.fromDate(bookingTime.add(Duration(minutes: duration + 15)));
 
-      // Check for zero conflicts in the lookahead window
       final List<Barberman> freeBarbers = [];
 
       for (final b in candidates) {
-        final q = await _firestore
+        final conflictQuery = await _firestore
             .collection('queues')
             .where('barberman_id', isEqualTo: b.id)
-            .where('booking_time', isGreaterThanOrEqualTo: windowStart)
-            .where('booking_time', isLessThan: windowEnd)
-            .where('status', whereIn: ['waiting', 'booked', 'ongoing'])
+            .where('status', whereIn: ['booked', 'ongoing', 'awaiting_payment'])
+            .where('booking_time', isGreaterThanOrEqualTo: Timestamp.fromDate(bookingTime.subtract(const Duration(hours: 1))))
+            .where('booking_time', isLessThanOrEqualTo: windowEnd)
             .get();
 
-        final cnt = q.docs.length;
-        if (cnt == 0) freeBarbers.add(b);
-      }
+        bool hasConflict = false;
+        for (var doc in conflictQuery.docs) {
+          final qStart = (doc.data()['booking_time'] as Timestamp).toDate();
+          final qDur = doc.data()['estimated_duration'] ?? 30;
+          final qEnd = qStart.add(Duration(minutes: qDur + 15));
 
-      if (freeBarbers.isNotEmpty) {
-        return freeBarbers[Random().nextInt(freeBarbers.length)];
-      }
-
-      // fallback: pick barber with min count in the next 24h
-      final next24End = Timestamp.fromDate(
-        bookingTime.add(const Duration(hours: 24)),
-      );
-      Barberman? best;
-      int bestCount = 999999;
-      for (final b in candidates) {
-        final q = await _firestore
-            .collection('queues')
-            .where('barberman_id', isEqualTo: b.id)
-            .where('booking_time', isGreaterThanOrEqualTo: windowStart)
-            .where('booking_time', isLessThan: next24End)
-            .where('status', whereIn: ['waiting', 'booked', 'ongoing'])
-            .get();
-        final cnt = q.docs.length;
-        if (cnt < bestCount) {
-          best = b;
-          bestCount = cnt;
+          if (bookingTime.isBefore(qEnd) && bookingTime.add(Duration(minutes: duration)).isAfter(qStart)) {
+            hasConflict = true;
+            break;
+          }
         }
+
+        if (!hasConflict) freeBarbers.add(b);
       }
 
-      return best ?? candidates[Random().nextInt(candidates.length)];
+      if (freeBarbers.isEmpty) return null;
+
+      // 3. Fairness Algorithm: Pilih yang monthlyHaircutCount paling sedikit
+      freeBarbers.sort((a, b) => a.monthlyHaircutCount.compareTo(b.monthlyHaircutCount));
+
+      return freeBarbers.first;
     } catch (e) {
-      debugPrint('Error pickDefaultBarber: $e');
+      debugPrint('Error pickDefaultBarber (Fairness): $e');
       return null;
     }
   }

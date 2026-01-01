@@ -14,6 +14,7 @@ abstract class TenantServiceContract {
   Future<void> submitRegistrationPayment({required String tenantId, String? proofUrl, String? proofBase64, required String userId});
   Future<void> cancelRegistrationByOwner({required String tenantId, required String userId, String? reason});
   Future<Tenant?> getActiveRegistrationForOwner(String ownerUid);
+  Future<int> cancelExpiredInvoices();
 }
 
 class TenantService implements TenantServiceContract {
@@ -39,7 +40,7 @@ class TenantService implements TenantServiceContract {
     final now = DateTime.now();
     final payload = Map<String, dynamic>.from(data)
       ..addAll({
-        'status': 'draft',
+        'status': data['status'] ?? 'draft',
         'created_at': Timestamp.fromDate(now),
         'updated_at': Timestamp.fromDate(now),
       });
@@ -145,7 +146,7 @@ class TenantService implements TenantServiceContract {
             'type': 'registration_payment',
             'status': 'pending',
             'note': 'Bukti pembayaran terkirim dan sedang diproses',
-            'created_at': FieldValue.serverTimestamp(),
+            'created_at': Timestamp.fromDate(DateTime.now()),
           },
         ]),
       });
@@ -162,6 +163,7 @@ class TenantService implements TenantServiceContract {
     String? reason,
   }) async {
     await _fs.collection('tenants').doc(tenantId).update({
+      'status': 'cancelled', // Critical: Update root status so it's no longer found as "active"
       'invoice.status': 'cancelled_by_owner',
       'invoice.cancelled_by': userId,
       'invoice.cancel_reason': reason ?? 'Dibatalkan oleh pemilik',
@@ -169,7 +171,7 @@ class TenantService implements TenantServiceContract {
         {
           'type': 'registration_cancelled_by_owner',
           'note': reason ?? 'Dibatalkan oleh pemilik',
-          'created_at': FieldValue.serverTimestamp(),
+          'created_at': Timestamp.fromDate(DateTime.now()), // Critical: serverTimestamp() forbidden in arrayUnion
         }
       ]),
     });
@@ -181,11 +183,15 @@ class TenantService implements TenantServiceContract {
     required bool approve,
     String? verifiedBy,
     String? reason,
+    String? adminEmail,
+    String? tempPassword,
   }) async {
     final update = <String, dynamic>{
       'status': approve ? 'active' : 'rejected',
       'verified_by': verifiedBy,
       'verified_at': Timestamp.fromDate(DateTime.now()),
+      if (approve && adminEmail != null) 'admin_email': adminEmail,
+      if (approve && tempPassword != null) 'temp_password': tempPassword,
     };
     if (!approve && reason != null) update['rejection_reason'] = reason;
 
@@ -245,6 +251,7 @@ class TenantService implements TenantServiceContract {
 
   /// Cancel tenant invoices whose payment_deadline has passed and are still pending proof.
   /// Returns the number of invoices cancelled.
+  @override
   Future<int> cancelExpiredInvoices() async {
     final now = Timestamp.fromDate(DateTime.now());
     final coll = _fs.collection('tenants');
@@ -266,7 +273,7 @@ class TenantService implements TenantServiceContract {
               {
                 'type': 'registration_payment_timeout',
                 'note': 'Pendaftaran dibatalkan karena waktu pembayaran habis',
-                'created_at': FieldValue.serverTimestamp(),
+                'created_at': Timestamp.fromDate(DateTime.now()),
               }
             ]),
           });
@@ -289,11 +296,10 @@ class TenantService implements TenantServiceContract {
               'history': FieldValue.arrayUnion([
                 {
                   'type': 'registration_payment_timeout',
-                  'note': 'Pendaftaran dibatalkan karena waktu pembayaran habis',
-                  'created_at': FieldValue.serverTimestamp(),
-                }
-              ]),
-            });
+                                  'note': 'Pendaftaran dibatalkan karena waktu pembayaran habis',
+                                  'created_at': Timestamp.fromDate(DateTime.now()),
+                                }
+                              ]),            });
             updated += 1;
           }
         }

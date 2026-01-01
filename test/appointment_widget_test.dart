@@ -14,13 +14,22 @@ void main() {
 
   testWidgets('select paid barber updates total price', (tester) async {
     final fs = FakeFirebaseFirestore();
-    // create barber docs
+    
+    // 1. Setup Data
+    await fs.collection('services').doc('s1').set({
+      'name': 'Cukur Rambut',
+      'price': 20000,
+      'defaultDuration': 30,
+      'isActive': true,
+    });
+
     await fs.collection('barbermen').doc('b1').set({
       'name': 'Andi',
       'barbershop_id': 'shop123',
       'avg_duration': 30,
       'rating': 4.5,
       'isActive': true,
+      'imageUrl': 'http://test/img.jpg',
     });
 
     final shop = Barbershop(
@@ -29,15 +38,17 @@ void main() {
       addres: 'Jl Test',
       rating: 5.0,
       imageUrl: '',
-      services: [],
+      services: ['s1'],
       openHour: 9,
       closeHour: 21,
       isOpen: true,
+      barberSelectionFee: 5000,
     );
 
     final svc = BarbershopService(firestore: fs);
     final queueSvc = QueueService(firestore: fs);
 
+    // 2. Pump Widget
     await tester.pumpWidget(
       MaterialApp(
         home: AppointmentScreen(
@@ -47,24 +58,36 @@ void main() {
         ),
       ),
     );
-
-    // wait for futures to resolve
     await tester.pumpAndSettle();
 
-    // find barber name
-    expect(find.text('Andi'), findsOneWidget);
+    // 3. Step 0: Select Service
+    final serviceItem = find.text('Cukur Rambut');
+    await tester.ensureVisible(serviceItem);
+    await tester.tap(serviceItem);
+    await tester.pump();
 
-    // ensure visible then tap barber tile
-    await tester.ensureVisible(find.text('Andi'));
-    await tester.tap(find.text('Andi'));
+    final btnLanjut = find.text('LANJUT');
+    await tester.ensureVisible(btnLanjut);
+    await tester.tap(btnLanjut);
     await tester.pumpAndSettle();
 
-    // dialog should appear; tap 'Pilih Barber (Rp 5.000)'
-    expect(find.text('Pilih Barber (Rp 5.000)'), findsOneWidget);
-    await tester.tap(find.text('Pilih Barber (Rp 5.000)'));
+    // 4. Step 1: Select Barber
+    final premiumOption = find.textContaining('Pilih Barber Favorit');
+    await tester.ensureVisible(premiumOption);
+    await tester.tap(premiumOption);
     await tester.pumpAndSettle();
 
-    // bottom shows total, which should include 5.000
-    expect(find.textContaining('5.000'), findsWidgets);
+    final barberItem = find.text('Andi');
+    await tester.scrollUntilVisible(
+      barberItem,
+      500.0,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(barberItem);
+    await tester.pump();
+
+    // 5. Verify Total Price (Service 20k + Fee 5k = 25k)
+    // The UI shows "Total Estimasi ... Rp 25.000"
+    expect(find.textContaining(RegExp(r'25[.,]000')), findsOneWidget);
   });
 }

@@ -15,6 +15,9 @@ class StubTenantServiceCancel implements TenantServiceContract {
   }
 
   @override
+  Future<int> cancelExpiredInvoices() async => 0;
+
+  @override
   Future<Tenant> createTenant({required String businessName, required String documentBase64, required String packageId}) async {
     return Tenant(id: 't1', businessName: businessName, documentBase64: documentBase64, packageId: packageId);
   }

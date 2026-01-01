@@ -268,8 +268,7 @@ class BookingAntiDuplicateService {
   /// - 'cancelled'        : status == 'cancelled'
   Stream<List<DocumentSnapshot>> streamCustomerBookingsFiltered({
     required String userId,
-    required String
-    filterType, // 'awaiting_payment', 'payment_pending', 'booked', 'cancelled'
+    required String filterType,
   }) {
     Query<Map<String, dynamic>> query = _firestore
         .collection('queues')
@@ -277,24 +276,25 @@ class BookingAntiDuplicateService {
 
     switch (filterType) {
       case 'awaiting_payment':
-        // Menunggu pembayaran: awaiting_payment & belum upload
-        query = query
-            .where('status', isEqualTo: 'awaiting_payment')
-            .where('payment.verificationStatus', isNull: true);
+        // Tab 1: Belum Bayar & Menunggu Verifikasi
+        // Menampilkan yang statusnya waiting/awaiting_payment
+        query = query.where('status', whereIn: ['waiting', 'awaiting_payment']);
         break;
 
-      case 'payment_pending':
-        // Pembayaran dikirim: verificationStatus = pending
-        query = query.where('payment.verificationStatus', isEqualTo: 'pending');
+      case 'scheduled':
+        // Tab 2: Terjadwal (Sudah Bayar & Diverifikasi)
+        // Termasuk yang sedang minta pembatalan (cancellation_requested)
+        query = query.where('status', whereIn: ['booked', 'cancellation_requested']);
         break;
 
-      case 'booked':
-        // Terbayar / sudah booked: status in booked or ongoing
-        query = query.where('status', whereIn: ['booked', 'ongoing']);
+      case 'ongoing':
+        // Tab 3: Sedang Diproses
+        query = query.where('status', isEqualTo: 'ongoing');
         break;
 
-      case 'cancelled':
-        query = query.where('status', isEqualTo: 'cancelled');
+      case 'history':
+        // Tab 4: Selesai & Batal Permanen
+        query = query.where('status', whereIn: ['served', 'cancelled', 'refund_completed']);
         break;
 
       default:
@@ -304,15 +304,7 @@ class BookingAntiDuplicateService {
     query = query.orderBy('created_at', descending: true);
 
     return query.snapshots().map((snapshot) {
-      final List<DocumentSnapshot> docs = snapshot.docs;
-
-      // Safety: deduplicate by bookingId (meskipun seharusnya tidak ada duplikasi)
-      final Map<String, DocumentSnapshot> unique = {};
-      for (var doc in docs) {
-        unique[doc.id] = doc;
-      }
-
-      return unique.values.toList();
+      return snapshot.docs;
     });
   }
 

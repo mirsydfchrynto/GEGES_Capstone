@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geges_smartbarber/models/barberman_leave.dart';
-import 'package:geges_smartbarber/models/barberman.dart';
 
 class BarbermanLeaveService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

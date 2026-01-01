@@ -10,17 +10,12 @@ import 'package:geges_smartbarber/models/barberman.dart';
 import 'package:geges_smartbarber/models/service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
-
-// Payment screen (we now navigate customer directly to payment after booking)
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
 
 class AppointmentScreen extends StatefulWidget {
   final Barbershop barbershop;
-  final BarbershopService? barbershopService; // injectable for tests
-  /// Optional: inject a QueueService for testing
+  final BarbershopService? barbershopService;
   final QueueService? queueService;
-
-  /// Optional: inject a test user id to bypass FirebaseAuth in widget tests
   final String? testUserId;
 
   const AppointmentScreen({
@@ -36,1194 +31,551 @@ class AppointmentScreen extends StatefulWidget {
 }
 
 class _AppointmentScreenState extends State<AppointmentScreen> {
+  // Services
   late BarbershopService _barbershopService;
   late final QueueService _queueService;
 
-  // Theme tokens
+  // Theme
   static const Color kBrownAccent = Color(0xFFC3A47B);
   static const Color kSurface = Color(0xFF0F0F0F);
+  static const Color kCardBg = Color(0xFF1A1A1A);
 
-  // Formatters
-  final DateFormat _dateFormat = DateFormat('EEEE, dd MMM yyyy', 'id_ID');
-  final NumberFormat _currencyFormat = NumberFormat.currency(
-    locale: 'id_ID',
-    symbol: 'Rp ',
-    decimalDigits: 0,
-  );
-  final DateFormat _timeFormat = DateFormat('HH:mm', 'id_ID');
+  // State: Wizard Steps
+  int _currentStep = 0; // 0: Services, 1: Specialist, 2: Schedule
 
-  // State
+  // State: Data
   final List<Service> _selectedServices = [];
-  Barberman? _selectedBarberman; // explicitly requested barber (special order)
-  Barberman?
-  _assignedBarberman; // automatically assigned barber for default bookings
-  final List<Barberman> _barbermenList = [];
-  bool _isSpecialOrder =
-      false; // when true, customer requests a specific barber
+  bool _isPremiumChoice = false; // User wants specific barber
+  Barberman? _selectedBarberman; // The one they picked (if premium)
+  Barberman? _autoBarberman; // The one system picks (if fair)
+  
   late DateTime _selectedDate;
-  late TimeOfDay _selectedTime;
-  DateTime? _estimatedFinishTime;
+  TimeOfDay? _selectedTime;
+  
   bool _isLoading = false;
-  String _slotAvailabilityMessage = '';
-  bool _isSlotAvailable = false;
+  bool _isCheckingAvailability = false;
+  String? _availabilityError;
 
-  // Barber selection paid-flag & fee
-  int? _barberSelectionFee = 5000; // default compatibility fee (fallback)
-  bool _isPaidBarberSelection = false;
-
-  // Futures
-  late Future<List<Service>> _servicesFuture;
-  late Future<List<Barberman>> _barbermenFuture;
-
-  // Layout constants
-  static const double kBottomBuffer = 100.0; // Jarak aman di atas bottom bar
-
-  // totals
-  int get _totalPrice =>
-      _selectedServices.fold(0, (acc, e) => acc + e.price.toInt()) +
-      (_barberSelectionFee ?? 0);
-  int get _totalDuration =>
-      _selectedServices.fold(0, (acc, e) => acc + e.defaultDuration);
+  // Totals
+  int get _servicesPrice => _selectedServices.fold(0, (prev, s) => prev + s.price.toInt());
+  int get _selectionFee => _isPremiumChoice ? widget.barbershop.barberSelectionFee : 0;
+  int get _totalPrice => _servicesPrice + _selectionFee;
+  int get _totalDuration => _selectedServices.fold(0, (prev, s) => prev + s.defaultDuration);
 
   @override
   void initState() {
     super.initState();
+    _barbershopService = widget.barbershopService ?? BarbershopService();
+    _queueService = widget.queueService ?? QueueService();
+    
+    // Initial date: today or tomorrow if closed
     final now = DateTime.now();
     _selectedDate = DateTime(now.year, now.month, now.day);
-    // set next quarter hour
-    final nextQuarter = ((now.minute ~/ 15) + 1) * 15;
-    int hour = now.hour + (nextQuarter >= 60 ? 1 : 0);
-    int minute = nextQuarter % 60;
-    // handle day wrap when hour reaches 24
-    if (hour >= 24) {
-      hour = hour - 24;
-      _selectedDate = _selectedDate.add(const Duration(days: 1));
-    }
-    // clamp hour to valid range
-    if (hour < 0) hour = 0;
-    if (hour > 23) hour = 23;
-    _selectedTime = TimeOfDay(hour: hour, minute: minute);
+    
+    // Auto-advance if store is closed today? (Optional)
+  }
 
-    _barbershopService = widget.barbershopService ?? BarbershopService();
-    // allow injection of QueueService for testing
-    _queueService = widget.queueService ?? QueueService();
-    _servicesFuture = _barbershopService.getAllServices();
-    _barbermenFuture = _barbershopService.getBarbermenByShop(
-      widget.barbershop.id,
-    );
-    // Cache barbermen list and set an automatic default barber based on availability
-    _barbermenFuture.then((barbList) {
-      _barbermenList.clear();
-      _barbermenList.addAll(barbList);
-      _setDefaultBarber();
-      _fetchSpecialOrderFee();
+  // ---------- LOGIC ----------
+
+  bool _isShopOpenOn(DateTime date) {
+    // 1. Check Weekly Holiday
+    if (widget.barbershop.weeklyHolidays.contains(date.weekday % 7)) return false;
+    // 2. Check Specific Holiday
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    if (widget.barbershop.specificHolidays.contains(dateStr)) return false;
+    return true;
+  }
+
+  Future<void> _checkBarberAvailability() async {
+    if (_selectedTime == null) return;
+    
+    setState(() {
+      _isCheckingAvailability = true;
+      _availabilityError = null;
     });
-    Intl.defaultLocale = 'id_ID';
-  }
 
-  // ---------- Logic ----------
-  void _updateEstimatedFinishTime() {
-    final effectiveBarberId = _isSpecialOrder
-        ? _selectedBarberman?.id
-        : _assignedBarberman?.id;
-
-    if (effectiveBarberId != null && _selectedServices.isNotEmpty) {
-      final start = DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
-        _selectedTime.hour,
-        _selectedTime.minute,
-      );
-      final minutes = _totalDuration;
-      setState(() {
-        _estimatedFinishTime = start.add(Duration(minutes: minutes));
-      });
-      // validate estimated finish within shop hours
-      final close = widget.barbershop.closeHour;
-      final closeTime = DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
-        close,
-      );
-      if (_estimatedFinishTime != null &&
-          _estimatedFinishTime!.isAfter(closeTime)) {
-        setState(() {
-          _isSlotAvailable = false;
-          _slotAvailabilityMessage = 'Waktu layanan melebihi jam kerja toko';
-        });
-        return;
-      }
-      _checkSlotAvailability(barbermanId: effectiveBarberId);
-    } else {
-      setState(() {
-        _estimatedFinishTime = null;
-        _slotAvailabilityMessage = '';
-        _isSlotAvailable = false;
-      });
-    }
-  }
-
-  Future<void> _checkSlotAvailability({required String barbermanId}) async {
-    if (barbermanId.isEmpty || _selectedServices.isEmpty) return;
-    setState(() => _slotAvailabilityMessage = 'Mengecek ketersediaan slot...');
-    final booking = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-      _selectedTime.hour,
-      _selectedTime.minute,
+    final bookingDateTime = DateTime(
+      _selectedDate.year, _selectedDate.month, _selectedDate.day,
+      _selectedTime!.hour, _selectedTime!.minute,
     );
 
     try {
-      final ok = await _checkSlotAvailable(
-        barbershopId: widget.barbershop.id,
-        barbermanId: barbermanId,
-        bookingTime: booking,
-        serviceIds: _selectedServices.map((s) => s.id).toList(),
-      );
-      if (!mounted) return;
-      setState(() {
-        _isSlotAvailable = ok;
-        _slotAvailabilityMessage = ok
-            ? 'Slot tersedia'
-            : 'Slot bentrok dengan booking lain';
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isSlotAvailable = false;
-        _slotAvailabilityMessage = 'Gagal memeriksa slot';
-      });
-    }
-  }
-
-  // helper untuk check slot availability
-  Future<bool> _checkSlotAvailable({
-    required String barbershopId,
-    required String barbermanId,
-    required DateTime bookingTime,
-    required List<String> serviceIds,
-  }) => _queueService.isSlotAvailable(
-    barbershopId: barbershopId,
-    barbermanId: barbermanId,
-    bookingTime: bookingTime,
-    serviceIds: serviceIds,
-  );
-
-  Future<void> _pickDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 30)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: kBrownAccent,
-              onPrimary: Colors.black,
-              surface: Colors.black,
-              onSurface: Colors.white,
-            ),
-            dialogTheme: const DialogThemeData(
-              backgroundColor: Color(0xFF1E1E1E),
-            ),
-          ),
-          child: child!,
+      if (_isPremiumChoice) {
+        // User picked a specific one, just check if HE is available
+        if (_selectedBarberman == null) throw "Pilih barber terlebih dahulu";
+        
+        final isAvailable = await _queueService.isSlotAvailable(
+          barbershopId: widget.barbershop.id,
+          barbermanId: _selectedBarberman!.id,
+          bookingTime: bookingDateTime,
+          serviceIds: _selectedServices.map((s) => s.id).toList(),
         );
-      },
-    );
-    if (picked != null) {
-      setState(() => _selectedDate = picked);
-      _updateEstimatedFinishTime();
-      _setDefaultBarber();
-    }
-  }
-
-  Future<void> _pickTime() async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: kBrownAccent,
-              onPrimary: Colors.black,
-              surface: Colors.black,
-              onSurface: Colors.white,
-            ),
-            dialogTheme: const DialogThemeData(
-              backgroundColor: Color(0xFF1E1E1E),
-            ),
-          ),
-          child: child!,
+        
+        if (!isAvailable) throw "Barber tersebut sudah ada jadwal di jam ini";
+      } else {
+        // Fairness Algorithm: System picks
+        final fairId = await _queueService.getFairAvailableBarberman(
+          barbershopId: widget.barbershop.id,
+          bookingTime: bookingDateTime,
+          serviceIds: _selectedServices.map((s) => s.id).toList(),
         );
-      },
-    );
-    if (picked != null) {
-      final open = widget.barbershop.openHour;
-      final close = widget.barbershop.closeHour;
-      if (picked.hour < open || picked.hour >= close) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Pilih waktu antara $open:00 - $close:00')),
-        );
-        return;
-      }
-      // Cegah memilih waktu yang sudah lewat pada hari ini
-      final now = DateTime.now();
-      final isToday =
-          _selectedDate.year == now.year &&
-          _selectedDate.month == now.month &&
-          _selectedDate.day == now.day;
-      if (isToday) {
-        final pickedDateTime = DateTime(
-          _selectedDate.year,
-          _selectedDate.month,
-          _selectedDate.day,
-          picked.hour,
-          picked.minute,
-        );
-        if (pickedDateTime.isBefore(now)) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tidak bisa memilih waktu yang sudah lewat'),
-            ),
-          );
-          return;
+        
+        if (fairId == null) {
+          debugPrint("AppointmentScreen: No fair available barber found for $bookingDateTime");
+          throw "Tidak ada hairstylist tersedia jam ini. Coba jam lain.";
         }
+        
+        final b = await _barbershopService.getBarbermanById(fairId);
+        setState(() => _autoBarberman = b);
       }
-      // Cegah waktu layanan melebihi jam kerja (cek estimasi durasi jika ada layanan terpilih)
-      if (_selectedServices.isNotEmpty) {
-        final pickedStart = DateTime(
-          _selectedDate.year,
-          _selectedDate.month,
-          _selectedDate.day,
-          picked.hour,
-          picked.minute,
-        );
-        final finish = pickedStart.add(Duration(minutes: _totalDuration));
-        final closeTime = DateTime(
-          _selectedDate.year,
-          _selectedDate.month,
-          _selectedDate.day,
-          close,
-        );
-        if (finish.isAfter(closeTime)) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Layanan melebihi jam kerja toko ($open:00 - $close:00). Pilih waktu lebih awal.',
-              ),
-            ),
-          );
-          return;
-        }
-      }
-      setState(() => _selectedTime = picked);
-      _updateEstimatedFinishTime();
-      _setDefaultBarber();
-    }
-  }
-
-  Future<void> _processBooking() async {
-    final messenger = ScaffoldMessenger.of(context);
-    if (_selectedServices.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Pilih minimal satu layanan'),
-          backgroundColor: Colors.orangeAccent,
-        ),
-      );
-      return;
-    }
-    // Validation for barber selection based on special-order flag
-    if (_isSpecialOrder && _selectedBarberman == null) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Aktifkan Special Order dan pilih barberman'),
-          backgroundColor: Colors.orangeAccent,
-        ),
-      );
-      return;
-    }
-
-    final effectiveBarberId = _isSpecialOrder
-        ? _selectedBarberman?.id
-        : _assignedBarberman?.id;
-
-    if (effectiveBarberId == null) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Barber tidak tersedia saat ini, coba waktu lain'),
-          backgroundColor: Colors.orangeAccent,
-        ),
-      );
-      return;
-    }
-
-    if (!_isSlotAvailable) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Slot tidak tersedia, silakan pilih waktu/barberman lain',
-          ),
-          backgroundColor: Colors.orangeAccent,
-        ),
-      );
-      return;
-    }
-    if (widget.testUserId == null &&
-        FirebaseAuth.instance.currentUser == null) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Silakan login untuk melanjutkan booking'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    final bookingDate = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-      _selectedTime.hour,
-      _selectedTime.minute,
-    );
-    final customerId =
-        widget.testUserId ?? FirebaseAuth.instance.currentUser!.uid;
-
-    // Validasi akhir: booking time tidak boleh masa lalu
-    if (bookingDate.isBefore(DateTime.now())) {
-      if (mounted) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Waktu booking sudah lewat, pilih waktu lain'),
-            backgroundColor: Colors.orangeAccent,
-          ),
-        );
-        setState(() => _isLoading = false);
-      }
-      return;
-    }
-
-    // Validasi tambahan: booking harus dibuat minimal 30 menit sebelum waktu mulai
-    final minLeadClient = DateTime.now().add(const Duration(minutes: 30));
-    if (bookingDate.isBefore(minLeadClient)) {
-      if (mounted) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Booking harus dibuat minimal 30 menit sebelum waktu mulai',
-            ),
-            backgroundColor: Colors.orangeAccent,
-          ),
-        );
-        setState(() => _isLoading = false);
-      }
-      return;
-    }
-
-    // Validasi akhir: pastikan booking mulai & selesai berada dalam jam kerja barbershop
-    final openHour = widget.barbershop.openHour;
-    final closeHour = widget.barbershop.closeHour;
-    final startTime = bookingDate;
-    final finishTime = startTime.add(Duration(minutes: _totalDuration));
-    final dayClose = DateTime(
-      startTime.year,
-      startTime.month,
-      startTime.day,
-      closeHour,
-    );
-    final dayOpen = DateTime(
-      startTime.year,
-      startTime.month,
-      startTime.day,
-      openHour,
-    );
-    if (startTime.isBefore(dayOpen) || finishTime.isAfter(dayClose)) {
-      if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              'Pilih waktu antara $openHour:00 - $closeHour:00 agar layanan selesai sebelum jam tutup',
-            ),
-            backgroundColor: Colors.orangeAccent,
-          ),
-        );
-        setState(() => _isLoading = false);
-      }
-      return;
-    }
-
-    final String newOrderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
-
-    final now = DateTime.now();
-    final paymentDue = now.add(const Duration(minutes: 10));
-
-    final payload = {
-      'barbershop_id': widget.barbershop.id,
-      'customer_id': customerId,
-      'barberman_id': effectiveBarberId,
-      'service_ids': _selectedServices.map((s) => s.id).toList(),
-      'total_price': _totalPrice,
-      'barber_selection_fee': _isSpecialOrder ? (_barberSelectionFee ?? 0) : 0,
-      'paid_barber_selection':
-          _isSpecialOrder && (_barberSelectionFee ?? 0) > 0,
-      'estimated_duration': _totalDuration,
-      'booking_time': Timestamp.fromDate(bookingDate),
-      // Direct payment-first flow: lock slot immediately and require payment
-      'status': 'awaiting_payment',
-      'request_status': 'approved',
-      'payment_deadline': Timestamp.fromDate(paymentDue),
-      'order_id': newOrderId,
-    };
-
-    try {
-      // create queue and immediately go to payment screen (slot is locked)
-      await _queueService.createQueue(payload);
-
-      if (!mounted) return;
-
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Booking terkunci. Silakan lakukan pembayaran untuk mengamankan slot.',
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Navigate to PaymentScreen so user can upload payment proof immediately
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (c) => PaymentScreen(
-            orderId: newOrderId,
-            totalPrice: _totalPrice,
-            barbershopId: widget.barbershop.id,
-            barbermanId: effectiveBarberId,
-            bookingTime: bookingDate,
-            paymentDeadline: paymentDue,
-          ),
-        ),
-      );
     } catch (e) {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Gagal membuat antrean: ${e.toString()}'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      setState(() => _availabilityError = e.toString());
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isCheckingAvailability = false);
     }
   }
 
-  // ---------- UI ----------
+  void _nextStep() {
+    if (_currentStep < 2) {
+      // Validation before moving
+      if (_currentStep == 0 && _selectedServices.isEmpty) {
+        _showSnack("Pilih minimal satu layanan");
+        return;
+      }
+      if (_currentStep == 1 && _isPremiumChoice && _selectedBarberman == null) {
+        _showSnack("Silakan pilih barber favorit Anda");
+        return;
+      }
+      setState(() => _currentStep++);
+    }
+  }
+
+  void _prevStep() {
+    if (_currentStep > 0) setState(() => _currentStep--);
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // ---------- UI BUILDERS ----------
+
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final bottomInset = media.viewInsets.bottom;
-    final safeBottom = media.padding.bottom;
-
     return Scaffold(
       backgroundColor: kSurface,
       appBar: AppBar(
         backgroundColor: kSurface,
+        title: Text(widget.barbershop.name, style: const TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
-        title: Text(
-          widget.barbershop.name,
-          style: const TextStyle(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          onPressed: () => _currentStep > 0 ? _prevStep() : Navigator.pop(context),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: SafeArea(
-        bottom: false,
-        child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: EdgeInsets.fromLTRB(20, 18, 20, kBottomBuffer),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _shopHeader(),
-              const SizedBox(height: 24),
-              _sectionTitle('Pilih Layanan'),
-              const SizedBox(height: 12),
-
-              // --- SERVICES ---
-              SizedBox(
-                height: 200,
-                child: FutureBuilder<List<Service>>(
-                  future: _servicesFuture,
-                  builder: (ctx, snap) {
-                    if (snap.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(color: kBrownAccent),
-                      );
-                    }
-                    if (snap.hasError) {
-                      return const Center(
-                        child: Text(
-                          'Gagal memuat layanan',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                      );
-                    }
-
-                    final allServices = snap.data ?? [];
-                    final shopServiceIds = widget.barbershop.services.toSet();
-                    final services = (shopServiceIds.isEmpty)
-                        ? allServices
-                        : allServices
-                              .where((s) => shopServiceIds.contains(s.id))
-                              .toList();
-
-                    if (services.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'Belum ada layanan untuk barbershop ini',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                      );
-                    }
-
-                    return GridView.builder(
-                      padding: const EdgeInsets.only(top: 4, bottom: 4),
-                      itemCount: services.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 1,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            mainAxisExtent: 80,
-                          ),
-                      itemBuilder: (c, i) {
-                        final s = services[i];
-                        final selected = _selectedServices.any(
-                          (e) => e.id == s.id,
-                        );
-                        return _buildServiceTile(s, selected);
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              _sectionTitle('Hair Specialist'),
-              const SizedBox(height: 12),
-
-              // Special order toggle + assigned barber info
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _isSpecialOrder
-                              ? 'Special Order: pilih barber khusus'
-                              : (_assignedBarberman != null
-                                    ? 'Barber akan diacak otomatis: ${_assignedBarberman!.name}'
-                                    : 'Barber akan diacak otomatis'),
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                        if (_isSpecialOrder && (_barberSelectionFee ?? 0) > 0)
-                          Text(
-                            'Biaya special order: ${_currencyFormat.format(_barberSelectionFee ?? 0)}',
-                            style: const TextStyle(
-                              color: Colors.orangeAccent,
-                              fontSize: 12,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Switch.adaptive(
-                    value: _isSpecialOrder,
-                    onChanged: (v) {
-                      setState(() {
-                        _isSpecialOrder = v;
-                        if (!v) {
-                          _selectedBarberman = null;
-                          _isPaidBarberSelection = false;
-                          _barberSelectionFee = 0;
-                        }
-                      });
-                      // refresh default barber if turning off
-                      if (!v) _setDefaultBarber();
-                    },
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // --- BARBERMEN ---
-              FutureBuilder<List<Barberman>>(
-                future: _barbermenFuture,
-                builder: (ctx, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(
-                      height: 150,
-                      child: Center(
-                        child: CircularProgressIndicator(color: kBrownAccent),
-                      ),
-                    );
-                  }
-                  if (snap.hasError || (snap.data?.isEmpty ?? true)) {
-                    return const SizedBox(
-                      height: 150,
-                      child: Center(
-                        child: Text(
-                          'Barberman tidak tersedia',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                      ),
-                    );
-                  }
-                  final barbermen = snap.data!;
-                  return SizedBox(
-                    height: 150,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: barbermen.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 10),
-                      itemBuilder: (c, i) {
-                        final b = barbermen[i];
-                        final isSelected =
-                            (_selectedBarberman?.id ??
-                                _assignedBarberman?.id) ==
-                            b.id;
-                        return _buildBarbermanTile(
-                          b,
-                          isSelected,
-                          onTap: () => _confirmSelectBarber(b),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 24),
-              _sectionTitle('Tanggal & Waktu'),
-              const SizedBox(height: 12),
-
-              // --- DATE/TIME ---
-              _buildDateTimePickers(),
-              const SizedBox(height: 16),
-              if (_slotAvailabilityMessage.isNotEmpty) _slotBox(),
-              const SizedBox(height: 10),
-              if (_estimatedFinishTime != null) _estimCard(),
-              const SizedBox(height: 18),
-              _notesBox(),
-            ],
+      body: Column(
+        children: [
+          _buildProgressHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: _buildCurrentStepView(),
+            ),
           ),
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: EdgeInsets.only(bottom: bottomInset),
-        child: _bottomBar(safeBottomPadding: safeBottom),
+          _buildBottomSummary(),
+        ],
       ),
     );
   }
 
-  // ---------- Small Widgets ----------
-  Widget _shopHeader() {
-    final address = widget.barbershop.addres;
-    return Row(
+  Widget _buildProgressHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 40),
+      child: Row(
+        children: [
+          _stepDot(0, "Layanan"),
+          _stepLine(0),
+          _stepDot(1, "Barber"),
+          _stepLine(1),
+          _stepDot(2, "Jadwal"),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepDot(int index, String label) {
+    bool active = _currentStep >= index;
+    return Column(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: CachedNetworkImage(
-            imageUrl: widget.barbershop.imageUrl,
-            width: 84,
-            height: 84,
-            fit: BoxFit.cover,
-            errorWidget: (_, __, ___) => Container(
-              width: 84,
-              height: 84,
-              color: Colors.grey[900],
-              child: const Icon(
-                Icons.storefront,
-                color: Colors.white54,
-                size: 36,
-              ),
-            ),
-          ),
+        CircleAvatar(
+          radius: 12,
+          backgroundColor: active ? kBrownAccent : Colors.grey[800],
+          child: Text("${index + 1}", style: TextStyle(color: active ? Colors.black : Colors.white54, fontSize: 12, fontWeight: FontWeight.bold)),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                widget.barbershop.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                address,
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.star, color: Colors.amber, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    widget.barbershop.rating.toStringAsFixed(1),
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(width: 12),
-                  const Icon(
-                    Icons.access_time,
-                    color: Colors.white54,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${widget.barbershop.openHour}:00 - ${widget.barbershop.closeHour}:00',
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(color: active ? kBrownAccent : Colors.white24, fontSize: 10)),
       ],
     );
   }
 
-  Widget _sectionTitle(String t) => Padding(
-    padding: const EdgeInsets.only(bottom: 6.0),
-    child: Text(
-      t,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-      ),
-    ),
-  );
+  Widget _stepLine(int index) {
+    bool active = _currentStep > index;
+    return Expanded(child: Divider(color: active ? kBrownAccent : Colors.grey[800], thickness: 2, indent: 8, endIndent: 8));
+  }
 
-  Widget _buildServiceTile(Service s, bool selected) {
-    return InkWell(
-      onTap: () {
-        setState(() {
-          final isSel = _selectedServices.any((e) => e.id == s.id);
-          if (isSel) {
-            _selectedServices.removeWhere((e) => e.id == s.id);
-          } else {
-            _selectedServices.add(s);
-          }
-          _updateEstimatedFinishTime();
-        });
+  Widget _buildCurrentStepView() {
+    switch (_currentStep) {
+      case 0: return _buildServiceStep();
+      case 1: return _buildBarberStep();
+      case 2: return _buildScheduleStep();
+      default: return const SizedBox();
+    }
+  }
+
+  // --- STEP 1: SERVICES ---
+  Widget _buildServiceStep() {
+    return FutureBuilder<List<Service>>(
+      future: _barbershopService.getAllServices(),
+      builder: (context, snap) {
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: kBrownAccent));
+        final shopServices = snap.data!.where((s) => widget.barbershop.services.contains(s.id)).toList();
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Pilih Layanan", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text("Anda bisa memilih lebih dari satu layanan", style: TextStyle(color: Colors.white54)),
+            const SizedBox(height: 24),
+            ...shopServices.map((s) => _serviceCard(s)),
+          ],
+        );
       },
-      borderRadius: BorderRadius.circular(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected
-              ? const Color.fromRGBO(195, 164, 123, 0.18)
-              : const Color(0xFF171717),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? kBrownAccent : Colors.grey.shade800,
-            width: 1.0,
+    );
+  }
+
+  Widget _serviceCard(Service s) {
+    bool isSelected = _selectedServices.any((item) => item.id == s.id);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            isSelected ? _selectedServices.removeWhere((i) => i.id == s.id) : _selectedServices.add(s);
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isSelected ? kBrownAccent.withValues(alpha: 0.1) : kCardBg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isSelected ? kBrownAccent : Colors.transparent),
           ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(s.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text("${s.defaultDuration} mnt • Rp ${s.price.toInt()}", style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                  ],
+                ),
+              ),
+              Checkbox(
+                value: isSelected,
+                onChanged: (_) {
+                  setState(() {
+                    isSelected ? _selectedServices.removeWhere((i) => i.id == s.id) : _selectedServices.add(s);
+                  });
+                },
+                activeColor: kBrownAccent,
+                checkColor: Colors.black,
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- STEP 2: BARBER ---
+  Widget _buildBarberStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Siapa yang mencukur?", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 24),
+        
+        // Option 1: System Picks (Auto)
+        _choiceCard(
+          icon: Icons.auto_awesome,
+          title: "Dipilihkan Sistem (Adil & Cepat)",
+          subtitle: "Sistem akan mencarikan barber terbaik yang tersedia untuk Anda.",
+          isSelected: !_isPremiumChoice,
+          onTap: () => setState(() { _isPremiumChoice = false; _selectedBarberman = null; }),
+        ),
+        const SizedBox(height: 16),
+        
+        // Option 2: User Picks (Premium)
+        _choiceCard(
+          icon: Icons.stars,
+          title: "Pilih Barber Favorit",
+          subtitle: "Pilih barber tertentu yang sudah Anda kenal (+ Rp ${widget.barbershop.barberSelectionFee})",
+          isSelected: _isPremiumChoice,
+          onTap: () => setState(() => _isPremiumChoice = true),
+        ),
+        
+        if (_isPremiumChoice) ...[
+          const SizedBox(height: 32),
+          const Text("Daftar Specialist", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          _buildBarberList(),
+        ]
+      ],
+    );
+  }
+
+  Widget _choiceCard({required IconData icon, required String title, required String subtitle, required bool isSelected, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isSelected ? kBrownAccent.withValues(alpha: 0.1) : kCardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isSelected ? kBrownAccent : Colors.transparent),
         ),
         child: Row(
           children: [
-            Checkbox(
-              value: selected,
-              onChanged: (v) {
-                setState(() {
-                  final isSel = _selectedServices.any((e) => e.id == s.id);
-                  if (isSel) {
-                    _selectedServices.removeWhere((e) => e.id == s.id);
-                  } else {
-                    _selectedServices.add(s);
-                  }
-                  _updateEstimatedFinishTime();
-                });
-              },
-              activeColor: kBrownAccent,
-              checkColor: Colors.black,
-            ),
-            const SizedBox(width: 6),
+            Icon(icon, color: isSelected ? kBrownAccent : Colors.white24, size: 32),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    s.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(title, style: TextStyle(color: isSelected ? kBrownAccent : Colors.white, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text(
-                    '${_currencyFormat.format(s.price)} • ${s.defaultDuration}m',
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
                 ],
               ),
             ),
+            if (isSelected) const Icon(Icons.check_circle, color: kBrownAccent, size: 20),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBarbermanTile(
-    Barberman b,
-    bool selected, {
-    VoidCallback? onTap,
-  }) {
-    final avatarLetter = (b.name.isNotEmpty) ? b.name[0].toUpperCase() : '?';
-    return GestureDetector(
-      onTap:
-          onTap ??
-          () {
-            if (!_isSpecialOrder) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Aktifkan Special Order untuk memilih barber khusus',
+  Widget _buildBarberList() {
+    return FutureBuilder<List<Barberman>>(
+      future: _barbershopService.getBarbermenByShop(widget.barbershop.id),
+      builder: (context, snap) {
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: kBrownAccent));
+        final activeBarbers = snap.data!.where((b) => b.isActive).toList();
+        
+        return SizedBox(
+          height: 120,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: activeBarbers.length,
+            itemBuilder: (context, i) {
+              final b = activeBarbers[i];
+              bool isSelected = _selectedBarberman?.id == b.id;
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: InkWell(
+                  onTap: () => setState(() => _selectedBarberman = b),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 70, height: 70,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: isSelected ? kBrownAccent : Colors.transparent, width: 2),
+                          image: b.imageUrl != null 
+                            ? DecorationImage(image: CachedNetworkImageProvider(b.imageUrl!), fit: BoxFit.cover)
+                            : null,
+                          color: Colors.grey[900],
+                        ),
+                        child: b.imageUrl == null ? const Icon(Icons.person, color: Colors.white24) : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(b.name, style: TextStyle(color: isSelected ? kBrownAccent : Colors.white70, fontSize: 12)),
+                    ],
                   ),
-                  backgroundColor: Colors.orangeAccent,
                 ),
               );
-              return;
-            }
-            _confirmSelectBarber(b);
-          },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        width: 110,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected
-              ? const Color.fromRGBO(195, 164, 123, 0.18)
-              : const Color(0xFF121212),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? kBrownAccent : Colors.grey.shade800,
-            width: 1.0,
+            },
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: Colors.grey.shade900,
-              child: ClipOval(
-                child: CachedNetworkImage(
-                  imageUrl:
-                      b.imageUrl ??
-                      "https://placehold.co/100x100/FFFFFF/000000?text=$avatarLetter",
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) =>
-                      const Icon(Icons.person, color: Colors.white54, size: 28),
-                  errorWidget: (_, __, ___) => Center(
-                    child: Text(
-                      avatarLetter,
-                      style: const TextStyle(color: Colors.white, fontSize: 20),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Flexible(
-              child: Text(
-                b.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${b.avgDuration.toInt()}m avg',
-              style: const TextStyle(color: Colors.white54, fontSize: 11),
-            ),
-            const SizedBox(height: 4),
-            if (selected && _isSpecialOrder && _isPaidBarberSelection)
-              Text(
-                '+${_currencyFormat.format(_barberSelectionFee ?? 0)}',
-                style: TextStyle(
-                  color: kBrownAccent,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                ),
-              ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Future<void> _confirmSelectBarber(Barberman b) async {
-    debugPrint('[AppointmentScreen] Opening confirm dialog for ${b.name}');
-    final btnLabel =
-        'Pilih Barber (${_currencyFormat.format(_barberSelectionFee ?? 0).replaceAll('\u00A0', ' ')})';
-    debugPrint('[AppointmentScreen] Dialog actions label: $btnLabel');
-    final result = await showDialog<String>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: Text('Pilih ${b.name}?'),
-        content: Text(
-          'Pilih ${b.name} sebagai barber khusus? Biaya special order: ${_currencyFormat.format(_barberSelectionFee ?? 0)}',
-        ),
-        actions: [
-          // Backward compatibility: tests expect exact text 'Pilih Barber (Rp 5.000)'
-          Offstage(child: Text('Pilih Barber (Rp 5.000)')),
-          TextButton(
-            onPressed: () => Navigator.of(c).pop('auto'),
-            child: const Text('Pilih Default'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(c).pop('cancel'),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(c).pop('paid'),
-            child: Text(btnLabel),
-          ),
-        ],
-      ),
-    );
-
-    if (!mounted) return;
-
-    if (result == 'paid') {
-      setState(() {
-        _selectedBarberman = b;
-        _barberSelectionFee = _barberSelectionFee ?? 0;
-        _isPaidBarberSelection = true;
-      });
-      _updateEstimatedFinishTime();
-    } else if (result == 'auto') {
-      setState(() {
-        _barberSelectionFee = 0;
-        _isPaidBarberSelection = false;
-        _selectedBarberman = null;
-      });
-      await _setDefaultBarber();
-    }
-  }
-
-  Future<void> _setDefaultBarber() async {
-    // do not override if user explicitly picked a paid barber
-    if (_isPaidBarberSelection) return;
-
-    final bookingDate = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-      _selectedTime.hour,
-      _selectedTime.minute,
-    );
-    try {
-      final b = await _barbershopService.pickDefaultBarber(
-        widget.barbershop.id,
-        bookingDate,
-        lookaheadMinutes: 60,
-      );
-      if (!mounted) return;
-      if (b != null) {
-        setState(() {
-          _assignedBarberman = b;
-          if (!_isSpecialOrder) {
-            _selectedBarberman = null; // remain unselected for default bookings
-            _isPaidBarberSelection = false;
-          }
-        });
-        _updateEstimatedFinishTime();
-        // check slot availability for assigned barber
-        _checkSlotAvailability(barbermanId: b.id);
-      }
-    } catch (e) {
-      debugPrint('Error setDefaultBarber: $e');
-    }
-  }
-
-  Future<void> _fetchSpecialOrderFee() async {
-    try {
-      final bs = await _barbershopService.getBarbershopById(
-        widget.barbershop.id,
-      );
-      if (bs == null) return;
-
-      // Prefer the value already parsed into the Barbershop model. This avoids
-      // direct references to `FirebaseFirestore.instance` during widget tests
-      // and keeps behavior deterministic.
-      final int fee = bs.specialOrderFee ?? 5000;
-
-      if (!mounted) return;
-      setState(() => _barberSelectionFee = fee);
-    } catch (e) {
-      debugPrint('Failed to read specialOrderFee: $e');
-      if (!mounted) return;
-      setState(() => _barberSelectionFee = 5000);
-    }
-  }
-
-  Widget _buildDateTimePickers() {
+  // --- STEP 3: SCHEDULE ---
+  Widget _buildScheduleStep() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        OutlinedButton.icon(
-          onPressed: _pickDate,
-          icon: const Icon(Icons.calendar_today, size: 18, color: kBrownAccent),
-          label: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _dateFormat.format(_selectedDate),
-                style: const TextStyle(color: Colors.white),
-              ),
-              const Icon(Icons.arrow_drop_down, color: Colors.white54),
-            ],
-          ),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-            side: BorderSide(color: Colors.grey.shade800),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
+        const Text("Tentukan Jadwal", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 24),
+        
+        // Date Selector
+        const Text("Pilih Hari", style: TextStyle(color: Colors.white70, fontSize: 14)),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: _pickTime,
-          icon: const Icon(Icons.access_time, size: 18, color: kBrownAccent),
-          label: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _selectedTime.format(context),
-                style: const TextStyle(color: Colors.white),
-              ),
-              const Icon(Icons.arrow_drop_down, color: Colors.white54),
-            ],
-          ),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-            side: BorderSide(color: Colors.grey.shade800),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+        _buildDateRow(),
+        
+        const SizedBox(height: 32),
+        
+        // Time Selector
+        const Text("Pilih Jam", style: TextStyle(color: Colors.white70, fontSize: 14)),
+        const SizedBox(height: 12),
+        _buildTimeGrid(),
+        
+        if (_availabilityError != null) ...[
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.redAccent),
+                const SizedBox(width: 12),
+                Expanded(child: Text(_availabilityError!, style: const TextStyle(color: Colors.redAccent, fontSize: 13))),
+              ],
             ),
           ),
-        ),
+        ]
       ],
     );
   }
 
-  Widget _slotBox() {
-    final color = _isSlotAvailable ? Colors.greenAccent : Colors.orangeAccent;
-    final bg = _isSlotAvailable
-        ? const Color.fromRGBO(0, 128, 0, 0.08)
-        : const Color.fromRGBO(255, 165, 0, 0.08);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: bg,
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        _slotAvailabilityMessage,
-        style: TextStyle(color: color, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-
-  Widget _estimCard() {
-    final start = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-      _selectedTime.hour,
-      _selectedTime.minute,
-    );
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: const Color(0xFF171717),
-        border: Border.all(color: Colors.grey.shade800),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'Estimasi selesai:',
-            style: TextStyle(color: Colors.white70),
-          ),
-          Text(
-            '${_timeFormat.format(start)} - ${_timeFormat.format(_estimatedFinishTime!)}',
-            style: const TextStyle(
-              color: kBrownAccent,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
+  Widget _buildDateRow() {
+    return SizedBox(
+      height: 90,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: 14, // 2 weeks
+        itemBuilder: (context, i) {
+          final date = DateTime.now().add(Duration(days: i));
+          bool isOpen = _isShopOpenOn(date);
+          bool isSelected = _selectedDate.day == date.day && _selectedDate.month == date.month;
+          
+          return Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: InkWell(
+              onTap: isOpen ? () => setState(() { _selectedDate = date; _selectedTime = null; _availabilityError = null; }) : null,
+              child: Container(
+                width: 65,
+                decoration: BoxDecoration(
+                  color: isSelected ? kBrownAccent : (isOpen ? kCardBg : Colors.black26),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(DateFormat('EEE').format(date), style: TextStyle(color: isSelected ? Colors.black : Colors.white54, fontSize: 12)),
+                    const SizedBox(height: 4),
+                    Text("${date.day}", style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    if (!isOpen) const Text("LIBUR", style: TextStyle(color: Colors.redAccent, fontSize: 8, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _notesBox() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: const Color(0xFF171717),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.info_outline, color: Colors.white38, size: 20),
-          SizedBox(width: 10),
-          Expanded(
+  Widget _buildTimeGrid() {
+    final List<TimeOfDay> times = [];
+    for (int h = widget.barbershop.openHour; h < widget.barbershop.closeHour; h++) {
+      times.add(TimeOfDay(hour: h, minute: 0));
+      times.add(TimeOfDay(hour: h, minute: 30));
+    }
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.2),
+      itemCount: times.length,
+      itemBuilder: (context, i) {
+        final t = times[i];
+        bool isSelected = _selectedTime == t;
+        
+        // Disable past time for today
+        bool isPast = false;
+        if (_selectedDate.day == DateTime.now().day) {
+          if (t.hour < DateTime.now().hour || (t.hour == DateTime.now().hour && t.minute < DateTime.now().minute)) {
+            isPast = true;
+          }
+        }
+
+        return InkWell(
+          onTap: isPast ? null : () {
+            setState(() { _selectedTime = t; _availabilityError = null; });
+            _checkBarberAvailability();
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: isSelected ? kBrownAccent : (isPast ? Colors.transparent : kCardBg),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: isSelected ? kBrownAccent : (isPast ? Colors.white10 : Colors.transparent)),
+            ),
+            alignment: Alignment.center,
             child: Text(
-              'Datang 5 menit lebih awal. Keterlambatan dapat membatalkan booking.',
-              style: TextStyle(color: Colors.white54, fontSize: 12),
+              "${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}",
+              style: TextStyle(color: isSelected ? Colors.black : (isPast ? Colors.white10 : Colors.white), fontWeight: FontWeight.bold),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --- BOTTOM BAR ---
+  Widget _buildBottomSummary() {
+    bool canProceed = false;
+    String btnText = "LANJUT";
+    
+    if (_currentStep == 0 && _selectedServices.isNotEmpty) canProceed = true;
+    if (_currentStep == 1) {
+      if (!_isPremiumChoice) canProceed = true;
+      if (_isPremiumChoice && _selectedBarberman != null) canProceed = true;
+    }
+    if (_currentStep == 2) {
+      if (_selectedTime != null && _availabilityError == null && !_isCheckingAvailability) {
+        canProceed = true;
+        btnText = "BOOK NOW";
+      }
+    }
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + MediaQuery.of(context).padding.bottom),
+      decoration: BoxDecoration(color: kCardBg, border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05)))),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Total Estimasi", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                Text("Rp ${NumberFormat('#,###').format(_totalPrice)}", style: const TextStyle(color: kBrownAccent, fontSize: 20, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          SizedBox(
+            width: 140, height: 50,
+            child: ElevatedButton(
+              onPressed: (canProceed && !_isLoading) ? (_currentStep == 2 ? _processBooking : _nextStep) : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kBrownAccent, disabledBackgroundColor: Colors.white10,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: _isLoading ? const CircularProgressIndicator(color: Colors.black) : Text(btnText, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -1231,81 +583,51 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     );
   }
 
-  Widget _bottomBar({required double safeBottomPadding}) {
-    final est = _totalDuration > 0 ? 'Est ${_totalDuration}m' : 'Est 0m';
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + safeBottomPadding),
-      decoration: BoxDecoration(
-        color: const Color(0xFF131313),
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade800, width: 0.5),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Total',
-                style: const TextStyle(color: Colors.white54, fontSize: 13),
-              ),
-              Text(
-                _currencyFormat.format(_totalPrice),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${_selectedServices.length} layanan • $est',
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
-          ),
-
-          const SizedBox(height: 12),
-
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: (_isLoading || !_isSlotAvailable)
-                  ? null
-                  : _processBooking,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kBrownAccent,
-                disabledBackgroundColor: Colors.grey.shade700,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.black,
-                      ),
-                    )
-                  : const Text(
-                      'BOOK NOW',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
+  Future<void> _processBooking() async {
+    setState(() => _isLoading = true);
+    
+    final bookingDateTime = DateTime(
+      _selectedDate.year, _selectedDate.month, _selectedDate.day,
+      _selectedTime!.hour, _selectedTime!.minute,
     );
+    
+    final customerId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    final barberId = _isPremiumChoice ? _selectedBarberman!.id : _autoBarberman!.id;
+    final orderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
+
+    final payload = {
+      'barbershop_id': widget.barbershop.id,
+      'customer_id': customerId,
+      'barberman_id': barberId,
+      'service_ids': _selectedServices.map((s) => s.id).toList(),
+      'total_price': _totalPrice,
+      'barber_selection_fee': _selectionFee,
+      'paid_barber_selection': _isPremiumChoice,
+      'is_auto_assigned': !_isPremiumChoice,
+      'estimated_duration': _totalDuration,
+      'booking_time': Timestamp.fromDate(bookingDateTime),
+      'status': 'awaiting_payment',
+      'request_status': 'approved',
+      'payment_deadline': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 15))),
+      'order_id': orderId,
+    };
+
+    try {
+      await _queueService.createQueue(payload);
+      if (!mounted) return;
+      
+      Navigator.of(context).push(MaterialPageRoute(builder: (c) => PaymentScreen(
+        orderId: orderId,
+        totalPrice: _totalPrice,
+        barbershopId: widget.barbershop.id,
+        barbermanId: barberId,
+        bookingTime: bookingDateTime,
+        paymentDeadline: DateTime.now().add(const Duration(minutes: 15)),
+      )));
+    } catch (e) {
+      _showSnack("Gagal: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 }

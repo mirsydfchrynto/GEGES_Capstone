@@ -16,7 +16,8 @@ const Color kSurface = Colors.black;
 const Color kTextGrey = Colors.white70;
 
 class CancellationRequestsScreen extends StatefulWidget {
-  const CancellationRequestsScreen({super.key});
+  final String? currentUserId;
+  const CancellationRequestsScreen({super.key, this.currentUserId});
   @override
   State<CancellationRequestsScreen> createState() =>
       _CancellationRequestsScreenState();
@@ -561,9 +562,11 @@ class _CancellationRequestsScreenState
                             ),
                           );
 
-                          await _queueService.adminApproveCancellation(
+                          await _queueService.adminProcessRefund(
                             q.id,
-                            refundProofBase64: base64Proof,
+                            refundProofBase64: base64Proof ?? '', // Ensure non-null for logic
+                            adminUid: widget.currentUserId, // Fixed: Using proper ID
+                            adminNotes: 'Approved and refunded via Admin Dashboard',
                           );
 
                           // close loading then bottom sheet

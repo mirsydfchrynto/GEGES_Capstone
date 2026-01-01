@@ -31,20 +31,56 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
     _tenantService = widget.tenantService ?? TenantService();
   }
 
-  Future<void> _approve(String tenantId) async {
+  Future<void> _approve(String tenantId, String initialEmail) async {
+    final emailCtrl = TextEditingController(text: initialEmail);
+    final passCtrl = TextEditingController(text: 'Barber123!'); // Default temp password
+
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Approve Partnership'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Berikan akses login untuk tenant ini:', style: TextStyle(fontSize: 13)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailCtrl,
+              decoration: const InputDecoration(labelText: 'Email Admin/Kasir', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: passCtrl,
+              decoration: const InputDecoration(labelText: 'Temporary Password', border: OutlineInputBorder()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Approve & Kirim Akun')),
+        ],
+      ),
+    );
+
+    if (res != true) return;
+
     final userId =
         widget.currentUserId ??
         FirebaseAuth.instance.currentUser?.uid ??
         'admin_unknown';
+    
     await _tenantService.verifyTenant(
       tenantId: tenantId,
       approve: true,
       verifiedBy: userId,
+      adminEmail: emailCtrl.text.trim(),
+      tempPassword: passCtrl.text.trim(),
     );
+    
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Tenant approved')));
+    ).showSnackBar(const SnackBar(content: Text('Tenant approved and credentials set.')));
   }
 
   Future<void> _reject(String tenantId) async {
@@ -167,6 +203,13 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
                               invoice['payment_proof_base64'],
                             ),
                           ),
+                        if (status == 'active') ...[
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const Text('Credentials:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text('Login Email: ${data['admin_email'] ?? 'N/A'}'),
+                          Text('Temp Password: ${data['temp_password'] ?? 'N/A'}'),
+                        ],
                       ],
                     ),
                     actions: [
@@ -181,7 +224,7 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.check, color: Colors.green),
-              onPressed: () => _approve(tenantId),
+              onPressed: () => _approve(tenantId, data['owner_email'] ?? ''),
             ),
             IconButton(
               icon: const Icon(Icons.close, color: Colors.red),
@@ -248,13 +291,16 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
             .where('status', whereNotIn: ['active', 'rejected'])
             .snapshots(),
         builder: (context, snap) {
-          if (snap.hasError)
+          if (snap.hasError) {
             return const Center(child: Text('Error loading tenants'));
-          if (!snap.hasData)
+          }
+          if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
           final docs = snap.data!.docs;
-          if (docs.isEmpty)
+          if (docs.isEmpty) {
             return const Center(child: Text('No pending tenant requests'));
+          }
           return ListView.builder(
             padding: const EdgeInsets.all(12),
             itemCount: docs.length,

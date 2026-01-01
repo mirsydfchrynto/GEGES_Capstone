@@ -229,14 +229,18 @@ if (_activeInvoice == null) return '';
                               // Resolve a user id for cancel operation without relying on Firebase being initialized in tests
                               String userId = 'unknown';
                               try {
-                                userId = FirebaseAuth.instance.currentUser?.uid ?? FirebaseFirestore.instance.app.options.projectId ?? 'unknown';
+                                userId = FirebaseAuth.instance.currentUser?.uid ?? FirebaseFirestore.instance.app.options.projectId;
                               } catch (_) {
                                 userId = 'test-owner';
                               }
+
+                              // Capture messenger before awaiting to avoid using BuildContext across async gaps
+                              final messenger = ScaffoldMessenger.of(context);
+
                               await _tenantService.cancelRegistrationByOwner(tenantId: _activeTenant!.id, userId: userId);
                               if (!mounted) return;
                               setState(() { _hasActiveRegistration = false; _activeTenant = null; });
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pendaftaran dibatalkan')));
+                              messenger.showSnackBar(const SnackBar(content: Text('Pendaftaran dibatalkan')));
                             },
                             child: const Text('Batalkan'),
                           ),

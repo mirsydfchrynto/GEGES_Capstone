@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:flutter/services.dart';
-import 'auth_service_test.mocks.dart';
+import 'auth_service_mocks.dart';
 
 void main() {
   test('signOut should record logout audit', () async {

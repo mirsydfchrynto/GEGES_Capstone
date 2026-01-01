@@ -72,10 +72,11 @@ class _DocumentUploadWidgetState extends State<DocumentUploadWidget> {
       });
       widget.onUploaded(ref);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Upload gagal: $e')));
+      }
     } finally {
       if (mounted) {
         setState(() {

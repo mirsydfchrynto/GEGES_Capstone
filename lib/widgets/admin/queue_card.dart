@@ -101,6 +101,8 @@ class _QueueCardState extends State<QueueCard> {
         return 'Selesai';
       case QueueStatus.cancelled:
         return 'Dibatalkan';
+      case QueueStatus.cancellationRequested:
+        return 'Permintaan Batal';
     }
   }
 
@@ -116,6 +118,8 @@ class _QueueCardState extends State<QueueCard> {
         return Colors.grey;
       case QueueStatus.cancelled:
         return Colors.redAccent;
+      case QueueStatus.cancellationRequested:
+        return Colors.orange;
     }
   }
 
@@ -194,6 +198,130 @@ class _QueueCardState extends State<QueueCard> {
       _showSnack('Gagal membatalkan: $e', isError: true);
     } finally {
       if (mounted) setState(() => _processingCancel = false);
+    }
+  }
+
+  Future<void> _handleRejectRequest() async {
+    String reason = '';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          backgroundColor: kDarkSurface,
+          title: const Text('Tolak Pembatalan', style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: ctrl,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              hintText: 'Alasan penolakan...',
+              hintStyle: TextStyle(color: Colors.white54),
+              filled: true,
+              fillColor: Colors.black26,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                reason = ctrl.text.trim();
+                Navigator.pop(ctx, true);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD32F2F)),
+              child: const Text('Tolak Permintaan', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true || reason.isEmpty) return;
+
+    setState(() => _processingCancel = true); // Reuse cancel state var or add new one
+    try {
+      final adminUid = FirebaseAuth.instance.currentUser?.uid;
+      await _queueService.adminRejectCancellation(
+        widget.queue.id,
+        reason: reason,
+        adminUid: adminUid,
+      );
+      _showSnack('Permintaan pembatalan ditolak');
+    } catch (e) {
+      _showSnack('Gagal menolak: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _processingCancel = false);
+    }
+  }
+
+  Future<void> _handleApproveRefundRequest() async {
+    // In a real app, Admin would upload an image here.
+    // For this CLI implementation, we accept a Ref Number/Note.
+    String note = '';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final ctrl = TextEditingController();
+        return AlertDialog(
+          backgroundColor: kDarkSurface,
+          title: const Text('Setujui & Proses Refund', style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Pastikan Anda telah melakukan transfer refund manual ke customer.',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctrl,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'Nomor Ref / Catatan Refund...',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.black26,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                note = ctrl.text.trim();
+                Navigator.pop(ctx, true);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              child: const Text('Setujui & Selesai', style: TextStyle(color: Colors.black)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _processingRefund = true);
+    try {
+      final adminUid = FirebaseAuth.instance.currentUser?.uid;
+      // Using a placeholder for proof if image upload is not available in this widget yet
+      await _queueService.adminProcessRefund(
+        widget.queue.id,
+        refundProofBase64: 'REF:$note', // Placeholder protocol
+        adminNotes: note,
+        adminUid: adminUid,
+      );
+      _showSnack('Refund berhasil diproses');
+    } catch (e) {
+      _showSnack('Gagal proses refund: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _processingRefund = false);
     }
   }
 
@@ -640,6 +768,64 @@ class _QueueCardState extends State<QueueCard> {
                     ),
                   ),
                 ],
+              ),
+
+            // REQUEST CANCELLATION REASON DISPLAY
+            if (status == QueueStatus.cancellationRequested && queue.cancellationReason != null)
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Alasan Pembatalan Customer:', style: TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(queue.cancellationReason!, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                  ],
+                ),
+              ),
+
+            // REQUEST CANCELLATION ACTIONS
+            if (status == QueueStatus.cancellationRequested)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _processingCancel ? null : _handleRejectRequest,
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFD32F2F)),
+                          foregroundColor: const Color(0xFFD32F2F),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text('Tolak'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton.icon(
+                        onPressed: _processingRefund ? null : _handleApproveRefundRequest,
+                        icon: _processingRefund
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                            : const Icon(Icons.money_off, size: 16),
+                        label: const Text('Setujui & Refund'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
             // REFUND ACTION BUTTON - Show for cancelled bookings that haven't been refunded yet
