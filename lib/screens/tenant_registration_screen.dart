@@ -180,7 +180,7 @@ if (_activeInvoice == null) return '';
             children: [
               TextFormField(controller: _businessName, decoration: const InputDecoration(labelText: 'Nama Bisnis'), validator: (v) => v == null || v.trim().isEmpty ? 'Harus diisi' : null),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(initialValue: _package, items: const [DropdownMenuItem(value: 'basic', child: Text('Basic — Rp50.000')), DropdownMenuItem(value: 'pro', child: Text('Pro — Rp200.000'))], onChanged: (v) => setState(() => _package = v!)),
+              DropdownButtonFormField<String>(value: _package, items: const [DropdownMenuItem(value: 'basic', child: Text('Basic — Rp50.000')), DropdownMenuItem(value: 'pro', child: Text('Pro — Rp200.000'))], onChanged: (v) => setState(() => _package = v!)),
               const SizedBox(height: 12),
               ElevatedButton.icon(onPressed: () => _pickDocument('contoh dokumen'), icon: const Icon(Icons.upload_file), label: const Text('Unggah Dokumen (conto)')),
               if (_base64Doc != null) ...[

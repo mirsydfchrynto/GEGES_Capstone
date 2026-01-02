@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:geges_smartbarber/screens/auth_gate.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -12,6 +11,7 @@ import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart
 import 'package:geges_smartbarber/screens/admin/tenant_requests_screen.dart';
 import 'package:geges_smartbarber/screens/legal/terms_page.dart';
 import 'package:geges_smartbarber/screens/legal/privacy_page.dart';
+import 'package:geges_smartbarber/screens/splash_screen.dart'; // Import Splash Screen
 
 // ==========================================
 // file: lib/main.dart
@@ -275,7 +275,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // - OnboardingScreen = layar pengenalan aplikasi untuk user baru
       // - jika user sudah pernah buka, bisa langsung ke LoginScreen
       // - (implementasi bisa menggunakan shared_preferences untuk check)
-      home: const AuthGate(),
+      home: const SplashScreen(), // Ganti AuthGate dengan SplashScreen
     );
   }
 }

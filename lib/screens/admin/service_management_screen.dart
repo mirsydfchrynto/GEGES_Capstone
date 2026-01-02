@@ -138,7 +138,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                         isActive = val;
                       });
                     },
-                    activeThumbColor: const Color(0xFFC3A47B),
+                    activeColor: const Color(0xFFC3A47B),
                   ),
                 ],
               ),
