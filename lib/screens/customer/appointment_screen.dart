@@ -563,7 +563,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
               mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text("Total Estimasi", style: TextStyle(color: Colors.white54, fontSize: 12)),
-                Text("Rp ${NumberFormat('#,###').format(_totalPrice)}", style: const TextStyle(color: kBrownAccent, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_totalPrice), style: const TextStyle(color: kBrownAccent, fontSize: 20, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
