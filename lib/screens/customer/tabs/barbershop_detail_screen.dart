@@ -102,7 +102,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
       return;
     }
     try {
-      final isFav = await _barbershopService.isFavorite(_userId!, widget.barbershop.id);
+      final isFav = await _barbershopService.isFavorite(_userId, widget.barbershop.id);
       if (mounted) {
         setState(() {
           _isFavorite = isFav;
@@ -134,7 +134,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
     });
 
     try {
-      await _barbershopService.toggleFavorite(_userId!, widget.barbershop.id);
+      await _barbershopService.toggleFavorite(_userId, widget.barbershop.id);
       
       // Update state local berdasarkan aksi sebelumnya (toggle)
       // Kita bisa cek lagi ke DB atau cukup toggle nilai boolean

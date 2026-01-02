@@ -53,7 +53,7 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
     }
 
     setState(() => _isLoading = true);
-    final results = await _barbershopService.getFavoriteBarbershops(_userId!);
+    final results = await _barbershopService.getFavoriteBarbershops(_userId);
     if (mounted) {
       setState(() {
         _favoriteBarbershops = results;
@@ -66,7 +66,7 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
     if (_userId == null) return;
 
     try {
-      await _barbershopService.toggleFavorite(_userId!, shop.id);
+      await _barbershopService.toggleFavorite(_userId, shop.id);
       
       setState(() {
         _favoriteBarbershops.removeWhere((s) => s.id == shop.id);

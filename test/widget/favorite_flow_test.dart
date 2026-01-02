@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/barbershop_detail_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/favorite_barbershops_screen.dart';
-import 'package:geges_smartbarber/services/barbershop_service.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 // Mock CachedNetworkImage to avoid network calls
 class MockCachedNetworkImage extends StatelessWidget {
@@ -20,12 +15,12 @@ class MockCachedNetworkImage extends StatelessWidget {
 
 void main() {
   late FakeFirebaseFirestore fakeFs;
-  late MockFirebaseAuth mockAuth;
   late Barbershop testShop;
 
   setUp(() async {
     fakeFs = FakeFirebaseFirestore();
-    mockAuth = MockFirebaseAuth(signedIn: true, mockUser: MockUser(uid: 'user1'));
+    // mockAuth is implicitly used via injection or setup if needed, but here we inject userId string directly
+    // so we don't strictly need the variable if we don't use it.
     
     testShop = Barbershop(
       id: 'shop123',
