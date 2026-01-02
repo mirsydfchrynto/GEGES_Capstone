@@ -54,22 +54,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses || true
-
       - name: Start Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
-          target: google_apis
+          api-level: 29
+          target: default
           arch: x86_64
-          emulator-options: -no-window -no-audio
-          # The action allows running a script inside the runner; include a minimal no-op script to satisfy schema validators
-          script: |
-            echo "emulator ready"
-
-      - name: Wait for emulator
-        run: flutter devices
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: echo "Generated AVD snapshot for caching."
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
