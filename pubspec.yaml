@@ -49,7 +49,7 @@ dev_dependencies:
   build_runner: ^2.4.8
   # Use a lightweight in-memory Firestore for unit tests to avoid fragile typed mocks
   fake_cloud_firestore: ^3.1.0
-  firebase_auth_mocks: ^0.14.2
+  firebase_auth_mocks: ^0.14.1
   network_image_mock: ^2.1.1
 
 flutter:
