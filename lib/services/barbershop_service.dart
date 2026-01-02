@@ -461,6 +461,37 @@ class BarbershopService {
     }
   }
 
+  Future<List<Barbershop>> searchBarbershops(String query) async {
+    try {
+      // 1. Get all active barbershops
+      // Note: For large datasets, this should be paginated or use a dedicated search service (Algolia/Typesense).
+      // For this scale, fetching all active shops is acceptable and allows for flexible client-side filtering.
+      final snapshot = await _firestore
+          .collection('barbershops')
+          .where('isOpen', isEqualTo: true)
+          .get();
+
+      final allShops = snapshot.docs.map((doc) => Barbershop.fromFirestore(doc)).toList();
+
+      if (query.isEmpty) return allShops;
+
+      final lowerQuery = query.toLowerCase();
+
+      // 2. Filter locally
+      return allShops.where((shop) {
+        final nameMatch = shop.name.toLowerCase().contains(lowerQuery);
+        final addressMatch = shop.addres.toLowerCase().contains(lowerQuery);
+        // Optional: Add service matching if needed
+        final serviceMatch = shop.services.any((s) => s.toLowerCase().contains(lowerQuery));
+        
+        return nameMatch || addressMatch || serviceMatch;
+      }).toList();
+    } catch (e) {
+      debugPrint('Error searchBarbershops: $e');
+      return [];
+    }
+  }
+
   // -----------------------
   // FAVORITE FUNCTIONS
   // -----------------------

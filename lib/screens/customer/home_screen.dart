@@ -17,6 +17,7 @@ import 'package:geges_smartbarber/screens/customer/tabs/profile_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/chat_assistant_screen.dart'; // CHATBOT
 import 'package:geges_smartbarber/screens/customer/tabs/stylescan_screen.dart'; // STYLESCA N BARU
 import 'package:geges_smartbarber/screens/customer/notifications_screen.dart'; // NOTIFIKASI
+import 'package:geges_smartbarber/screens/customer/search_screen.dart'; // SEARCH SCREEN
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -118,24 +119,37 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: 'Search Barbershop or Services',
-          hintStyle: const TextStyle(color: Color(0xFF6B6B6B)), // kHintText
-          prefixIcon: const Icon(Icons.search, color: Color(0xFF6B6B6B)),
-          filled: true,
-          fillColor: kDarkGrey,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15.0),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15.0),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15.0),
-            borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SearchScreen(barbershopService: _barbershopService),
+            ),
+          );
+        },
+        child: AbsorbPointer(
+          child: TextField(
+            readOnly: true,
+            decoration: InputDecoration(
+              hintText: 'Search Barbershop or Services',
+              hintStyle: const TextStyle(color: Color(0xFF6B6B6B)), // kHintText
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF6B6B6B)),
+              filled: true,
+              fillColor: kDarkGrey,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15.0),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15.0),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15.0),
+                borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
+              ),
+            ),
           ),
         ),
       ),
