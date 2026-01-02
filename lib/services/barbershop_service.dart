@@ -460,4 +460,113 @@ class BarbershopService {
       return null;
     }
   }
+
+  // -----------------------
+  // FAVORITE FUNCTIONS
+  // -----------------------
+
+  /// Toggle barbershop as favorite for a user.
+  /// Uses an array union/remove for atomicity.
+  Future<void> toggleFavorite(String userId, String barbershopId) async {
+    if (userId.isEmpty || barbershopId.isEmpty) return;
+    try {
+      final userRef = _firestore.collection('users').doc(userId);
+      final doc = await userRef.get();
+
+      if (!doc.exists) {
+        // Create user doc if not exists
+        await userRef.set({
+          'favorite_barbershops': [barbershopId],
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        return;
+      }
+
+      final data = doc.data() as Map<String, dynamic>;
+      final List<String> favorites = List<String>.from(
+        (data['favorite_barbershops'] ?? []) as List,
+      );
+
+      if (favorites.contains(barbershopId)) {
+        // Remove from favorites
+        await userRef.update({
+          'favorite_barbershops': FieldValue.arrayRemove([barbershopId]),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+      } else {
+        // Add to favorites
+        await userRef.update({
+          'favorite_barbershops': FieldValue.arrayUnion([barbershopId]),
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      debugPrint('Error toggleFavorite: $e');
+      rethrow;
+    }
+  }
+
+  /// Check if a barbershop is in user's favorites
+  Future<bool> isFavorite(String userId, String barbershopId) async {
+    if (userId.isEmpty || barbershopId.isEmpty) return false;
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (!doc.exists) return false;
+
+      final data = doc.data() as Map<String, dynamic>;
+      final List<String> favorites = List<String>.from(
+        (data['favorite_barbershops'] ?? []) as List,
+      );
+      return favorites.contains(barbershopId);
+    } catch (e) {
+      debugPrint('Error isFavorite: $e');
+      return false;
+    }
+  }
+
+  /// Stream of user's favorite barbershop IDs
+  Stream<List<String>> streamFavoriteIds(String userId) {
+    if (userId.isEmpty) return Stream.value([]);
+    return _firestore.collection('users').doc(userId).snapshots().map((doc) {
+      if (!doc.exists) return [];
+      final data = doc.data() as Map<String, dynamic>;
+      final List<dynamic> favs = data['favorite_barbershops'] ?? [];
+      return favs.map((e) => e.toString()).toList();
+    });
+  }
+
+  /// Get list of favorite Barbershop objects
+  Future<List<Barbershop>> getFavoriteBarbershops(String userId) async {
+    if (userId.isEmpty) return [];
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (!doc.exists) return [];
+
+      final data = doc.data() as Map<String, dynamic>;
+      final List<dynamic> favs = data['favorite_barbershops'] ?? [];
+      final List<String> favoriteIds = favs.map((e) => e.toString()).toList();
+
+      if (favoriteIds.isEmpty) return [];
+
+      // Fetch barbershops in chunks of 10 (Firestore limit for 'whereIn')
+      List<Barbershop> results = [];
+      for (var i = 0; i < favoriteIds.length; i += 10) {
+        final chunk = favoriteIds.sublist(
+          i,
+          i + 10 > favoriteIds.length ? favoriteIds.length : i + 10,
+        );
+        final snapshot = await _firestore
+            .collection('barbershops')
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+        results.addAll(
+          snapshot.docs.map((doc) => Barbershop.fromFirestore(doc)),
+        );
+      }
+      return results;
+    } catch (e) {
+      debugPrint('Error getFavoriteBarbershops: $e');
+      return [];
+    }
+  }
 }

@@ -13,11 +13,20 @@ import 'package:geges_smartbarber/screens/customer/tabs/review_tab.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:geges_smartbarber/services/barbershop_service.dart';
 // ------------------
 
 class BarbershopDetailScreen extends StatefulWidget {
   final Barbershop barbershop;
-  const BarbershopDetailScreen({super.key, required this.barbershop});
+  final FirebaseFirestore? firestore;
+  final String? testUserId; // For testing
+
+  const BarbershopDetailScreen({
+    super.key, 
+    required this.barbershop,
+    this.firestore,
+    this.testUserId,
+  });
 
   @override
   State<BarbershopDetailScreen> createState() => _BarbershopDetailScreenState();
@@ -33,8 +42,9 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
   static const Color kSurface = Colors.black; // Menambahkan warna surface
 
   // --- BARU: State untuk data dinamis ---
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String? _userId = FirebaseAuth.instance.currentUser?.uid;
+  late final FirebaseFirestore _firestore;
+  late final String? _userId;
+  late final BarbershopService _barbershopService;
 
   int _reviewCount = 0;
   bool _isLoadingReviews = true;
@@ -46,6 +56,10 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
   @override
   void initState() {
     super.initState();
+    _firestore = widget.firestore ?? FirebaseFirestore.instance;
+    _userId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    _barbershopService = BarbershopService(firestore: _firestore);
+    
     _tabController = TabController(length: 3, vsync: this);
 
     // --- BARU: Panggil fungsi untuk mengambil data dinamis ---
@@ -88,20 +102,12 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
       return;
     }
     try {
-      final userDoc = await _firestore.collection('users').doc(_userId).get();
-      if (userDoc.exists) {
-        // Asumsi Anda menyimpan favorit dalam array 'favoriteBarbershops'
-        final favorites = List<String>.from(
-          userDoc.data()?['favoriteBarbershops'] ?? [],
-        );
-        if (mounted) {
-          setState(() {
-            _isFavorite = favorites.contains(widget.barbershop.id);
-            _isLoadingFavorite = false;
-          });
-        }
-      } else {
-        if (mounted) setState(() => _isLoadingFavorite = false);
+      final isFav = await _barbershopService.isFavorite(_userId!, widget.barbershop.id);
+      if (mounted) {
+        setState(() {
+          _isFavorite = isFav;
+          _isLoadingFavorite = false;
+        });
       }
     } catch (e) {
       debugPrint("Error checking favorite: $e");
@@ -127,33 +133,23 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
       _isLoadingFavorite = true; // Mulai loading
     });
 
-    final docRef = _firestore.collection('users').doc(_userId);
-
     try {
-      if (_isFavorite) {
-        // Hapus dari favorit
-        await docRef.update({
-          'favoriteBarbershops': FieldValue.arrayRemove([widget.barbershop.id]),
-        });
-        if (mounted) setState(() => _isFavorite = false);
-        _showSnackbar('Dihapus dari favorit', Colors.grey);
-      } else {
-        // Tambah ke favorit
-        await docRef.update({
-          'favoriteBarbershops': FieldValue.arrayUnion([widget.barbershop.id]),
-        });
-        if (mounted) {
-          setState(() => _isFavorite = true);
-        }
-        _showSnackbar('Ditambahkan ke favorit', kBrownAccent);
+      await _barbershopService.toggleFavorite(_userId!, widget.barbershop.id);
+      
+      // Update state local berdasarkan aksi sebelumnya (toggle)
+      // Kita bisa cek lagi ke DB atau cukup toggle nilai boolean
+      final newStatus = !_isFavorite;
+      
+      if (mounted) {
+        setState(() => _isFavorite = newStatus);
+        _showSnackbar(
+          newStatus ? 'Ditambahkan ke favorit' : 'Dihapus dari favorit',
+          newStatus ? kBrownAccent : Colors.grey,
+        );
       }
     } catch (e) {
       debugPrint("Error toggling favorite: $e");
       _showSnackbar('Gagal mengubah favorit', Colors.redAccent);
-      // Opsional: Balikkan state jika gagal
-      if (mounted) {
-        setState(() => _isFavorite = !_isFavorite);
-      }
     } finally {
       if (mounted) {
         setState(() => _isLoadingFavorite = false); // Selesai loading
