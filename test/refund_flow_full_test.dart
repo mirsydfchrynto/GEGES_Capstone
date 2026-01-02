@@ -1,9 +1,8 @@
-import 'dart:convert';
+
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart'; // Ensure this package is available or mock Auth otherwise
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/screens/customer/booking_detail_screen.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';

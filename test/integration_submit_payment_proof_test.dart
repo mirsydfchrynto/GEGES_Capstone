@@ -1,12 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 
 void main() {
   test(
     'submitPaymentProofForQueue updates payment fields atomically',
     () async {
       final fakeFs = FakeFirebaseFirestore();
+      final mockAuth = MockFirebaseAuth();
 
       final docRef = await fakeFs.collection('queues').add({
         'customer_id': 'user123',
@@ -14,7 +16,7 @@ void main() {
         'status': 'awaiting_payment',
       });
 
-      final svc = QueueService(firestore: fakeFs);
+      final svc = QueueService(firestore: fakeFs, auth: mockAuth);
 
       await svc.submitPaymentProofForQueue(
         queueId: docRef.id,
@@ -34,6 +36,7 @@ void main() {
 
   test('submitPaymentProofForQueue enforces ownership', () async {
     final fakeFs = FakeFirebaseFirestore();
+    final mockAuth = MockFirebaseAuth();
 
     final docRef = await fakeFs.collection('queues').add({
       'customer_id': 'other_user',
@@ -41,7 +44,7 @@ void main() {
       'status': 'awaiting_payment',
     });
 
-    final svc = QueueService(firestore: fakeFs);
+    final svc = QueueService(firestore: fakeFs, auth: mockAuth);
 
     expect(
       svc.submitPaymentProofForQueue(

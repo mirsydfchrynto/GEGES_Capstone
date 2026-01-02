@@ -8,6 +8,7 @@ import 'package:geges_smartbarber/services/booking_anti_duplicate_service.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 
 void main() {
   setUpAll(() async {
@@ -18,6 +19,7 @@ void main() {
     tester,
   ) async {
     final fs = FakeFirebaseFirestore();
+    final mockAuth = MockFirebaseAuth();
     final barbershopId = 'shop-ui-1';
 
     // create shop, service and barber
@@ -48,7 +50,7 @@ void main() {
     });
 
     final svc = BarbershopService(firestore: fs);
-    final queueSvc = QueueService(firestore: fs);
+    final queueSvc = QueueService(firestore: fs, auth: mockAuth);
     final antiDup = BookingAntiDuplicateService(firestore: fs);
 
     final shop = Barbershop(

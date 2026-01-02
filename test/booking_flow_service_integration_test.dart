@@ -2,13 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 
 void main() {
   group('Booking payment lifecycle (service-level)', () {
     late FakeFirebaseFirestore fs;
+    late MockFirebaseAuth mockAuth;
 
     setUp(() async {
       fs = FakeFirebaseFirestore();
+      mockAuth = MockFirebaseAuth();
       // Replace internal firestore with our fake via reflection? Not necessary for antiDupSvc because it uses default instance.
       // But BookingAntiDuplicateService uses FirebaseFirestore.instance; set up fake by writing docs directly.
     });
@@ -99,7 +102,7 @@ void main() {
           'total_price': 25000,
         });
 
-        final svc = QueueService(firestore: fs);
+        final svc = QueueService(firestore: fs, auth: mockAuth);
         await svc.adminRefundBooking(
           ref.id,
           reason: 'test',

@@ -2,12 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart'; // Import MockFirebaseAuth
 
 // Reuse generated mocks from the admin payment test
 import 'queue_service_admin_payment_test.mocks.dart';
 
 void main() {
   late MockFirebaseFirestore mockFs;
+  late MockFirebaseAuth mockAuth; // Declare MockFirebaseAuth
   late MockCollectionReference<Map<String, dynamic>> mockQueuesColl;
   late MockDocumentReference<Map<String, dynamic>> mockQueueRef;
   late MockDocumentSnapshot<Map<String, dynamic>> mockQueueSnap;
@@ -17,6 +19,7 @@ void main() {
 
   setUp(() {
     mockFs = MockFirebaseFirestore();
+    mockAuth = MockFirebaseAuth(); // Initialize MockFirebaseAuth
     mockQueuesColl = MockCollectionReference<Map<String, dynamic>>();
     mockQueueRef = MockDocumentReference<Map<String, dynamic>>();
     mockQueueSnap = MockDocumentSnapshot<Map<String, dynamic>>();
@@ -55,7 +58,7 @@ void main() {
         return mockQueueRef;
       });
 
-      final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs, auth: mockAuth);
 
       final tomorrow = DateTime.now().add(const Duration(days: 1));
       final payload = {

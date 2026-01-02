@@ -1296,8 +1296,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     debugPrint('PaymentScreen: build called');
+    final bool canPop = !_isSubmitting && widget.tenantId == null;
     return PopScope(
-      canPop: !_isSubmitting,
+      canPop: canPop,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_isSubmitting) {
+          _showSnack('Mohon tunggu proses submit selesai.', isError: true);
+        } else if (widget.tenantId != null) {
+          _showSnack(
+            'Gunakan tombol Batalkan di bawah untuk membatalkan pendaftaran.',
+            isError: true,
+          );
+        }
+      },
       child: Scaffold(
         backgroundColor: kSurface,
         appBar: AppBar(
@@ -1307,13 +1319,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
-              if (!_isSubmitting) {
+              if (canPop) {
                 Navigator.of(context).pop();
               } else {
-                _showSnack(
-                  'Mohon tunggu proses submit selesai.',
-                  isError: true,
-                );
+                if (_isSubmitting) {
+                  _showSnack(
+                    'Mohon tunggu proses submit selesai.',
+                    isError: true,
+                  );
+                } else if (widget.tenantId != null) {
+                  _showSnack(
+                    'Gunakan tombol Batalkan di bawah untuk membatalkan pendaftaran.',
+                    isError: true,
+                  );
+                }
               }
             },
           ),

@@ -1,5 +1,6 @@
 
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,13 +8,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 void main() {
   group('Refund Logic Tests', () {
     late FakeFirebaseFirestore fakeFs;
+    late MockFirebaseAuth mockAuth;
     late QueueService service;
     const String queueId = 'queue_refund_test';
     const String userId = 'user_refund_test';
 
     setUp(() async {
       fakeFs = FakeFirebaseFirestore();
-      service = QueueService(firestore: fakeFs);
+      mockAuth = MockFirebaseAuth();
+      service = QueueService(firestore: fakeFs, auth: mockAuth);
 
       // Create initial booked queue
       await fakeFs.collection('queues').doc(queueId).set({

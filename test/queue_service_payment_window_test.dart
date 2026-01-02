@@ -3,6 +3,7 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'auth_service_mocks.dart' show MockFirebaseAuth; // Reuse MockFirebaseAuth only
 
 @GenerateMocks([
   FirebaseFirestore,
@@ -17,12 +18,14 @@ class MockTransaction extends Mock implements Transaction {}
 
 void main() {
   late MockFirebaseFirestore mockFs;
+  late MockFirebaseAuth mockAuth;
   late MockCollectionReference<Map<String, dynamic>> mockColl;
   late MockDocumentReference<Map<String, dynamic>> mockDocRef;
   late MockDocumentSnapshot<Map<String, dynamic>> mockDocSnap;
 
   setUp(() {
     mockFs = MockFirebaseFirestore();
+    mockAuth = MockFirebaseAuth();
     mockColl = MockCollectionReference<Map<String, dynamic>>();
     mockDocRef = MockDocumentReference<Map<String, dynamic>>();
     mockDocSnap = MockDocumentSnapshot<Map<String, dynamic>>();
@@ -35,7 +38,7 @@ void main() {
     when(mockDocRef.get()).thenAnswer((_) async => mockDocSnap);
     when(mockDocSnap.data()).thenReturn(null);
 
-    final svc = QueueService(firestore: mockFs);
+    final svc = QueueService(firestore: mockFs, auth: mockAuth);
     final window = await svc.getPaymentWindowForBarbershop('shop_1');
     expect(window, QueueService.defaultPaymentWindowMinutes);
   });
@@ -46,7 +49,7 @@ void main() {
       when(mockDocRef.get()).thenAnswer((_) async => mockDocSnap);
       when(mockDocSnap.data()).thenReturn({'payment_window_minutes': 15});
 
-      final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs, auth: mockAuth);
       final window = await svc.getPaymentWindowForBarbershop('shop_2');
       expect(window, 15);
     },
@@ -58,14 +61,14 @@ void main() {
       when(mockDocRef.get()).thenAnswer((_) async => mockDocSnap);
       when(mockDocSnap.data()).thenReturn({'paymentWindowMinutes': '20'});
 
-      final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs, auth: mockAuth);
       final window = await svc.getPaymentWindowForBarbershop('shop_3');
       expect(window, 20);
     },
   );
 
   test('returns default when barbershopId is null or empty', () async {
-    final svc = QueueService(firestore: mockFs);
+    final svc = QueueService(firestore: mockFs, auth: mockAuth);
     final w1 = await svc.getPaymentWindowForBarbershop(null);
     final w2 = await svc.getPaymentWindowForBarbershop('');
     expect(w1, QueueService.defaultPaymentWindowMinutes);
@@ -76,7 +79,7 @@ void main() {
     when(mockDocRef.get()).thenAnswer((_) async => mockDocSnap);
     when(mockDocSnap.data()).thenReturn({'payment_window_minutes': 'ten'});
 
-    final svc = QueueService(firestore: mockFs);
+    final svc = QueueService(firestore: mockFs, auth: mockAuth);
     final window = await svc.getPaymentWindowForBarbershop('shop_bad');
     expect(window, QueueService.defaultPaymentWindowMinutes);
   });
@@ -87,7 +90,7 @@ void main() {
       when(mockDocRef.get()).thenAnswer((_) async => mockDocSnap);
       when(mockDocSnap.data()).thenReturn({'payment_window_minutes': 12.0});
 
-      final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs, auth: mockAuth);
       final window = await svc.getPaymentWindowForBarbershop('shop_num');
       expect(window, 12);
     },
@@ -124,7 +127,7 @@ void main() {
         return mockQueueRef;
       });
 
-      final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs, auth: mockAuth);
 
       final tomorrow = DateTime.now().add(const Duration(days: 1));
       final payload = {
@@ -177,7 +180,7 @@ void main() {
       when(mockBsRef.get()).thenAnswer((_) async => mockBsSnap);
       when(mockBsSnap.data()).thenReturn({'payment_window_minutes': 7});
 
-      final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs, auth: mockAuth);
 
       await svc.adminConfirmRequest('q_1', adminUid: 'admin_1');
 

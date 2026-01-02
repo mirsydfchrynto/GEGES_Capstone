@@ -1,15 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 
 void main() {
   group('QueueService.adminRefundBooking', () {
     late FakeFirebaseFirestore fs;
+    late MockFirebaseAuth mockAuth;
     late QueueService svc;
 
     setUp(() async {
       fs = FakeFirebaseFirestore();
-      svc = QueueService(firestore: fs);
+      mockAuth = MockFirebaseAuth();
+      svc = QueueService(firestore: fs, auth: mockAuth);
     });
 
     test('cancels without marking refund when no payment exists', () async {

@@ -2,15 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 
 void main() {
   group('QueueService.createQueue with barber fee', () {
     late FakeFirebaseFirestore fs;
+    late MockFirebaseAuth mockAuth;
     late QueueService svc;
 
     setUp(() async {
       fs = FakeFirebaseFirestore();
-      svc = QueueService(firestore: fs);
+      mockAuth = MockFirebaseAuth();
+      svc = QueueService(firestore: fs, auth: mockAuth);
     });
 
     test('stores barber_selection_fee and paid flag', () async {

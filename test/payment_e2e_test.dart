@@ -4,17 +4,20 @@ import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
 import 'package:geges_smartbarber/services/booking_anti_duplicate_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 
 void main() {
   group('Payment UI + service interactions (integration-like)', () {
     late FakeFirebaseFirestore fs;
+    late MockFirebaseAuth mockAuth;
     late BookingAntiDuplicateService antiDup;
     late QueueService queueSvc;
 
     setUp(() async {
       fs = FakeFirebaseFirestore();
+      mockAuth = MockFirebaseAuth();
       antiDup = BookingAntiDuplicateService(firestore: fs);
-      queueSvc = QueueService(firestore: fs);
+      queueSvc = QueueService(firestore: fs, auth: mockAuth);
 
       // create a queue (awaiting_payment)
       final orderId = 'ORD-e2e-1';

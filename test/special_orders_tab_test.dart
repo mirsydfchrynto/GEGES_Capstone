@@ -3,11 +3,15 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/my_bookings_screen.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'package:geges_smartbarber/services/queue_service.dart';
 
 void main() {
   testWidgets('Navigates to SpecialOrdersScreen and shows orders', (tester) async {
     // 1. Setup Mock Firestore
     final fakeFs = FakeFirebaseFirestore();
+    final mockAuth = MockFirebaseAuth();
+    final queueSvc = QueueService(firestore: fakeFs, auth: mockAuth);
     final userId = 'user_special_test';
 
     // 2. Seed Data
@@ -23,6 +27,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: MyBookingsScreen(
         firestore: fakeFs,
+        queueService: queueSvc,
         currentUserId: userId,
       ),
     ));

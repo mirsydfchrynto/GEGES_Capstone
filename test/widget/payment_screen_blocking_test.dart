@@ -1,13 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:geges_smartbarber/services/queue_service.dart';
 
 void main() {
+  late MockFirebaseAuth mockAuth;
+  late FakeFirebaseFirestore fakeFs;
+  late QueueService queueSvc;
+
+  setUp(() {
+    mockAuth = MockFirebaseAuth();
+    fakeFs = FakeFirebaseFirestore();
+    queueSvc = QueueService(firestore: fakeFs, auth: mockAuth);
+  });
+
   testWidgets('Back button is blocked while tenant payment locked', (tester) async {
     var submitCalled = false;
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: PaymentScreen(
+          queueService: queueSvc, // Inject mock service
           orderId: 'tenant-1',
           totalPrice: 100000,
           tenantId: 'tenant-1',
@@ -33,15 +47,17 @@ void main() {
     debugPrint('DBG: all texts -> $allTexts');
 
     // initial screen shows the tenant upload text (there are two occurrences: section title + action button)
-    final submitTextFinder = find.textContaining('Unggah Bukti Pembayaran', findRichText: true);
-    expect(submitTextFinder, findsWidgets);
+    final textWidgets = find.byType(Text);
+    final hasText = tester.widgetList(textWidgets).any((w) => (w as Text).data?.contains('Unggah Bukti Pembayaran') ?? false);
+    expect(hasText, isTrue, reason: 'Should find Unggah Bukti Pembayaran text');
 
     // tap leading back button - should be blocked and we should still be on Payment screen
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pumpAndSettle();
 
     // verify the upload text still exists (we didn't pop)
-    expect(submitTextFinder, findsWidgets);
+    final hasTextAfterBack = tester.widgetList(find.byType(Text)).any((w) => (w as Text).data?.contains('Unggah Bukti Pembayaran') ?? false);
+    expect(hasTextAfterBack, isTrue, reason: 'Should still find Unggah Bukti Pembayaran text after back');
 
     // press submit (using injected handler) and verify it runs (handler sets flag)
     // Find the ElevatedButton that contains the text 'Unggah Bukti Pembayaran'
@@ -71,6 +87,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: PaymentScreen(
+          queueService: queueSvc, // Inject mock service
           orderId: 'tenant-2',
           totalPrice: 120000,
           tenantId: 'tenant-2',

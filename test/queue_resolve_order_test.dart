@@ -1,8 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart'; // Import MockFirebaseAuth
 
 void main() {
+  late MockFirebaseAuth mockAuth;
+
+  setUp(() {
+    mockAuth = MockFirebaseAuth();
+  });
+
   test(
     'resolve returns queue when doc id exists and owned by customer',
     () async {
@@ -13,7 +20,7 @@ void main() {
         'total_price': 30000,
       });
 
-      final svc = QueueService(firestore: fakeFs);
+      final svc = QueueService(firestore: fakeFs, auth: mockAuth);
       final q = await svc.resolveQueueForCustomerByIdOrOrder(
         'q-doc-1',
         'user123',
@@ -34,7 +41,7 @@ void main() {
       'order_id': 'ORD-1',
     });
 
-    final svc = QueueService(firestore: fakeFs);
+      final svc = QueueService(firestore: fakeFs, auth: mockAuth);
     final q = await svc.resolveQueueForCustomerByIdOrOrder('ORD-1', 'user123');
 
     expect(q, isNotNull);
@@ -53,7 +60,7 @@ void main() {
         'total_price': 25000,
       });
 
-      final svc = QueueService(firestore: fakeFs);
+        final svc = QueueService(firestore: fakeFs, auth: mockAuth);
       final q = await svc.resolveQueueForCustomerByIdOrOrder(
         'q-doc-2',
         'user123',

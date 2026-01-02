@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 
 import 'package:geges_smartbarber/models/queue.dart';
 
@@ -26,8 +27,8 @@ class TestImagePicker extends ImagePicker {
 }
 
 class SpyQueueService extends QueueService {
-  SpyQueueService({required FakeFirebaseFirestore firestore})
-    : super(firestore: firestore);
+  SpyQueueService({required FakeFirebaseFirestore firestore, MockFirebaseAuth? auth})
+    : super(firestore: firestore, auth: auth);
 
   final Completer<void> submitCompleter = Completer<void>();
 
@@ -70,7 +71,8 @@ class SpyQueueService extends QueueService {
 void main() {
   test('PaymentScreen: pick image and submit proof (UI)', () async {
     final fs = FakeFirebaseFirestore();
-    final queueSvc = SpyQueueService(firestore: fs);
+    final mockAuth = MockFirebaseAuth();
+    final queueSvc = SpyQueueService(firestore: fs, auth: mockAuth);
 
     // create a queue doc for customer
     final orderId = 'ORD-ui-upload-1';

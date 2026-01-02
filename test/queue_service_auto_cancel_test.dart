@@ -3,6 +3,7 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart'; // Import MockFirebaseAuth
 
 @GenerateMocks([
   FirebaseFirestore,
@@ -16,6 +17,7 @@ import 'queue_service_auto_cancel_test.mocks.dart';
 
 void main() {
   late MockFirebaseFirestore mockFs;
+  late MockFirebaseAuth mockAuth; // Declare MockFirebaseAuth
   late MockCollectionReference<Map<String, dynamic>> mockQueuesColl;
   late MockQuery<Map<String, dynamic>> mockQuery;
   late MockQuerySnapshot<Map<String, dynamic>> mockQuerySnap;
@@ -24,6 +26,7 @@ void main() {
 
   setUp(() {
     mockFs = MockFirebaseFirestore();
+    mockAuth = MockFirebaseAuth(); // Initialize MockFirebaseAuth
     mockQueuesColl = MockCollectionReference<Map<String, dynamic>>();
     mockQuery = MockQuery<Map<String, dynamic>>();
     final mockQueryStatus = MockQuery<Map<String, dynamic>>();
@@ -70,7 +73,7 @@ void main() {
         ),
       });
 
-      final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs, auth: mockAuth);
 
       final count = await svc.cancelExpiredWaitingQueuesForCustomer('user_x');
 
@@ -91,7 +94,7 @@ void main() {
         ),
       });
 
-      final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs, auth: mockAuth);
 
       final count = await svc.cancelExpiredAwaitingPaymentQueuesForCustomer(
         'user_y',
@@ -134,7 +137,7 @@ void main() {
         ),
       });
 
-      final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs, auth: mockAuth);
 
       final count = await svc.cancelExpiredWaitingQueuesForCustomer('user_x');
 
@@ -173,7 +176,7 @@ void main() {
         ),
       });
 
-      final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs, auth: mockAuth);
 
       final count = await svc.cancelExpiredAwaitingPaymentQueuesForCustomer(
         'user_y',

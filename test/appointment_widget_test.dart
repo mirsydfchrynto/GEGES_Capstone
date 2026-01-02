@@ -6,6 +6,7 @@ import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 
 void main() {
   setUpAll(() async {
@@ -14,6 +15,7 @@ void main() {
 
   testWidgets('select paid barber updates total price', (tester) async {
     final fs = FakeFirebaseFirestore();
+    final mockAuth = MockFirebaseAuth();
     
     // 1. Setup Data
     await fs.collection('services').doc('s1').set({
@@ -46,7 +48,7 @@ void main() {
     );
 
     final svc = BarbershopService(firestore: fs);
-    final queueSvc = QueueService(firestore: fs);
+    final queueSvc = QueueService(firestore: fs, auth: mockAuth);
 
     // 2. Pump Widget
     await tester.pumpWidget(

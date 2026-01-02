@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/my_bookings_screen.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:mockito/mockito.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 
 // Mock User for Auth
 class MockUser extends Mock implements User {
@@ -17,7 +18,8 @@ void main() {
   testWidgets('Full App Lifecycle: Booking History & Tenant History Rendering', (tester) async {
     // 1. Setup Environment
     final fakeFs = FakeFirebaseFirestore();
-    final queueService = QueueService(firestore: fakeFs);
+    final mockAuth = MockFirebaseAuth();
+    final queueService = QueueService(firestore: fakeFs, auth: mockAuth);
     // final tenantService = TenantService(firestore: fakeFs); // Unused
     final userId = 'user_lifecycle_1';
 
@@ -84,15 +86,15 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pumpAndSettle();
 
-    // 5. Switch to "Terverifikasi" Tab
-    await tester.tap(find.text('Terverifikasi'));
+    // 5. Switch to "Terjadwal" Tab
+    await tester.tap(find.text('Terjadwal'));
     await tester.pumpAndSettle(const Duration(seconds: 1)); // Give more time for stream
 
     // Check Booking Card presence
     expect(find.text('TERJADWAL'), findsOneWidget); // Status badge label
-    expect(find.text('Geges Barber'), findsOneWidget, reason: 'Booking should be visible in Terverifikasi tab');
+    expect(find.textContaining('Booking #'), findsOneWidget, reason: 'Booking should be visible in Terjadwal tab');
     
-    // 6. Verify "Tenant History" is NOT in "Terverifikasi" tab
+    // 6. Verify "Tenant History" is NOT in "Terjadwal" tab
     // (Logic: showTenantHistory is false for this tab)
     // Note: Since we use Slivers, if it's not in the list, it's not there.
     // However, since we just swiped, let's be careful about off-screen widgets.

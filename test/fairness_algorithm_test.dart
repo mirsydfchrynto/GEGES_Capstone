@@ -1,14 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 
 void main() {
   late FakeFirebaseFirestore firestore;
+  late MockFirebaseAuth mockAuth;
   late QueueService queueService;
 
   setUp(() {
     firestore = FakeFirebaseFirestore();
-    queueService = QueueService(firestore: firestore);
+    mockAuth = MockFirebaseAuth();
+    queueService = QueueService(firestore: firestore, auth: mockAuth);
   });
 
   test('Fairness Algorithm picks barber with fewer monthly haircuts', () async {

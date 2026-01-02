@@ -3,17 +3,20 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/services/booking_anti_duplicate_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 
 void main() {
   group('Payment upload & verification integration', () {
     late FakeFirebaseFirestore fs;
+    late MockFirebaseAuth mockAuth;
     late BookingAntiDuplicateService antiDup;
     late QueueService queueSvc;
 
     setUp(() async {
       fs = FakeFirebaseFirestore();
+      mockAuth = MockFirebaseAuth();
       antiDup = BookingAntiDuplicateService(firestore: fs);
-      queueSvc = QueueService(firestore: fs);
+      queueSvc = QueueService(firestore: fs, auth: mockAuth);
     });
 
     test(

@@ -3,6 +3,7 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart'; // Import MockFirebaseAuth
 
 @GenerateMocks([
   FirebaseFirestore,
@@ -51,12 +52,14 @@ class _FakeTx implements Transaction {
 
 void main() {
   late MockFirebaseFirestore mockFs;
+  late MockFirebaseAuth mockAuth; // Declare MockFirebaseAuth
   late MockCollectionReference<Map<String, dynamic>> mockQueuesColl;
   late MockDocumentReference<Map<String, dynamic>> mockQueueRef;
   late MockDocumentSnapshot<Map<String, dynamic>> mockQueueSnap;
 
   setUp(() {
     mockFs = MockFirebaseFirestore();
+    mockAuth = MockFirebaseAuth(); // Initialize MockFirebaseAuth
     mockQueuesColl = MockCollectionReference<Map<String, dynamic>>();
     mockQueueRef = MockDocumentReference<Map<String, dynamic>>();
     mockQueueSnap = MockDocumentSnapshot<Map<String, dynamic>>();
@@ -90,7 +93,7 @@ void main() {
         return;
       });
 
-      final svc = QueueService(firestore: mockFs);
+      final svc = QueueService(firestore: mockFs, auth: mockAuth);
 
       await svc.adminConfirmPayment('q_pay', adminUid: 'admin_1');
 
