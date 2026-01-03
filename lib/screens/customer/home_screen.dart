@@ -42,7 +42,6 @@ class _HomeScreenState extends State<HomeScreen> {
   
   // Search State
   List<Barbershop>? _searchResults;
-  bool _isSearching = false;
   Timer? _debounce;
 
   // List of Screens (sesuai urutan BottomNavigationBar)
@@ -87,21 +86,20 @@ class _HomeScreenState extends State<HomeScreen> {
     
     if (query.isEmpty) {
       setState(() {
-        _isSearching = false;
         _searchResults = null;
       });
       return;
     }
 
     // Set searching to true immediately to show feedback during debounce
-    setState(() {
-      _isSearching = true;
-    });
-
+    // Note: Since we are using local cache, we don't really need a blocking spinner.
+    // We just update the state when results are ready.
+    
     // In tests (where widget.barbershopService is provided), use zero delay
+    // For local cached search, 100ms is plenty responsive.
     final debounceDuration = widget.barbershopService != null
         ? Duration.zero
-        : const Duration(milliseconds: 500);
+        : const Duration(milliseconds: 100);
 
     _debounce = Timer(debounceDuration, () async {
       try {
@@ -109,7 +107,6 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           setState(() {
             _searchResults = results;
-            _isSearching = false;
           });
         }
       } catch (e) {
@@ -117,7 +114,6 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           setState(() {
             _searchResults = [];
-            _isSearching = false; // Ensure loading stops even on error
           });
         }
       }
@@ -479,13 +475,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearchResultsView() {
-    if (_isSearching) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 40.0),
-        child: Center(child: CircularProgressIndicator(color: kBrownAccent)),
-      );
-    }
-
     if (_searchResults != null && _searchResults!.isEmpty) {
       return Padding(
         padding: const EdgeInsets.only(top: 40.0),

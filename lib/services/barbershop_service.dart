@@ -487,12 +487,12 @@ class BarbershopService {
       final allShops = await getAllBarbershops();
       debugPrint("🔍 Fetched ${allShops.length} shops (cache/firestore)");
 
-      if (query.isEmpty) {
+      if (query.trim().isEmpty) {
         // Return only open shops for default list if query is empty
         return allShops.where((s) => s.isOpen).toList();
       }
 
-      final lowerQuery = query.toLowerCase();
+      final lowerQuery = query.trim().toLowerCase();
 
       // 2. Filter locally
       final results = allShops.where((shop) {

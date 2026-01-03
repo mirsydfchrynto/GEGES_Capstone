@@ -25,23 +25,27 @@ class LocationService {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        debugPrint('Location permissions are permanently denied, we cannot request permissions.');
+        debugPrint('Location permissions are permanently denied.');
         return null;
       }
 
-      // 3. Ambil posisi saat ini
-      Position position = await Geolocator.getCurrentPosition(
+      // 3. Prioritaskan Last Known Position (Instan)
+      Position? position = await Geolocator.getLastKnownPosition();
+      
+      // Jika tidak ada, baru minta Current Position (lebih lambat)
+      position ??= await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
           timeLimit: Duration(seconds: 5),
         ),
       );
 
-      // 4. Reverse Geocoding (Koordinat -> Alamat)
+      // 4. Reverse Geocoding dengan Timeout (agar tidak hanging)
+      // Gunakan timeout 3 detik untuk geocoding
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
-      );
+      ).timeout(const Duration(seconds: 3));
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
