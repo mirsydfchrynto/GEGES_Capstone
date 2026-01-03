@@ -342,12 +342,35 @@ class ManualBookingFormState extends State<ManualBookingForm> {
       itemBuilder: (context, i) {
         final t = times[i];
         bool sel = _selectedTime == t;
+        
+        // Admin can pick past times, but we show them differently
+        bool isPast = false;
+        if (_selectedDate.day == DateTime.now().day) {
+          if (t.hour < DateTime.now().hour || (t.hour == DateTime.now().hour && t.minute < DateTime.now().minute)) {
+            isPast = true;
+          }
+        }
+
         return InkWell(
-          onTap: () { setState(() { _selectedTime = t; _availabilityError = null; }); _checkBarberAvailability(); },
+          onTap: () { 
+            setState(() { _selectedTime = t; _availabilityError = null; }); 
+            _checkBarberAvailability(); 
+          },
           child: Container(
-            decoration: BoxDecoration(color: sel ? kBrownAccent : kCardBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: sel ? kBrownAccent : Colors.white10)),
+            decoration: BoxDecoration(
+              color: sel ? kBrownAccent : (isPast ? Colors.white.withValues(alpha: 0.05) : kCardBg), 
+              borderRadius: BorderRadius.circular(8), 
+              border: Border.all(color: sel ? kBrownAccent : Colors.white10)
+            ),
             alignment: Alignment.center,
-            child: Text("${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}", style: TextStyle(color: sel ? Colors.black : Colors.white, fontWeight: FontWeight.bold)),
+            child: Text(
+              "${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}", 
+              style: TextStyle(
+                color: sel ? Colors.black : (isPast ? Colors.white24 : Colors.white), 
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              )
+            ),
           ),
         );
       },
@@ -357,21 +380,37 @@ class ManualBookingFormState extends State<ManualBookingForm> {
   Widget _buildBottomSummary() {
     bool canGo = (_currentStep == 0 && _selectedServices.isNotEmpty) || (_currentStep == 1 && (!_isPremiumChoice || _selectedBarberman != null));
     bool isLast = _currentStep == 2;
-    if (isLast && (_selectedTime == null || _availabilityError != null || _isCheckingAvailability)) canGo = false;
+    
+    // Final validation for button state
+    if (isLast) {
+      if (_selectedTime == null || _availabilityError != null || _isCheckingAvailability) {
+        canGo = false;
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(color: kCardBg, border: Border(top: BorderSide(color: Colors.white10))),
+      decoration: const BoxDecoration(
+        color: kCardBg, 
+        border: Border(top: BorderSide(color: Colors.white10))
+      ),
       child: Row(
         children: [
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             const Text("Total (Tunai)", style: TextStyle(color: Colors.white54, fontSize: 12)),
-            Text("Rp ${NumberFormat('#,###').format(_totalPrice)}", style: const TextStyle(color: kBrownAccent, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text("Rp ${NumberFormat('#,###', 'id_ID').format(_totalPrice)}", style: const TextStyle(color: kBrownAccent, fontSize: 18, fontWeight: FontWeight.bold)),
           ])),
           ElevatedButton(
-            onPressed: canGo ? (isLast ? _submit : _nextStep) : null,
-            style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 15)),
-            child: _submitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)) : Text(isLast ? "BOOKING" : "LANJUT"),
+            onPressed: (canGo && !_submitting) ? (isLast ? _submit : _nextStep) : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kBrownAccent, 
+              foregroundColor: Colors.black, 
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 15),
+              disabledBackgroundColor: Colors.white10,
+            ),
+            child: _submitting 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)) 
+                : Text(isLast ? "BOOKING" : "LANJUT"),
           ),
         ],
       ),
