@@ -53,14 +53,25 @@
         </activity>
 
         <!-- Flutter embedding metadata -->
-        <meta-data android:name="flutterEmbedding" android:value="2" />
+    <meta-data
+        android:name="flutterEmbedding"
+        android:value="2" />
     </application>
 
-    <!-- Optional: queries for other apps (if you need to inspect available activities for intents) -->
+    <!-- PENTING: Izinkan aplikasi membuka URL eksternal (WA, Instagram, Browser) -->
     <queries>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="whatsapp" />
         </intent>
     </queries>
 </manifest>

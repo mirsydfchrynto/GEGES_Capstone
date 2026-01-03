@@ -7,7 +7,7 @@ import 'package:geges_smartbarber/screens/customer/appointment_screen.dart';
 // Import 3 Tab
 import 'package:geges_smartbarber/screens/customer/tabs/about_tab.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/services_tab.dart';
-import 'package:geges_smartbarber/screens/customer/tabs/review_tab.dart';
+import 'package:geges_smartbarber/screens/customer/tabs/album_tab.dart';
 
 // --- IMPORT BARU ---
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -46,9 +46,6 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
   late final String? _userId;
   late final BarbershopService _barbershopService;
 
-  int _reviewCount = 0;
-  bool _isLoadingReviews = true;
-
   bool _isFavorite = false;
   bool _isLoadingFavorite = true;
   // ---------------------------------
@@ -63,36 +60,8 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
     _tabController = TabController(length: 3, vsync: this);
 
     // --- BARU: Panggil fungsi untuk mengambil data dinamis ---
-    _fetchReviewCount();
     _checkIfFavorite();
     // ----------------------------------------------------
-  }
-
-  // --- BARU: Fungsi ambil data jumlah review ---
-  Future<void> _fetchReviewCount() async {
-    try {
-      // Gunakan .count() agar lebih efisien (tidak perlu download semua dokumen)
-      final snapshot = await _firestore
-          .collection('reviews')
-          .where('barbershopId', isEqualTo: widget.barbershop.id)
-          .count()
-          .get();
-
-      if (mounted) {
-        setState(() {
-          _reviewCount = snapshot.count!;
-          _isLoadingReviews = false;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching review count: $e");
-      if (mounted) {
-        setState(() {
-          _isLoadingReviews = false;
-          _reviewCount = 0; // Default jika error
-        });
-      }
-    }
   }
 
   // --- BARU: Fungsi cek status favorit ---
@@ -260,7 +229,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
                 tabs: const [
                   Tab(text: 'About'),
                   Tab(text: 'Services'),
-                  Tab(text: 'Review'),
+                  Tab(text: 'Album'),
                 ],
               ),
             ),
@@ -273,7 +242,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
           children: [
             AboutTab(shop: widget.barbershop),
             ServicesTab(shop: widget.barbershop),
-            ReviewTab(shop: widget.barbershop),
+            AlbumTab(shop: widget.barbershop),
           ],
         ),
       ),
@@ -317,19 +286,15 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.star, color: kBrownAccent, size: 16),
-                    const SizedBox(width: 4),
-                    // --- Teks Review (DISESUAIKAN) ---
+                    const Icon(Icons.access_time, color: kBrownAccent, size: 16),
+                    const SizedBox(width: 6),
                     Text(
-                      _isLoadingReviews
-                          ? "${widget.barbershop.rating} (Loading...)"
-                          : "${widget.barbershop.rating} ($_reviewCount Reviews)",
+                      "${widget.barbershop.openHour}:00 - ${widget.barbershop.closeHour}:00",
                       style: const TextStyle(
                         color: Colors.white70,
-                        fontSize: 12,
+                        fontSize: 13,
                       ),
                     ),
-                    // ---------------------------------
                   ],
                 ),
               ],

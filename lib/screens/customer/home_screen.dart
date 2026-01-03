@@ -366,10 +366,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 16),
                       Row(
                         children: [
-                          const Icon(Icons.star, color: kBrownAccent, size: 20),
-                          const SizedBox(width: 4),
+                          const Icon(Icons.access_time, color: kBrownAccent, size: 18),
+                          const SizedBox(width: 6),
                           Text(
-                            "${shop.rating} (133)",
+                            "${shop.openHour}:00 - ${shop.closeHour}:00",
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,

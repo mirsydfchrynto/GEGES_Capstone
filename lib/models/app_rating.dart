@@ -47,4 +47,4 @@ class AppRating {
       'processed': false, // Flag untuk diolah model AI nantinya
     };
   }
-}
+}   

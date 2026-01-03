@@ -4,6 +4,7 @@ class Barbershop {
   final String id;
   final String name;
   final String addres;
+  final String? googleMapsUrl; // Link ke Google Maps
   final double rating;
   final String imageUrl; // Utama
   final List<String> services;
@@ -17,11 +18,19 @@ class Barbershop {
   final bool isOpen;
   final List<int> weeklyHolidays; 
   final List<String> specificHolidays; 
+  
+  // Social Media
+  final String? instagramUrl;
+  final String? whatsappNumber;
+  final String? tiktokUrl;
+  final String? facebookUrl;
+  final String? twitterUrl;
 
   Barbershop({
     required this.id,
     required this.name,
     required this.addres,
+    this.googleMapsUrl,
     required this.rating,
     required this.imageUrl,
     required this.services,
@@ -35,6 +44,11 @@ class Barbershop {
     required this.isOpen,
     this.weeklyHolidays = const [],
     this.specificHolidays = const [],
+    this.instagramUrl,
+    this.whatsappNumber,
+    this.tiktokUrl,
+    this.facebookUrl,
+    this.twitterUrl,
   });
 
   factory Barbershop.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -54,6 +68,7 @@ class Barbershop {
       id: doc.id,
       name: data['name'] ?? 'Nama Barbershop',
       addres: (data['address'] ?? data['addres'] ?? 'Alamat Tidak Diketahui') as String,
+      googleMapsUrl: data['google_maps_url'],
       rating: (data['rating'] as num?)?.toDouble() ?? 5.0,
       imageUrl: data['imageUrl'] ?? 'https://cdn-icons-png.flaticon.com/512/706/706830.png',
       services: List<String>.from(data['services'] ?? []),
@@ -67,13 +82,19 @@ class Barbershop {
       isOpen: data['isOpen'] as bool? ?? false,
       weeklyHolidays: List<int>.from(data['weekly_holidays'] ?? data['weeklyHolidays'] ?? []),
       specificHolidays: List<String>.from(data['specific_holidays'] ?? data['specific_holidays'] ?? []),
+      instagramUrl: data['instagram_url'],
+      whatsappNumber: data['whatsapp_number'],
+      tiktokUrl: data['tiktok_url'],
+      facebookUrl: data['facebook_url'],
+      twitterUrl: data['twitter_url'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'address': addres, // Consistent field name
+      'address': addres,
+      'google_maps_url': googleMapsUrl,
       'rating': rating,
       'imageUrl': imageUrl,
       'services': services,
@@ -87,6 +108,11 @@ class Barbershop {
       'isOpen': isOpen,
       'weekly_holidays': weeklyHolidays,
       'specific_holidays': specificHolidays,
+      'instagram_url': instagramUrl,
+      'whatsapp_number': whatsappNumber,
+      'tiktok_url': tiktokUrl,
+      'facebook_url': facebookUrl,
+      'twitter_url': twitterUrl,
     };
   }
 }

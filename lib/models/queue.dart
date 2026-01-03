@@ -1,12 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum QueueStatus { waiting, booked, ongoing, served, cancelled, cancellationRequested }
+enum QueueStatus { 
+  waiting, 
+  awaitingPayment, // Approved by admin, waiting for customer payment
+  booked, 
+  ongoing, 
+  served, 
+  cancelled, 
+  cancellationRequested 
+}
+
 enum RequestStatus { pending, approved, rejected }
 
 extension QueueStatusExtension on QueueStatus {
   String get value {
     switch (this) {
       case QueueStatus.waiting: return 'waiting';
+      case QueueStatus.awaitingPayment: return 'awaiting_payment';
       case QueueStatus.booked: return 'booked';
       case QueueStatus.ongoing: return 'ongoing';
       case QueueStatus.served: return 'served';
@@ -24,6 +34,7 @@ extension QueueStatusExtension on QueueStatus {
         return QueueStatus.booked;
       case 'awaiting_payment':
       case 'payment_pending':
+        return QueueStatus.awaitingPayment;
       case 'waiting':
       case 'created':
         return QueueStatus.waiting;

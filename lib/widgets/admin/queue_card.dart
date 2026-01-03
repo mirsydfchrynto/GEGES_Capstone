@@ -93,6 +93,8 @@ class _QueueCardState extends State<QueueCard> {
     switch (s) {
       case QueueStatus.waiting:
         return 'Menunggu Konfirmasi';
+      case QueueStatus.awaitingPayment:
+        return 'Menunggu Pembayaran';
       case QueueStatus.booked:
         return 'Terkonfirmasi';
       case QueueStatus.ongoing:
@@ -110,6 +112,8 @@ class _QueueCardState extends State<QueueCard> {
     switch (s) {
       case QueueStatus.waiting:
         return Colors.orangeAccent;
+      case QueueStatus.awaitingPayment:
+        return Colors.amber;
       case QueueStatus.booked:
         return Colors.blueAccent;
       case QueueStatus.ongoing:

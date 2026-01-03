@@ -441,12 +441,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -455,18 +458,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildGridMenu() {
+  Widget _buildGridMenu({
+    int pendingPaymentCount = 0,
+    int cancellationCount = 0,
+    int waitingConfirmationCount = 0,
+  }) {
     if (_adminBarbershopId == null) return const SizedBox.shrink();
 
     return GridView.count(
       crossAxisCount: 2,
-      crossAxisSpacing: 15,
-      mainAxisSpacing: 15,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.1,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
-        // 'Konfirmasi Booking' has been removed in favor of 'Verifikasi Pembayaran'
-        // Admin should verify payment from the "Verifikasi Pembayaran" menu.
         _buildMenuCard(
           Icons.playlist_add_check,
           'Antrean Live',
@@ -486,11 +492,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             );
           },
+          badgeCount: waitingConfirmationCount,
         ),
         _buildMenuCard(
           Icons.payment,
-          'Verifikasi Pembayaran',
-          'Awaiting Payment',
+          'Verifikasi Bayar',
+          'Pending Proofs',
           () {
             Navigator.push(
               context,
@@ -499,10 +506,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             );
           },
+          badgeCount: pendingPaymentCount,
         ),
         _buildMenuCard(
           Icons.cancel_outlined,
-          'Manajemen Pembatalan',
+          'Pembatalan',
           'Refund Requests',
           () {
             Navigator.push(
@@ -514,10 +522,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
             );
           },
+          badgeCount: cancellationCount,
         ),
         _buildMenuCard(
           Icons.receipt_long,
-          'Tambah Booking Manual',
+          'Booking Manual',
           'Quick Entry',
           () async {
             if (_adminBarbershopId == null) {
@@ -533,26 +542,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
             if (!mounted) return;
 
-            // Navigate to a full-screen manual booking page using the existing ManualBookingForm
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => Scaffold(
                   appBar: AppBar(
-                    backgroundColor: kBrownAccent,
+                    backgroundColor: kBlack,
+                    iconTheme: const IconThemeData(color: Colors.white),
                     title: const Text(
-                      'Tambah Booking Manual',
-                      style: TextStyle(color: Colors.black),
+                      'Input Booking Offline',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
                   backgroundColor: kBlack,
                   body: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: ManualBookingForm(
-                        barbershop: barbershop,
-                        queueService: _queueService,
-                      ),
+                    child: ManualBookingForm(
+                      barbershop: barbershop,
+                      queueService: _queueService,
                     ),
                   ),
                 ),
@@ -560,11 +566,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             );
           },
         ),
-
         _buildMenuCard(
           Icons.storefront,
-          'Profil Barbershop',
-          'Nama, Alamat & Fasilitas',
+          'Profil Toko',
+          'Info & Fasilitas',
           () async {
             if (_adminBarbershopId != null) {
               final shop = await _getBarbershopSafe(_adminBarbershopId!);
@@ -579,8 +584,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         _buildMenuCard(
           Icons.photo_library_outlined,
-          'Galeri Barbershop',
-          'Manajemen Album Foto',
+          'Galeri Album',
+          'Foto Barbershop',
           () async {
             if (_adminBarbershopId != null) {
               final shop = await _getBarbershopSafe(_adminBarbershopId!);
@@ -611,15 +616,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           },
         ),
         _buildMenuCard(
-          Icons.star_half,
-          'Lihat Ulasan',
-          'Customer Feedback',
-          () => _showSnackBar('Navigasi ke Kelola Ulasan'),
-        ),
-        _buildMenuCard(
           Icons.notifications_active,
-          'Kirim Notifikasi',
-          'Via Firestore',
+          'Kirim Notif',
+          'Broadcast Blast',
           () {
             Navigator.push(
               context,
@@ -635,54 +634,97 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     IconData icon,
     String title,
     String subtitle,
-    VoidCallback onTap,
-  ) {
-    final brownBorder = const Color.fromRGBO(195, 164, 123, 0.2);
-    final brownBg = const Color.fromRGBO(195, 164, 123, 0.1);
+    VoidCallback onTap, {
+    int badgeCount = 0,
+  }) {
+    final brownBorder = const Color.fromRGBO(195, 164, 123, 0.15);
+    final brownBg = const Color.fromRGBO(195, 164, 123, 0.08);
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: kDarkSurface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: brownBorder, width: 1),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: brownBg,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: kBrownAccent, size: 30),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+    return Stack(
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: kDarkSurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: brownBorder, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
-          ],
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: brownBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: kBrownAccent, size: 26),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white54, fontSize: 10),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+        if (badgeCount > 0)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Color(0xFFD32F2F),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1),
+                ],
+              ),
+              constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
+              child: Center(
+                child: Text(
+                  badgeCount > 99 ? '99+' : badgeCount.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -764,6 +806,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       children: [
                         Text(
                           customerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -772,6 +816,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         Text(
                           serviceName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 14,
@@ -870,6 +916,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     switch (status) {
       case QueueStatus.waiting:
         return Colors.orangeAccent;
+      case QueueStatus.awaitingPayment:
+        return Colors.amber;
       case QueueStatus.booked:
         return const Color(0xFF448AFF);
       case QueueStatus.ongoing:
@@ -1001,6 +1049,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             // Booking = confirmed bookings + ongoing (they are part of booking flow)
             final todayBookingCount = bookedCount + ongoingCount;
 
+            // --- BADGE CALCULATIONS ---
+            // 1. Verifikasi Bayar: queues with 'awaiting_payment' status and have a proof
+            final pendingPaymentCount = allQueues.where((q) => 
+              q.status == QueueStatus.awaitingPayment && 
+              q.paymentProofBase64 != null && 
+              q.paymentProofBase64!.isNotEmpty
+            ).length;
+
+            // 2. Pembatalan: queues with 'cancellationRequested' status
+            final cancellationCount = allQueues.where((q) => 
+              q.status == QueueStatus.cancellationRequested
+            ).length;
+
+            // 3. Waiting Confirm (New bookings that need admin to click confirm)
+            final waitingConfirmationCount = allQueues.where((q) => 
+              q.status == QueueStatus.waiting
+            ).length;
+
             return SingleChildScrollView(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -1012,7 +1078,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     pendingCount: pending,
                     completedCount: served,
                   ),
-                  _buildGridMenu(),
+                  _buildGridMenu(
+                    pendingPaymentCount: pendingPaymentCount,
+                    cancellationCount: cancellationCount,
+                    waitingConfirmationCount: waitingConfirmationCount,
+                  ),
                   _buildUpcomingAppointment(allQueues),
                   const SizedBox(height: 50),
                 ],
