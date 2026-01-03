@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   late Future<List<Barbershop>> _barbershopFuture;
   String _currentAddress = 'Menentukan lokasi...'; // Default loading text
+  bool _isLocating = false;
   
   // Search State
   List<Barbershop>? _searchResults;
@@ -61,15 +62,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _updateLocation() async {
-    final address = await _locationService.getCurrentLocationAddress();
-    if (mounted && address != null) {
-      setState(() {
-        _currentAddress = address;
-      });
-    } else if (mounted) {
-      setState(() {
-        _currentAddress = 'Lokasi tidak ditemukan';
-      });
+    if (_isLocating) return; // Prevent multiple simultaneous calls
+    
+    setState(() {
+      _isLocating = true;
+      _currentAddress = 'Menentukan lokasi...';
+    });
+
+    try {
+      final address = await _locationService.getCurrentLocationAddress();
+      if (mounted) {
+        setState(() {
+          _currentAddress = address ?? 'Lokasi tidak ditemukan';
+          _isLocating = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _currentAddress = 'Error lokasi';
+          _isLocating = false;
+        });
+      }
     }
   }
 
@@ -136,28 +150,49 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.location_on, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Lokasi Saya',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                  Text(
-                    _currentAddress,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+          GestureDetector(
+            onTap: _isLocating ? null : _updateLocation,
+            child: Row(
+              children: [
+                const Icon(Icons.location_on, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'Lokasi Saya',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        if (_isLocating) ...[
+                          const SizedBox(width: 8),
+                          const SizedBox(
+                            width: 10,
+                            height: 10,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: kBrownAccent,
+                            ),
+                          ),
+                        ] else ...[
+                          const SizedBox(width: 4),
+                          const Icon(Icons.refresh, color: Colors.white54, size: 12),
+                        ],
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    Text(
+                      _currentAddress,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
           IconButton(
             icon: const Icon(

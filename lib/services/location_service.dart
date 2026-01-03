@@ -6,7 +6,18 @@ class LocationService {
   /// Mendapatkan lokasi saat ini dalam format teks (Contoh: "Mejasem, Tegal")
   /// Mengembalikan null jika gagal atau permission ditolak.
   Future<String?> getCurrentLocationAddress() async {
+    return await _getLocation().timeout(
+      const Duration(seconds: 8),
+      onTimeout: () {
+        debugPrint('LocationService: Global timeout reached.');
+        return 'Lokasi tidak ditemukan (Timeout)';
+      },
+    );
+  }
+
+  Future<String?> _getLocation() async {
     try {
+      debugPrint('LocationService: Checking service and permissions...');
       // 1. Cek apakah GPS aktif
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -29,26 +40,32 @@ class LocationService {
         return null;
       }
 
+      debugPrint('LocationService: Getting position...');
       // 3. Prioritaskan Last Known Position (Instan)
       Position? position = await Geolocator.getLastKnownPosition();
       
-      // Jika tidak ada, baru minta Current Position (lebih lambat)
-      position ??= await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 3),
-        ),
-      );
+      if (position == null) {
+        debugPrint('LocationService: Last known null, getting current position...');
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: AndroidSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: const Duration(seconds: 4),
+            forceLocationManager: true, // Sering lebih stabil di beberapa device Android
+          ),
+        );
+      }
+
+      debugPrint('LocationService: Position found. Geocoding...');
 
       // 4. Reverse Geocoding dengan Timeout (agar tidak hanging)
-      // Timeout dipercepat jadi 2 detik
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
-      ).timeout(const Duration(seconds: 2));
+      ).timeout(const Duration(seconds: 3));
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
+        debugPrint('LocationService: Placemark found: ${place.locality}');
         
         // Prioritaskan Nama Kota (Locality) sesuai permintaan user
         if (place.locality != null && place.locality!.isNotEmpty) {
@@ -61,7 +78,7 @@ class LocationService {
         }
 
         // Fallback terakhir: Provinsi
-        return place.administrativeArea ?? '';
+        return place.administrativeArea ?? 'Unknown Location';
       }
       return null;
     } catch (e) {
