@@ -475,7 +475,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearchResultsView() {
-    if (_searchResults != null && _searchResults!.isEmpty) {
+    // Jika _searchResults masih null, berarti sedang loading / debounce
+    if (_searchResults == null) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 40.0),
+        child: Center(child: CircularProgressIndicator(color: kBrownAccent)),
+      );
+    }
+
+    if (_searchResults!.isEmpty) {
       return Padding(
         padding: const EdgeInsets.only(top: 40.0),
         child: Center(
