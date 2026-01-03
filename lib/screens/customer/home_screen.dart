@@ -87,12 +87,22 @@ class _HomeScreenState extends State<HomeScreen> {
         : const Duration(milliseconds: 500);
 
     _debounce = Timer(debounceDuration, () async {
-      final results = await _barbershopService.searchBarbershops(query);
-      if (mounted) {
-        setState(() {
-          _searchResults = results;
-          _isSearching = false;
-        });
+      try {
+        final results = await _barbershopService.searchBarbershops(query);
+        if (mounted) {
+          setState(() {
+            _searchResults = results;
+            _isSearching = false;
+          });
+        }
+      } catch (e) {
+        debugPrint("Error in search debounce: $e");
+        if (mounted) {
+          setState(() {
+            _searchResults = [];
+            _isSearching = false; // Ensure loading stops even on error
+          });
+        }
       }
     });
   }

@@ -463,9 +463,11 @@ class BarbershopService {
 
   Future<List<Barbershop>> searchBarbershops(String query) async {
     try {
+      debugPrint("🔍 Searching for: '$query'");
       // 1. Get all barbershops (including closed ones) to ensure comprehensive search
       // Note: Fetching all docs is okay for < 1000 shops. For scale, use Algolia/Typesense.
       final snapshot = await _firestore.collection('barbershops').get();
+      debugPrint("🔍 Fetched ${snapshot.docs.length} shops from Firestore");
 
       final allShops = snapshot.docs.map((doc) => Barbershop.fromFirestore(doc)).toList();
 
@@ -477,7 +479,8 @@ class BarbershopService {
       final lowerQuery = query.toLowerCase();
 
       // 2. Filter locally
-      return allShops.where((shop) {
+      final results = allShops.where((shop) {
+        // Safety check for null strings, though model handles it, double check logic
         final nameMatch = shop.name.toLowerCase().contains(lowerQuery);
         final addressMatch = shop.addres.toLowerCase().contains(lowerQuery);
         // Optional: Add service matching if needed
@@ -485,8 +488,11 @@ class BarbershopService {
         
         return nameMatch || addressMatch || serviceMatch;
       }).toList();
+
+      debugPrint("🔍 Found ${results.length} results matching '$query'");
+      return results;
     } catch (e) {
-      debugPrint('Error searchBarbershops: $e');
+      debugPrint('❌ Error searchBarbershops: $e');
       return [];
     }
   }

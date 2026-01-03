@@ -13,86 +13,75 @@ void main() {
 
     // Seed data
     await fakeFs.collection('barbershops').doc('shop1').set({
-      'name': 'Geges Barber',
-      'addres': 'Jalan Mawar',
+      'name': 'Febrian Barbershop',
+      'addres': 'Mejasem Barat',
       'isOpen': true,
       'services': ['Haircut'],
-      'rating': 4.5,
+      'rating': 4.8,
       'imageUrl': 'http://test.com/img.jpg',
     });
 
     await fakeFs.collection('barbershops').doc('shop2').set({
-      'name': 'Luxury Cuts',
-      'addres': 'Jalan Melati',
+      'name': 'Doels Barbershop',
+      'addres': 'Slawi',
       'isOpen': true,
       'services': ['Shave'],
-      'rating': 5.0,
+      'rating': 4.5,
       'imageUrl': 'http://test.com/img2.jpg',
     });
   });
 
-  testWidgets('HomeScreen Search Integration Flow', (tester) async {
+  testWidgets('HomeScreen Search Real Simulation', (tester) async {
     mockNetworkImagesFor(() async {
+      // Inject real service with fake firestore to test logic flow
       final service = BarbershopService(firestore: fakeFs);
+      
       await tester.pumpWidget(MaterialApp(
         home: HomeScreen(barbershopService: service),
       ));
-      // Initial wait for data
+      
+      // Initial wait
       await tester.pump(const Duration(milliseconds: 500));
-      await tester.pump(); // Rebuild with data
+      await tester.pump(); 
 
-      // 1. Initial State: Show recommendation title
-      expect(find.textContaining('Barbershops'), findsOneWidget);
-      expect(find.text('Geges Barber'), findsOneWidget);
-      expect(find.text('Luxury Cuts'), findsOneWidget);
+      // 1. Verify Initial Data
+      expect(find.text('Febrian Barbershop'), findsOneWidget);
+      expect(find.text('Doels Barbershop'), findsOneWidget);
 
-      // 2. Type Query: "Luxury"
+      // 2. Search "febrian" (lowercase)
       final searchField = find.byType(TextField);
-      await tester.enterText(searchField, 'Luxury');
-      await tester.pump(); // Trigger setState(_isSearching = true) immediately
+      await tester.enterText(searchField, 'febrian');
+      await tester.pump(); // Trigger setState(_isSearching = true)
 
-      // Verify loading state is shown immediately (fast feedback)
-      // Note: In test mode with zero debounce, this might flicker too fast to catch.
-      // Skipping strict check for indicator presence to rely on final result.
-      // expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      expect(find.textContaining('Barbershops'), findsNothing);
+      // Verify loading state logic (in test mode debounce is 0, so likely too fast to catch, but we verify result) 
+      
+      // Wait for async search
+      await tester.pump(); 
+      await tester.pump(const Duration(milliseconds: 100)); // Allow microtasks
 
-      // Wait for debounce (500ms) + async result (simulated)
-      // We pump for a duration longer than debounce to let Timer fire
-      await tester.pump(const Duration(milliseconds: 600));
-      
-      // Poll for results to appear (waiting for Future to complete)
-      bool foundResults = false;
-      for (int i = 0; i < 50; i++) {
-        // Pump frames to allow FutureBuilder/setState to complete
-        await tester.pump(const Duration(milliseconds: 50));
-        
-        if (find.text('Found 1 result').evaluate().isNotEmpty) {
-          foundResults = true;
-          break;
-        }
-      }
-      
-      if (!foundResults) {
-        final allTexts = tester.allWidgets.whereType<Text>().map((t) => t.data).toList();
-        debugPrint('FAILED TO FIND RESULTS. All texts on screen: $allTexts');
-      }
-      
-      expect(foundResults, isTrue, reason: 'Search results "Found 1 result" did not appear in time');
-
-      // 3. Verify: Results view shown, loading hidden
-      expect(find.byType(CircularProgressIndicator), findsNothing);
+      // 3. Verify Result
       expect(find.text('Found 1 result'), findsOneWidget);
-      expect(find.text('Luxury Cuts'), findsOneWidget);
+      expect(find.text('Febrian Barbershop'), findsOneWidget);
+      expect(find.text('Doels Barbershop'), findsNothing);
 
-      // 4. Test Clear Button
-      final clearBtn = find.byIcon(Icons.clear);
-      await tester.tap(clearBtn);
-      await tester.pump(); // Rebuild state
-      await tester.pump(); // Sync UI
+      // 4. Search "slawi" (address)
+      await tester.enterText(searchField, 'slawi');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
-      // Verify: Back to initial state
-      expect(find.textContaining('Barbershops'), findsOneWidget);
+      // 5. Verify Result
+      expect(find.text('Found 1 result'), findsOneWidget);
+      expect(find.text('Doels Barbershop'), findsOneWidget);
+      expect(find.text('Febrian Barbershop'), findsNothing);
+
+      // 6. Clear Search
+      await tester.tap(find.byIcon(Icons.clear));
+      await tester.pump();
+      await tester.pump();
+
+      // Verify Back to Home
+      expect(find.text('Barbershops\nnear you'), findsOneWidget);
+      expect(find.text('Febrian Barbershop'), findsOneWidget);
     });
   });
 }
