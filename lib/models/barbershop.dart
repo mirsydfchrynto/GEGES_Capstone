@@ -5,16 +5,18 @@ class Barbershop {
   final String name;
   final String addres;
   final double rating;
-  final String imageUrl;
+  final String imageUrl; // Utama
   final List<String> services;
+  final List<String> facilities; // Fasilitas (AC, Wifi, etc)
+  final List<String> galleryUrls; // Album (Base64)
   final int openHour;
   final int closeHour;
   final int? paymentWindowMinutes;
   final int? specialOrderFee;
-  final int barberSelectionFee; // New: default fee for picking a barber
+  final int barberSelectionFee; 
   final bool isOpen;
-  final List<int> weeklyHolidays; // New: [0, 6] for Sun, Sat
-  final List<String> specificHolidays; // New: ["2025-12-31"]
+  final List<int> weeklyHolidays; 
+  final List<String> specificHolidays; 
 
   Barbershop({
     required this.id,
@@ -23,6 +25,8 @@ class Barbershop {
     required this.rating,
     required this.imageUrl,
     required this.services,
+    this.facilities = const [],
+    this.galleryUrls = const [],
     required this.openHour,
     required this.closeHour,
     this.paymentWindowMinutes,
@@ -53,6 +57,8 @@ class Barbershop {
       rating: (data['rating'] as num?)?.toDouble() ?? 5.0,
       imageUrl: data['imageUrl'] ?? 'https://cdn-icons-png.flaticon.com/512/706/706830.png',
       services: List<String>.from(data['services'] ?? []),
+      facilities: List<String>.from(data['facilities'] ?? []),
+      galleryUrls: List<String>.from(data['gallery_urls'] ?? data['galleryUrls'] ?? []),
       openHour: parseHour(data['open_hour'] ?? data['openHour'], 9),
       closeHour: parseHour(data['close_hour'] ?? data['closeHour'], 21),
       paymentWindowMinutes: (data['payment_window_minutes'] ?? data['paymentWindowMinutes'])?.toInt(),
@@ -60,17 +66,19 @@ class Barbershop {
       barberSelectionFee: (data['barber_selection_fee'] ?? data['barberSelectionFee'])?.toInt() ?? 5000,
       isOpen: data['isOpen'] as bool? ?? false,
       weeklyHolidays: List<int>.from(data['weekly_holidays'] ?? data['weeklyHolidays'] ?? []),
-      specificHolidays: List<String>.from(data['specific_holidays'] ?? data['specificHolidays'] ?? []),
+      specificHolidays: List<String>.from(data['specific_holidays'] ?? data['specific_holidays'] ?? []),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'addres': addres,
+      'address': addres, // Consistent field name
       'rating': rating,
       'imageUrl': imageUrl,
       'services': services,
+      'facilities': facilities,
+      'gallery_urls': galleryUrls,
       'open_hour': openHour,
       'close_hour': closeHour,
       'payment_window_minutes': paymentWindowMinutes,

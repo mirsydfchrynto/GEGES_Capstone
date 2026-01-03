@@ -1,10 +1,9 @@
-// lib/screens/customer/tabs/profile_screen.dart
-
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/favorite_barbershops_screen.dart';
 import 'package:geges_smartbarber/screens/customer/app_rating_screen.dart';
+import 'package:geges_smartbarber/services/auth_service.dart';
 
 // --- IMPORT DARI ITERASI SEBELUMNYA ---
 import '../../../models/user_data.dart'; // Model UserData yang sudah kita buat
@@ -14,7 +13,6 @@ import '../edit_profile_screen.dart'; // EditProfileScreen yang sudah kita buat
 import '../../login_screen.dart';
 import 'my_bookings_screen.dart'; // Akan digunakan sebagai History Screen
 import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
-// Saya asumsikan ini adalah FavoriteBarbersScreen (bukan barbershop)
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -34,14 +32,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     0xFF1B1B1B,
   ); // Teks hitam untuk tombol emas
 
-  // --- MENGGUNAKAN MODEL USERDATA YANG SUDAH KITA BUAT ---
+  final AuthService _authService = AuthService();
+
   UserData _currentUser = UserData(
     uid: FirebaseAuth.instance.currentUser?.uid ?? 'guest_uid',
-    name: "Tegar Nugraha", // Placeholder awal
+    name: "Loading...", 
     role: "customer",
   );
-  String _userEmail = "tegar.nugraha@example.com"; // Placeholder
-  String? _userPhotoUrl; // Placeholder
+  String _userEmail = "..."; 
 
   @override
   void initState() {
@@ -49,28 +47,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserProfile();
   }
 
-  void _loadUserProfile() {
+  Future<void> _loadUserProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      // Ambil data dari Firebase Authentication & simulasikan pengambilan UserData
-      // Di aplikasi nyata, Anda akan fetch UserData.fromFirestore(doc) di sini
-      setState(() {
-        _currentUser = UserData(
-          uid: user.uid,
-          name: user.displayName ?? "anonymous",
-          role: _currentUser
-              .role, // Pertahankan role yang ada (atau fetch dari Firestore)
-        );
-        _userEmail = user.email ?? "Edit Profile";
-        _userPhotoUrl = user.photoURL;
-      });
+      final userData = await _authService.getUserById(user.uid);
+      if (mounted && userData != null) {
+        setState(() {
+          _currentUser = userData;
+          _userEmail = user.email ?? "";
+        });
+      }
     }
   }
 
   void _logout() async {
-    await FirebaseAuth.instance.signOut();
+    await _authService.signOut();
     if (mounted) {
-      // Navigasi ke LoginScreen dan hapus semua rute sebelumnya
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
         (Route<dynamic> route) => false,
@@ -78,9 +70,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Fungsi baru untuk navigasi ke Edit Profile
   void _goToEditProfile() async {
-    // Navigasi ke EditProfileScreen dan tunggu hasilnya
     final updatedUser = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -88,11 +78,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
 
-    // Jika data UserData yang diperbarui dikembalikan, update state lokal
     if (updatedUser != null && updatedUser is UserData) {
       setState(() {
         _currentUser = updatedUser;
-        // Asumsi email/photoUrl tidak berubah dari EditProfileScreen
       });
     }
   }
@@ -108,95 +96,99 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         backgroundColor: kSurface,
         elevation: 0,
-        automaticallyImplyLeading: true,
+        automaticallyImplyLeading: false,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildProfileHeader(),
-            const SizedBox(height: 20),
+      body: RefreshIndicator(
+        onRefresh: _loadUserProfile,
+        color: kBrownAccent,
+        backgroundColor: kCardColor,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildProfileHeader(),
+              const SizedBox(height: 20),
 
-            // --- MENU UTAMA ---
-            _buildMenuCard(
-              title: 'History', // <--- DIGANTI DARI 'My Bookings' KE 'History'
-              icon: Icons.history, // Menggunakan ikon history yang lebih sesuai
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MyBookingsScreen(),
+              // --- MENU UTAMA ---
+              _buildMenuCard(
+                title: 'History',
+                icon: Icons.history,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MyBookingsScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildMenuCard(
+                title: 'Favorite Barbers',
+                icon: Icons.favorite_border,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const FavoriteBarbershopsScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 12),
+
+              // --- MENU RATING ---
+              _buildMenuCard(
+                title: 'Rating Aplikasi',
+                icon: Icons.star_outline,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AppRatingScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildMenuCard(
+                title: 'Terms of Service',
+                icon: Icons.description_outlined,
+                onTap: () {
+                  Navigator.of(context).pushNamed('/legal/terms');
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // --- TOMBOL LOGOUT ---
+              ElevatedButton(
+                onPressed: _logout,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kRedDanger,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            _buildMenuCard(
-              title: 'Favorite Barbers',
-              icon: Icons.favorite_border,
-              onTap: () {
-                // Ganti dengan FavoriteBarbersScreen (jika Anda menggunakan nama itu)
-
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const FavoriteBarbershopsScreen(),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 12),
-
-            // --- MENU RATING ---
-            _buildMenuCard(
-              title: 'Rating Aplikasi',
-              icon: Icons.star_outline,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AppRatingScreen(),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            _buildMenuCard(
-              title: 'Terms of Service',
-              icon: Icons.description_outlined,
-              onTap: () {
-                Navigator.of(context).pushNamed('/legal/terms');
-              },
-            ),
-
-            const SizedBox(height: 20),
-
-            // --- TOMBOL LOGOUT ---
-            ElevatedButton(
-              onPressed: _logout,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kRedDanger,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  elevation: 0,
                 ),
-                elevation: 0,
+                child: const Text(
+                  'Log Out',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
-              child: const Text(
-                'Log Out',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // --- PROMO CARD ---
-            _buildBarbershopPromoCard(),
-          ],
+              // --- PROMO CARD ---
+              _buildBarbershopPromoCard(),
+            ],
+          ),
         ),
       ),
     );
@@ -214,12 +206,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           CircleAvatar(
             radius: 30,
             backgroundColor: kBrownAccent.withValues(alpha: 0.2),
-            // Menggunakan CachedNetworkImage untuk foto profil dari URL (jika ada)
-            backgroundImage:
-                _userPhotoUrl != null && _userPhotoUrl!.startsWith('http')
-                ? CachedNetworkImageProvider(_userPhotoUrl!)
+            backgroundImage: _currentUser.photoBase64 != null
+                ? MemoryImage(base64Decode(_currentUser.photoBase64!))
                 : null,
-            child: (_userPhotoUrl == null || !_userPhotoUrl!.startsWith('http'))
+            child: _currentUser.photoBase64 == null
                 ? Icon(Icons.person, size: 30, color: kBrownAccent)
                 : null,
           ),
@@ -229,7 +219,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _currentUser.name, // Menggunakan data dari state/UserData
+                  _currentUser.name,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -249,8 +239,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           // Tombol Settings/Edit Profile
           IconButton(
-            onPressed:
-                _goToEditProfile, // Panggil fungsi navigasi ke EditProfileScreen
+            onPressed: _goToEditProfile,
             icon: Icon(Icons.settings, color: kTextGrey, size: 24),
           ),
         ],

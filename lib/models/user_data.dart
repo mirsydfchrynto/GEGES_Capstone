@@ -9,6 +9,7 @@ class UserData {
   final String?
   barbershopId; // ID Barbershop yang dikelola (jika role admin_owner)
   final List<String> favoriteBarbershops; // List ID Barbershop favorit
+  final String? photoBase64; // Foto profil dalam format Base64 (untuk menghemat Storage)
 
   UserData({
     required this.uid,
@@ -17,6 +18,7 @@ class UserData {
     this.phoneNumber,
     this.barbershopId,
     this.favoriteBarbershops = const [],
+    this.photoBase64,
   });
 
   // Factory constructor untuk membuat objek UserData dari Firestore
@@ -50,6 +52,7 @@ class UserData {
           data['phone_number'] as String? ?? data['phoneNumber'] as String?,
       barbershopId: shopId,
       favoriteBarbershops: favs,
+      photoBase64: data['photo_base64'] as String? ?? data['photoBase64'] as String?,
     );
   }
 
@@ -60,6 +63,7 @@ class UserData {
       'favorite_barbershops': favoriteBarbershops,
       if (phoneNumber != null) 'phone_number': phoneNumber,
       if (barbershopId != null) 'barbershop_id': barbershopId,
+      if (photoBase64 != null) 'photo_base64': photoBase64,
     };
   }
 
@@ -69,6 +73,7 @@ class UserData {
     String? phoneNumber,
     String? barbershopId,
     List<String>? favoriteBarbershops,
+    String? photoBase64,
   }) {
     return UserData(
       uid: uid,
@@ -77,6 +82,7 @@ class UserData {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       barbershopId: barbershopId ?? this.barbershopId,
       favoriteBarbershops: favoriteBarbershops ?? this.favoriteBarbershops,
+      photoBase64: photoBase64 ?? this.photoBase64,
     );
   }
 }

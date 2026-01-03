@@ -67,10 +67,12 @@ class FakeAuthService implements AuthService {
     required String uid,
     required String newName,
     String? newEmail,
+    String? newPhoneNumber,
+    String? newPhotoBase64,
     String? currentPasswordForReauth,
     bool trySendVerification = true,
-  }) {
-    throw UnimplementedError();
+  }) async {
+    return {'success': true};
   }
 
   @override

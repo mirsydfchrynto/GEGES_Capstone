@@ -14,10 +14,11 @@ import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/screens/admin/live_queue_screen.dart';
 import 'package:geges_smartbarber/screens/admin/_manual_booking_form.dart';
 import 'package:geges_smartbarber/screens/admin/payment_verification_screen_improved.dart'; // Corrected import
-import 'package:geges_smartbarber/screens/admin/barber_management_screen.dart'; // Fixed import name
 import 'package:geges_smartbarber/screens/admin/service_management_screen.dart'; // Added import
 import 'package:geges_smartbarber/screens/admin/send_notification_screen.dart';
 import 'package:geges_smartbarber/screens/admin/cancellation_requests_screen.dart';
+import 'package:geges_smartbarber/screens/admin/barbershop_settings_screen.dart';
+import 'package:geges_smartbarber/screens/admin/barbershop_gallery_screen.dart';
 
 // --- THEME COLORS ---
 const Color kBrownAccent = Color(0xFFC3A47B);
@@ -561,25 +562,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
 
         _buildMenuCard(
-          Icons.list_alt,
-          'Lihat Semua Riwayat',
-          'Archive & Report',
-          () => _showSnackBar('Navigasi ke Semua Riwayat Booking'),
+          Icons.storefront,
+          'Profil Barbershop',
+          'Nama, Alamat & Fasilitas',
+          () async {
+            if (_adminBarbershopId != null) {
+              final shop = await _getBarbershopSafe(_adminBarbershopId!);
+              if (shop != null && mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => BarbershopSettingsScreen(barbershop: shop)),
+                );
+              }
+            }
+          },
         ),
         _buildMenuCard(
-          Icons.face_retouching_natural,
-          'Kelola Karyawan',
-          'Jadwal & Libur',
-          () {
+          Icons.photo_library_outlined,
+          'Galeri Barbershop',
+          'Manajemen Album Foto',
+          () async {
             if (_adminBarbershopId != null) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => BarberManagementScreen(
-                    barbershopId: _adminBarbershopId!,
-                  ),
-                ),
-              );
+              final shop = await _getBarbershopSafe(_adminBarbershopId!);
+              if (shop != null && mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => BarbershopGalleryScreen(barbershop: shop)),
+                );
+              }
             }
           },
         ),

@@ -1,224 +1,172 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 
 class BarbershopSettingsScreen extends StatefulWidget {
   final Barbershop barbershop;
-  final BarbershopService? service;
-
-  const BarbershopSettingsScreen({super.key, required this.barbershop, this.service});
+  const BarbershopSettingsScreen({required this.barbershop, super.key});
 
   @override
   State<BarbershopSettingsScreen> createState() => _BarbershopSettingsScreenState();
 }
 
 class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
-  late final BarbershopService _svc;
   final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameController;
+  late TextEditingController _addressController;
+  late List<String> _facilities;
+  final TextEditingController _facilityController = TextEditingController();
   
-  final TextEditingController _feeController = TextEditingController();
-  final TextEditingController _specificHolidayController = TextEditingController();
-  
-  int _openHour = 9;
-  int _closeHour = 21;
-  List<int> _weeklyHolidays = [];
-  List<String> _specificHolidays = [];
-  
-  bool _isSaving = false;
+  bool _isLoading = false;
+  final BarbershopService _service = BarbershopService();
+
+  static const Color kBrownAccent = Color(0xFFC3A47B);
+  static const Color kDarkSurface = Color(0xFF1E1E1E);
 
   @override
   void initState() {
     super.initState();
-    _svc = widget.service ?? BarbershopService();
-    _feeController.text = (widget.barbershop.barberSelectionFee).toString();
-    _openHour = widget.barbershop.openHour;
-    _closeHour = widget.barbershop.closeHour;
-    _weeklyHolidays = List.from(widget.barbershop.weeklyHolidays);
-    _specificHolidays = List.from(widget.barbershop.specificHolidays);
+    _nameController = TextEditingController(text: widget.barbershop.name);
+    _addressController = TextEditingController(text: widget.barbershop.addres);
+    _facilities = List.from(widget.barbershop.facilities);
   }
 
   @override
   void dispose() {
-    _feeController.dispose();
-    _specificHolidayController.dispose();
+    _nameController.dispose();
+    _addressController.dispose();
+    _facilityController.dispose();
     super.dispose();
+  }
+
+  void _addFacility() {
+    final text = _facilityController.text.trim();
+    if (text.isNotEmpty && !_facilities.contains(text)) {
+      setState(() {
+        _facilities.add(text);
+        _facilityController.clear();
+      });
+    }
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     
-    setState(() => _isSaving = true);
+    setState(() => _isLoading = true);
     try {
-      final payload = {
-        'barber_selection_fee': int.parse(_feeController.text),
-        'open_hour': _openHour,
-        'close_hour': _closeHour,
-        'weekly_holidays': _weeklyHolidays,
-        'specific_holidays': _specificHolidays,
-      };
-      
-      // Update via firestore directly for multiple fields
-      if (widget.barbershop.id.isNotEmpty) {
-        await _svc.updateBarbershopSettings(widget.barbershop.id, payload);
+      await _service.updateBarbershopSettings(widget.barbershop.id, {
+        'name': _nameController.text.trim(),
+        'address': _addressController.text.trim(),
+        'facilities': _facilities,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Settings updated successfully!')),
+        );
+        Navigator.pop(context);
       }
-      
-      // Since we don't have a dedicated "updateFullSettings" method in service, let's update specific fields
-      // For this implementation, I'll update the barbershop document directly
-      // In a real scenario, you'd add this to BarbershopService
-      
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pengaturan Berhasil Disimpan')));
-      Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  void _toggleWeeklyHoliday(int day) {
-    setState(() {
-      if (_weeklyHolidays.contains(day)) {
-        _weeklyHolidays.remove(day);
-      } else {
-        _weeklyHolidays.add(day);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
-    });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color kBrownAccent = Color(0xFFC3A47B);
-    const Color kSurface = Color(0xFF0F0F0F);
-
     return Scaffold(
-      backgroundColor: kSurface,
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Pengaturan Barbershop', style: TextStyle(color: Colors.white)),
-        backgroundColor: kSurface,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Barbershop Settings', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: kBrownAccent,
+        foregroundColor: Colors.black,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            _section("Special Order Fee (Rp)"),
-            TextFormField(
-              controller: _feeController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                fillColor: Colors.white10, filled: true,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                hintText: 'Misal: 5000', hintStyle: const TextStyle(color: Colors.white24),
-              ),
-            ),
-            
-            const SizedBox(height: 32),
-            _section("Jam Operasional"),
-            Row(
-              children: [
-                Expanded(child: _hourPicker("Buka", _openHour, (v) => setState(() => _openHour = v))),
-                const SizedBox(width: 20),
-                Expanded(child: _hourPicker("Tutup", _closeHour, (v) => setState(() => _closeHour = v))),
-              ],
-            ),
-
-            const SizedBox(height: 32),
-            _section("Hari Libur Mingguan"),
-            Wrap(
-              spacing: 8,
-              children: List.generate(7, (index) {
-                final days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-                bool isHoliday = _weeklyHolidays.contains(index);
-                return FilterChip(
-                  label: Text(days[index]),
-                  selected: isHoliday,
-                  onSelected: (_) => _toggleWeeklyHoliday(index),
-                  selectedColor: kBrownAccent,
-                  labelStyle: TextStyle(color: isHoliday ? Colors.black : Colors.white),
-                  backgroundColor: Colors.white10,
-                );
-              }),
-            ),
-
-            const SizedBox(height: 32),
-            _section("Libur Khusus (Tanggal)"),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _specificHolidayController,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      hintText: "Tambah Tanggal Libur",
-                      fillColor: Colors.white10, filled: true,
-                      suffixIcon: IconButton(icon: const Icon(Icons.calendar_today, color: kBrownAccent), onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: context, initialDate: DateTime.now(),
-                          firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365))
-                        );
-                        if (picked != null) {
-                          final str = DateFormat('yyyy-MM-dd').format(picked);
-                          if (!_specificHolidays.contains(str)) {
-                            setState(() => _specificHolidays.add(str));
-                          }
-                        }
-                      }),
-                    ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('Basic Information'),
+              const SizedBox(height: 15),
+              _buildTextField(_nameController, 'Barbershop Name', Icons.storefront),
+              const SizedBox(height: 15),
+              _buildTextField(_addressController, 'Address / Location', Icons.location_on_outlined, maxLines: 3),
+              
+              const SizedBox(height: 30),
+              _buildSectionTitle('Facilities'),
+              const SizedBox(height: 15),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(_facilityController, 'Add Facility (e.g. AC, Wifi)', Icons.add_box_outlined),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              children: _specificHolidays.map((date) => Chip(
-                label: Text(date),
-                onDeleted: () => setState(() => _specificHolidays.remove(date)),
-                backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
-                labelStyle: const TextStyle(color: Colors.white),
-              )).toList(),
-            ),
-
-            const SizedBox(height: 40),
-            ElevatedButton(
-              onPressed: _isSaving ? null : _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kBrownAccent, minimumSize: const Size.fromHeight(55),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: _addFacility,
+                    style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black),
+                    child: const Text('Add'),
+                  ),
+                ],
               ),
-              child: _isSaving ? const CircularProgressIndicator(color: Colors.black) : const Text("SIMPAN PERUBAHAN", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-            ),
-          ],
+              const SizedBox(height: 15),
+              Wrap(
+                spacing: 8,
+                children: _facilities.map((f) => Chip(
+                  label: Text(f),
+                  backgroundColor: kDarkSurface,
+                  labelStyle: const TextStyle(color: Colors.white),
+                  deleteIcon: const Icon(Icons.close, size: 16, color: Colors.redAccent),
+                  onDeleted: () => setState(() => _facilities.remove(f)),
+                )).toList(),
+              ),
+
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kBrownAccent,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _isLoading 
+                    ? const CircularProgressIndicator(color: Colors.black)
+                    : const Text('SAVE ALL CHANGES', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _section(String title) => Padding(
-    padding: const EdgeInsets.only(bottom: 12.0),
-    child: Text(title, style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold)),
-  );
+  Widget _buildSectionTitle(String title) {
+    return Text(title, style: const TextStyle(color: kBrownAccent, fontSize: 18, fontWeight: FontWeight.bold));
+  }
 
-  Widget _hourPicker(String label, int current, Function(int) onSelected) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(12)),
-          child: DropdownButton<int>(
-            value: current, isExpanded: true, dropdownColor: Colors.grey[900], underline: const SizedBox(),
-            items: List.generate(24, (i) => DropdownMenuItem(value: i, child: Text("$i:00", style: const TextStyle(color: Colors.white)))),
-            onChanged: (v) => v != null ? onSelected(v) : null,
-          ),
-        )
-      ],
+  Widget _buildTextField(TextEditingController ctrl, String label, IconData icon, {int maxLines = 1}) {
+    return TextFormField(
+      controller: ctrl,
+      maxLines: maxLines,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white54),
+        prefixIcon: Icon(icon, color: kBrownAccent),
+        filled: true,
+        fillColor: kDarkSurface,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      ),
+      validator: (v) => v == null || v.isEmpty ? 'Field cannot be empty' : null,
     );
   }
 }

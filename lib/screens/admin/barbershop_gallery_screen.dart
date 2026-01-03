@@ -1,174 +1,74 @@
-// lib/screens/admin/barbershop_gallery_screen.dart
-// dokumentasi: admin screen untuk manage galeri foto barbershop
-
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:geges_smartbarber/services/barbershop_gallery_service.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:geges_smartbarber/models/barbershop.dart';
+import 'package:geges_smartbarber/services/barbershop_service.dart';
 
 class BarbershopGalleryScreen extends StatefulWidget {
-  final String barbershopId;
-  final String barbershopName;
-
-  const BarbershopGalleryScreen({
-    super.key,
-    required this.barbershopId,
-    required this.barbershopName,
-  });
+  final Barbershop barbershop;
+  const BarbershopGalleryScreen({required this.barbershop, super.key});
 
   @override
-  State<BarbershopGalleryScreen> createState() =>
-      _BarbershopGalleryScreenState();
+  State<BarbershopGalleryScreen> createState() => _BarbershopGalleryScreenState();
 }
 
 class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
-  final BarbershopGalleryService _galleryService = BarbershopGalleryService();
-  final ImagePicker _imagePicker = ImagePicker();
-  bool _isUploading = false;
+  final BarbershopService _service = BarbershopService();
+  final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
+  late List<String> _gallery;
+
+  static const Color kBrownAccent = Color(0xFFC3A47B);
+  static const Color kDarkSurface = Color(0xFF1E1E1E);
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Galeri: ${widget.barbershopName}'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: Text(
-                _isUploading ? 'Uploading...' : 'Ready',
-                style: const TextStyle(fontSize: 12),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: StreamBuilder<List<String>>(
-        stream: _galleryService.streamPhotoUrls(widget.barbershopId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final photoUrls = snapshot.data ?? [];
-
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                // Upload button
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: ElevatedButton.icon(
-                    onPressed: _isUploading ? null : _pickAndUploadImage,
-                    icon: const Icon(Icons.add_photo_alternate),
-                    label: const Text('Tambah Foto'),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                  ),
-                ),
-
-                // Gallery grid
-                if (photoUrls.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.image_not_supported,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Belum ada foto\nTambahkan foto pertama Anda',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                      itemCount: photoUrls.length,
-                      itemBuilder: (context, index) {
-                        final url = photoUrls[index];
-                        return PhotoCard(
-                          imageUrl: url,
-                          onDelete: () => _deletePhoto(url),
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+  void initState() {
+    super.initState();
+    _gallery = List.from(widget.barbershop.galleryUrls);
   }
 
-  Future<void> _pickAndUploadImage() async {
+  Future<void> _addImage() async {
     try {
-      final pickedFile = await _imagePicker.pickImage(
+      final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 80,
+        maxWidth: 1024,
+        imageQuality: 70,
       );
-
-      if (pickedFile == null) return;
-
-      setState(() => _isUploading = true);
-
-      final file = File(pickedFile.path);
-      final url = await _galleryService.uploadPhoto(widget.barbershopId, file);
-
-      if (!mounted) return;
-      setState(() => _isUploading = false);
-
-      if (url != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Foto berhasil diupload')));
+      
+      if (image != null) {
+        setState(() => _isLoading = true);
+        final bytes = await File(image.path).readAsBytes();
+        final base64String = base64Encode(bytes);
+        
+        await _service.addGalleryImage(widget.barbershop.id, base64String);
+        
+        setState(() {
+          _gallery.add(base64String);
+          _isLoading = false;
+        });
+        
+        _showSnack('Image added to album!');
       }
     } catch (e) {
-      if (mounted) setState(() => _isUploading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Gagal upload: $e')));
-      }
+      setState(() => _isLoading = false);
+      _showSnack('Error adding image: $e', isError: true);
     }
   }
 
-  Future<void> _deletePhoto(String photoUrl) async {
+  Future<void> _removeImage(String base64) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus Foto'),
-        content: const Text('Apakah Anda yakin ingin menghapus foto ini?'),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: kDarkSurface,
+        title: const Text('Remove Photo', style: TextStyle(color: Colors.white)),
+        content: const Text('Are you sure you want to delete this photo from gallery?', style: TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Hapus',
-              style: TextStyle(color: Color(0xFFD32F2F)),
-            ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true), 
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -176,100 +76,82 @@ class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
 
     if (confirm != true) return;
 
+    setState(() => _isLoading = true);
     try {
-      await _galleryService.deletePhoto(widget.barbershopId, photoUrl);
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Foto dihapus')));
+      await _service.removeGalleryImage(widget.barbershop.id, base64);
+      setState(() {
+        _gallery.remove(base64);
+        _isLoading = false;
+      });
+      _showSnack('Image removed.');
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Gagal menghapus: $e')));
+      setState(() => _isLoading = false);
+      _showSnack('Error removing image: $e', isError: true);
     }
   }
-}
 
-// -----------------------
-// PHOTO CARD WIDGET
-// -----------------------
-class PhotoCard extends StatelessWidget {
-  final String imageUrl;
-  final VoidCallback onDelete;
-
-  const PhotoCard({super.key, required this.imageUrl, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // Image (use CachedNetworkImage widget directly so we can display an error placeholder)
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: GestureDetector(
-            onTap: () => _showImagePreview(context),
-            child: SizedBox(
-              height: double.infinity,
-              width: double.infinity,
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.cover,
-                placeholder: (c, u) => Container(
-                  color: Colors.grey[900],
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (c, u, e) => Container(
-                  color: Colors.grey[900],
-                  child: const Center(
-                    child: Icon(
-                      Icons.broken_image,
-                      size: 48,
-                      color: Colors.white30,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // Delete button
-        Positioned(
-          top: 8,
-          right: 8,
-          child: GestureDetector(
-            onTap: onDelete,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFD32F2F),
-                shape: BoxShape.circle,
-              ),
-              padding: const EdgeInsets.all(4),
-              child: const Icon(Icons.close, color: Colors.white, size: 16),
-            ),
-          ),
-        ),
-      ],
+  void _showSnack(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: isError ? Colors.red : kBrownAccent),
     );
   }
 
-  void _showImagePreview(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.black,
-        child: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: CachedNetworkImage(
-            imageUrl: imageUrl,
-            fit: BoxFit.contain,
-            placeholder: (c, u) =>
-                const Center(child: CircularProgressIndicator()),
-            errorWidget: (c, u, e) =>
-                const Center(child: Icon(Icons.broken_image, size: 48)),
-          ),
-        ),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('Barbershop Album', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: kBrownAccent,
+        foregroundColor: Colors.black,
+        actions: [
+          if (!_isLoading)
+            IconButton(icon: const Icon(Icons.add_photo_alternate_rounded), onPressed: _addImage),
+        ],
+      ),
+      body: Stack(
+        children: [
+          _gallery.isEmpty
+              ? const Center(child: Text('No photos in gallery.', style: TextStyle(color: Colors.white54)))
+              : GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemCount: _gallery.length,
+                  itemBuilder: (context, index) {
+                    final img = _gallery[index];
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(base64Decode(img), fit: BoxFit.cover),
+                        ),
+                        Positioned(
+                          top: 5,
+                          right: 5,
+                          child: GestureDetector(
+                            onTap: () => _removeImage(img),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                              child: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+          if (_isLoading)
+            Container(
+              color: Colors.black45,
+              child: const Center(child: CircularProgressIndicator(color: kBrownAccent)),
+            ),
+        ],
       ),
     );
   }

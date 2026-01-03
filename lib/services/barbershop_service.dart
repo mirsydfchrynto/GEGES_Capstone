@@ -150,8 +150,38 @@ class BarbershopService {
         ...settings,
         'updated_at': FieldValue.serverTimestamp(),
       });
+      // Clear cache after update to ensure UI sees new data
+      _cachedBarbershops = null;
     } catch (e) {
       debugPrint('Error updateBarbershopSettings: $e');
+      rethrow;
+    }
+  }
+
+  /// Add an image to the barbershop gallery (Album)
+  Future<void> addGalleryImage(String barbershopId, String base64Image) async {
+    try {
+      await _firestore.collection('barbershops').doc(barbershopId).update({
+        'gallery_urls': FieldValue.arrayUnion([base64Image]),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      _cachedBarbershops = null;
+    } catch (e) {
+      debugPrint('Error addGalleryImage: $e');
+      rethrow;
+    }
+  }
+
+  /// Remove an image from the barbershop gallery
+  Future<void> removeGalleryImage(String barbershopId, String base64Image) async {
+    try {
+      await _firestore.collection('barbershops').doc(barbershopId).update({
+        'gallery_urls': FieldValue.arrayRemove([base64Image]),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      _cachedBarbershops = null;
+    } catch (e) {
+      debugPrint('Error removeGalleryImage: $e');
       rethrow;
     }
   }

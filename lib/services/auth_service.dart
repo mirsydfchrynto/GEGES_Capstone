@@ -373,6 +373,8 @@ class AuthService implements AuthServiceBase {
     required String uid,
     required String newName,
     String? newEmail,
+    String? newPhoneNumber,
+    String? newPhotoBase64,
     String? currentPasswordForReauth, // optional: jika ada, pakai untuk reauth
     bool trySendVerification = true,
   }) async {
@@ -395,12 +397,7 @@ class AuthService implements AuthServiceBase {
       if (newEmail != null && newEmail.isNotEmpty && user.email != newEmail) {
         try {
           // gunakan verifyBeforeUpdateEmail untuk yang lebih aman
-          // method ini mengirim email verifikasi terlebih dahulu sebelum update
           await user.verifyBeforeUpdateEmail(newEmail);
-          if (trySendVerification) {
-            // note: verifyBeforeUpdateEmail sudah mengirim verification email
-            // jadi kita skip sendEmailVerification() untuk menghindari duplicate
-          }
         } on FirebaseAuthException catch (e) {
           // Jika perlu reauth, kembalikan kode khusus supaya UI memanggil reauth flow
           if (e.code == 'requires-recent-login') {
@@ -420,11 +417,21 @@ class AuthService implements AuthServiceBase {
       }
 
       // 3) Update Firestore document
-      await _firestore.collection('users').doc(uid).update({
+      final Map<String, dynamic> updates = {
         'name': newName,
         'email': newEmail ?? user.email,
         'updated_at': FieldValue.serverTimestamp(),
-      });
+      };
+      
+      if (newPhoneNumber != null) {
+        updates['phone_number'] = newPhoneNumber;
+      }
+      
+      if (newPhotoBase64 != null) {
+        updates['photo_base_64'] = newPhotoBase64;
+      }
+
+      await _firestore.collection('users').doc(uid).update(updates);
 
       return {'success': true, 'message': 'Profile berhasil diperbarui.'};
     } on FirebaseAuthException catch (e) {
