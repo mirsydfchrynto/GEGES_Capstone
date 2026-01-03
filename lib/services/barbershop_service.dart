@@ -12,6 +12,11 @@ import 'package:geges_smartbarber/models/user_data.dart';
 
 class BarbershopService {
   final FirebaseFirestore _firestore;
+  
+  // Cache sederhana untuk mengurangi read Firestore saat search/home reload
+  List<Barbershop>? _cachedBarbershops;
+  DateTime? _lastCacheTime;
+  static const Duration _cacheDuration = Duration(minutes: 5);
 
   // Allow injecting a custom Firestore instance for testing
   BarbershopService({FirebaseFirestore? firestore})
@@ -20,10 +25,24 @@ class BarbershopService {
   // -----------------------
   // BARBERSHOP FUNCTIONS
   // -----------------------
-  Future<List<Barbershop>> getAllBarbershops() async {
+  Future<List<Barbershop>> getAllBarbershops({bool forceRefresh = false}) async {
     try {
+      // Cek cache validitas
+      if (!forceRefresh && 
+          _cachedBarbershops != null && 
+          _lastCacheTime != null && 
+          DateTime.now().difference(_lastCacheTime!) < _cacheDuration) {
+        return _cachedBarbershops!;
+      }
+
       final snapshot = await _firestore.collection('barbershops').get();
-      return snapshot.docs.map((doc) => Barbershop.fromFirestore(doc)).toList();
+      final list = snapshot.docs.map((doc) => Barbershop.fromFirestore(doc)).toList();
+      
+      // Update cache
+      _cachedBarbershops = list;
+      _lastCacheTime = DateTime.now();
+      
+      return list;
     } catch (e) {
       debugPrint('Error getAllBarbershops: $e');
       return [];
@@ -464,15 +483,12 @@ class BarbershopService {
   Future<List<Barbershop>> searchBarbershops(String query) async {
     try {
       debugPrint("🔍 Searching for: '$query'");
-      // 1. Get all barbershops (including closed ones) to ensure comprehensive search
-      // Note: Fetching all docs is okay for < 1000 shops. For scale, use Algolia/Typesense.
-      final snapshot = await _firestore.collection('barbershops').get();
-      debugPrint("🔍 Fetched ${snapshot.docs.length} shops from Firestore");
-
-      final allShops = snapshot.docs.map((doc) => Barbershop.fromFirestore(doc)).toList();
+      // 1. Get all barbershops (uses cache internally)
+      final allShops = await getAllBarbershops();
+      debugPrint("🔍 Fetched ${allShops.length} shops (cache/firestore)");
 
       if (query.isEmpty) {
-        // Return only open shops for default list if query is empty (though usually UI handles this)
+        // Return only open shops for default list if query is empty
         return allShops.where((s) => s.isOpen).toList();
       }
 
@@ -480,10 +496,8 @@ class BarbershopService {
 
       // 2. Filter locally
       final results = allShops.where((shop) {
-        // Safety check for null strings, though model handles it, double check logic
         final nameMatch = shop.name.toLowerCase().contains(lowerQuery);
         final addressMatch = shop.addres.toLowerCase().contains(lowerQuery);
-        // Optional: Add service matching if needed
         final serviceMatch = shop.services.any((s) => s.toLowerCase().contains(lowerQuery));
         
         return nameMatch || addressMatch || serviceMatch;

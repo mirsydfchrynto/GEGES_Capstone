@@ -32,7 +32,8 @@ class LocationService {
       // 3. Ambil posisi saat ini
       Position position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.balanced,
+          timeLimit: Duration(seconds: 5),
         ),
       );
 
