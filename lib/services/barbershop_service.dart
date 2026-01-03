@@ -463,15 +463,16 @@ class BarbershopService {
 
   Future<List<Barbershop>> searchBarbershops(String query) async {
     try {
-      // 1. Get all active barbershops
-      final snapshot = await _firestore
-          .collection('barbershops')
-          .where('isOpen', isEqualTo: true)
-          .get();
+      // 1. Get all barbershops (including closed ones) to ensure comprehensive search
+      // Note: Fetching all docs is okay for < 1000 shops. For scale, use Algolia/Typesense.
+      final snapshot = await _firestore.collection('barbershops').get();
 
       final allShops = snapshot.docs.map((doc) => Barbershop.fromFirestore(doc)).toList();
 
-      if (query.isEmpty) return allShops;
+      if (query.isEmpty) {
+        // Return only open shops for default list if query is empty (though usually UI handles this)
+        return allShops.where((s) => s.isOpen).toList();
+      }
 
       final lowerQuery = query.toLowerCase();
 
