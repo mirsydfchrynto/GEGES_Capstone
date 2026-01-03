@@ -28,7 +28,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final BarbershopService _barbershopService = BarbershopService();
+  late final BarbershopService _barbershopService;
   final LocationService _locationService = LocationService();
   final PageController _pageController = PageController();
   final TextEditingController _searchController = TextEditingController();
@@ -44,6 +44,14 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Barbershop>? _searchResults;
   bool _isSearching = false;
   Timer? _debounce;
+
+  // List of Screens (sesuai urutan BottomNavigationBar)
+  late final List<Widget> _widgetOptions = <Widget>[
+    _buildHomePageBody(), // Index 0: Home
+    const StyleScanScreen(), // Index 1: StyleScan
+    const ChatAssistantScreen(), // Index 2: Chatbot
+    const ProfileScreen(), // Index 3: Profile
+  ];
 
   @override
   void initState() {
@@ -133,9 +141,9 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
-            children: const [
-              Icon(Icons.location_on, color: Colors.white, size: 20),
-              SizedBox(width: 8),
+            children: [
+              const Icon(Icons.location_on, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -179,30 +187,31 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Search Barbershop or Services',
-                  hintStyle: const TextStyle(color: Color(0xFF6B6B6B)),
-                  prefixIcon: const Icon(Icons.search, color: Color(0xFF6B6B6B)),
-                  suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: _searchController,
-                    builder: (context, value, _) {
-                      return value.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear,
-                                  color: Color(0xFF6B6B6B), size: 20),
-                              onPressed: () {
-                                _searchController.clear();
-                                _onSearchChanged('');
-                              },
-                            )
-                          : const SizedBox.shrink();
-                    },
-                  ),
-                  filled: true,          fillColor: kDarkGrey,
+      child: TextField(
+        controller: _searchController,
+        onChanged: _onSearchChanged,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Search Barbershop or Services',
+          hintStyle: const TextStyle(color: Color(0xFF6B6B6B)),
+          prefixIcon: const Icon(Icons.search, color: Color(0xFF6B6B6B)),
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _searchController,
+            builder: (context, value, _) {
+              return value.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear,
+                          color: Color(0xFF6B6B6B), size: 20),
+                      onPressed: () {
+                        _searchController.clear();
+                        _onSearchChanged('');
+                      },
+                    )
+                  : const SizedBox.shrink();
+            },
+          ),
+          filled: true,
+          fillColor: kDarkGrey,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15.0),
             borderSide: BorderSide.none,

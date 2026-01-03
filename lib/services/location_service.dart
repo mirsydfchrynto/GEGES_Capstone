@@ -31,7 +31,9 @@ class LocationService {
 
       // 3. Ambil posisi saat ini
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       // 4. Reverse Geocoding (Koordinat -> Alamat)
