@@ -36,31 +36,32 @@ class LocationService {
       position ??= await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 5),
+          timeLimit: Duration(seconds: 3),
         ),
       );
 
       // 4. Reverse Geocoding dengan Timeout (agar tidak hanging)
-      // Gunakan timeout 3 detik untuk geocoding
+      // Timeout dipercepat jadi 2 detik
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 2));
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
-        // Format: "Kecamatan, Kota" (atau sesuaikan kebutuhan)
-        // SubLocality = Kecamatan/Kelurahan, Locality = Kota/Kabupaten
-        String subLocality = place.subLocality ?? '';
-        String locality = place.locality ?? '';
         
-        if (subLocality.isNotEmpty && locality.isNotEmpty) {
-          return '$subLocality, $locality';
-        } else if (locality.isNotEmpty) {
-          return locality;
-        } else {
-          return subLocality;
+        // Prioritaskan Nama Kota (Locality) sesuai permintaan user
+        if (place.locality != null && place.locality!.isNotEmpty) {
+          return place.locality!;
         }
+        
+        // Fallback ke Kabupaten/Kota (SubAdministrativeArea)
+        if (place.subAdministrativeArea != null && place.subAdministrativeArea!.isNotEmpty) {
+          return place.subAdministrativeArea!;
+        }
+
+        // Fallback terakhir: Provinsi
+        return place.administrativeArea ?? '';
       }
       return null;
     } catch (e) {
