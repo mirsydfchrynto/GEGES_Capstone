@@ -339,7 +339,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       onChanged: _isTogglingStatus
                           ? null
                           : (_) => _toggleShopStatus(),
-                      activeColor: const Color(0xFF388E3C),
+                      activeThumbColor: const Color(0xFF388E3C),
                       inactiveThumbColor: const Color(0xFFD32F2F),
                       inactiveTrackColor: const Color.fromRGBO(255, 0, 0, 0.3),
                     ),

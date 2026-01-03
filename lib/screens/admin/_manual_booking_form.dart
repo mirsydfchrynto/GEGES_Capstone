@@ -189,7 +189,7 @@ class ManualBookingFormState extends State<ManualBookingForm> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<Barberman?>(
-                    value: _selectedBarberman,
+                    initialValue: _selectedBarberman,
                     items: _barbermen
                         .map(
                           (b) =>
