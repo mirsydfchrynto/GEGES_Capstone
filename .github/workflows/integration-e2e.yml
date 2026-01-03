@@ -54,16 +54,6 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Start Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          target: default
-          arch: x86_64
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: true
-          script: echo "Generated AVD snapshot for caching."
-
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
@@ -76,29 +66,38 @@ jobs:
         env:
           CI: true
 
-      - name: Run integration tests (E2E) with retries
-        run: |
-          set -euo pipefail
-          max=3
-          i=1
-          while [ $i -le $max ]; do
-            echo "E2E attempt $i/$max"
-            flutter test integration_test/e2e_resume_payment_test.dart --dart-define=FIRESTORE_EMULATOR_HOST=localhost:8080 -d emulator-5554 --no-color --reporter=json 2>&1 | tee e2e-output.$i.log
-            rc=${PIPESTATUS[0]}
-            if [ $rc -eq 0 ]; then
-              echo "E2E passed on attempt $i"
-              break
-            fi
-            if [ $i -lt $max ]; then
-              echo "E2E failed (rc=$rc). Sleeping 10s before retry..."
-              sleep 10
-            else
-              echo "E2E failed after $i attempts, leaving logs attached"
-              exit $rc
-            fi
-            i=$((i+1))
-          done
+      - name: Start Android emulator and run tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          target: default
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            max=3
+            i=1
+            while [ $i -le $max ]; do
+              echo "E2E attempt $i/$max"
+              # Use -d android to pick the running emulator automatically
+              flutter test integration_test/e2e_resume_payment_test.dart --dart-define=FIRESTORE_EMULATOR_HOST=localhost:8080 -d android --no-color --reporter=json 2>&1 | tee e2e-output.$i.log
+              rc=${PIPESTATUS[0]}
+              if [ $rc -eq 0 ]; then
+                echo "E2E passed on attempt $i"
+                break
+              fi
+              if [ $i -lt $max ]; then
+                echo "E2E failed (rc=$rc). Sleeping 10s before retry..."
+                sleep 10
+              else
+                echo "E2E failed after $i attempts, leaving logs attached"
+                exit $rc
+              fi
+              i=$((i+1))
+            done
         env:
+          CI: true
           ADB_INSTALL_TIMEOUT: '20'
           FIRESTORE_EMULATOR_HOST: 'localhost:8080'
 
