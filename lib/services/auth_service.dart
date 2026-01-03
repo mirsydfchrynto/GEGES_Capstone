@@ -173,8 +173,11 @@ class AuthService implements AuthServiceBase {
   @override
   Future<Map<String, dynamic>> signInWithGoogle() async {
     try {
-      final googleSignIn =
-          _googleSignIn ?? GoogleSignIn(scopes: <String>['email', 'profile']);
+      final googleSignIn = _googleSignIn ??
+          GoogleSignIn(
+            serverClientId: '51527807075-2jpi3mhgcg8nrcu9snhh1fjhbn747u4r.apps.googleusercontent.com',
+            scopes: <String>['email', 'profile'],
+          );
 
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
@@ -319,7 +322,9 @@ class AuthService implements AuthServiceBase {
 
   /// Reauthenticate using GoogleSignIn (for Google provider)
   Future<void> reauthWithGoogle() async {
-    final googleSignIn = GoogleSignIn();
+    final googleSignIn = GoogleSignIn(
+      serverClientId: '51527807075-2jpi3mhgcg8nrcu9snhh1fjhbn747u4r.apps.googleusercontent.com',
+    );
     final googleUser = await googleSignIn.signIn();
     if (googleUser == null) {
       throw FirebaseAuthException(
@@ -481,7 +486,9 @@ class AuthService implements AuthServiceBase {
       await _auth.signOut();
       // Also sign out Google if used
       try {
-        final google = GoogleSignIn();
+        final google = GoogleSignIn(
+          serverClientId: '51527807075-2jpi3mhgcg8nrcu9snhh1fjhbn747u4r.apps.googleusercontent.com',
+        );
         await google.signOut();
       } catch (_) {}
     } catch (e) {
