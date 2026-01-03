@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/favorite_barbershops_screen.dart';
+import 'package:geges_smartbarber/screens/customer/app_rating_screen.dart';
 
 // --- IMPORT DARI ITERASI SEBELUMNYA ---
 import '../../../models/user_data.dart'; // Model UserData yang sudah kita buat
@@ -12,7 +13,6 @@ import '../edit_profile_screen.dart'; // EditProfileScreen yang sudah kita buat
 // Pastikan path import ke screens lain ini sudah benar di project Anda
 import '../../login_screen.dart';
 import 'my_bookings_screen.dart'; // Akan digunakan sebagai History Screen
-import 'package:geges_smartbarber/utils/links.dart';
 import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 // Saya asumsikan ini adalah FavoriteBarbersScreen (bukan barbershop)
 
@@ -150,12 +150,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 12),
 
-            // --- MENU BANTUAN ---
+            // --- MENU RATING ---
             _buildMenuCard(
-              title: 'Help Centers',
-              icon: Icons.help_outline,
+              title: 'Rating Aplikasi',
+              icon: Icons.star_outline,
               onTap: () {
-                Links.openUrl(Links.helpCenter);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AppRatingScreen(),
+                  ),
+                );
               },
             ),
             const SizedBox(height: 12),

@@ -20,20 +20,16 @@ subprojects {
 }
 
 subprojects {
-    afterEvaluate {
-        if (project.hasProperty("android")) {
-            val android = project.extensions.getByName("android") as com.android.build.gradle.BaseExtension
-            android.compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_11
-                targetCompatibility = JavaVersion.VERSION_11
-            }
-            if (project.plugins.hasPlugin("kotlin-android")) {
-                project.tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-                    kotlinOptions {
-                        jvmTarget = "11"
-                    }
-                }
-            }
+    plugins.withType<com.android.build.gradle.BasePlugin> {
+        val android = project.extensions.getByName("android") as com.android.build.gradle.BaseExtension
+        android.compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
+        }
+    }
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        kotlinOptions {
+            jvmTarget = "11"
         }
     }
 }
