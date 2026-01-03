@@ -17,25 +17,26 @@ import 'package:geges_smartbarber/screens/customer/tabs/profile_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/chat_assistant_screen.dart'; // CHATBOT
 import 'package:geges_smartbarber/screens/customer/tabs/stylescan_screen.dart'; // STYLESCA N BARU
 import 'package:geges_smartbarber/screens/customer/notifications_screen.dart'; // NOTIFIKASI
-import 'package:geges_smartbarber/screens/customer/search_screen.dart'; // SEARCH SCREEN
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final BarbershopService? barbershopService;
+  const HomeScreen({super.key, this.barbershopService});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final BarbershopService _barbershopService = BarbershopService();
+  late final BarbershopService _barbershopService;
   final PageController _pageController = PageController();
+  final TextEditingController _searchController = TextEditingController();
 
   static const Color kBrownAccent = Color(0xFFC3A47B);
   static const Color kDarkGrey = Color(0xFF1E1E1E);
 
   int _selectedIndex = 0;
   late Future<List<Barbershop>> _barbershopFuture;
-
+  
   // List of Screens (sesuai urutan BottomNavigationBar)
   late final List<Widget> _widgetOptions = <Widget>[
     _buildHomePageBody(), // Index 0: Home
@@ -44,16 +45,56 @@ class _HomeScreenState extends State<HomeScreen> {
     const ProfileScreen(), // Index 3: Profile
   ];
 
+  // Search State
+  List<Barbershop>? _searchResults;
+  bool _isSearching = false;
+  Timer? _debounce;
+
   @override
   void initState() {
     super.initState();
+    _barbershopService = widget.barbershopService ?? BarbershopService();
     _barbershopFuture = _barbershopService.getAllBarbershops();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    
+    if (query.isEmpty) {
+      setState(() {
+        _isSearching = false;
+        _searchResults = null;
+      });
+      return;
+    }
+
+    // Set searching to true immediately to show feedback during debounce
+    setState(() {
+      _isSearching = true;
+    });
+
+    // In tests (where widget.barbershopService is provided), use zero delay
+    final debounceDuration = widget.barbershopService != null
+        ? Duration.zero
+        : const Duration(milliseconds: 500);
+
+    _debounce = Timer(debounceDuration, () async {
+      final results = await _barbershopService.searchBarbershops(query);
+      if (mounted) {
+        setState(() {
+          _searchResults = results;
+          _isSearching = false;
+        });
+      }
+    });
   }
 
   void _onItemTapped(int index) {
@@ -119,37 +160,41 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SearchScreen(barbershopService: _barbershopService),
-            ),
-          );
-        },
-        child: AbsorbPointer(
-          child: TextField(
-            readOnly: true,
-            decoration: InputDecoration(
-              hintText: 'Search Barbershop or Services',
-              hintStyle: const TextStyle(color: Color(0xFF6B6B6B)), // kHintText
-              prefixIcon: const Icon(Icons.search, color: Color(0xFF6B6B6B)),
-              filled: true,
-              fillColor: kDarkGrey,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15.0),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15.0),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15.0),
-                borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
-              ),
-            ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _onSearchChanged,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Search Barbershop or Services',
+                  hintStyle: const TextStyle(color: Color(0xFF6B6B6B)),
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFF6B6B6B)),
+                  suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _searchController,
+                    builder: (context, value, _) {
+                      return value.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear,
+                                  color: Color(0xFF6B6B6B), size: 20),
+                              onPressed: () {
+                                _searchController.clear();
+                                _onSearchChanged('');
+                              },
+                            )
+                          : const SizedBox.shrink();
+                    },
+                  ),
+                  filled: true,          fillColor: kDarkGrey,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15.0),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15.0),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15.0),
+            borderSide: const BorderSide(color: kBrownAccent, width: 1.5),
           ),
         ),
       ),
@@ -378,14 +423,72 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 5),
           _buildSearchBar(),
           const SizedBox(height: 24),
-          PromoCarousel(
-            barbershopService: _barbershopService,
-          ), // Carousel diimpor
-          const SizedBox(height: 21),
-          _buildSectionTitle("Barbershops\nnear you"),
-          const SizedBox(height: 18),
-          _buildRecommendedList(),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _searchController,
+            builder: (context, value, _) {
+              if (value.text.isEmpty) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PromoCarousel(
+                      barbershopService: _barbershopService,
+                    ),
+                    const SizedBox(height: 21),
+                    _buildSectionTitle("Barbershops\nnear you"),
+                    const SizedBox(height: 18),
+                    _buildRecommendedList(),
+                  ],
+                );
+              } else {
+                return _buildSearchResultsView();
+              }
+            },
+          ),
           const SizedBox(height: 30),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsView() {
+    if (_isSearching) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 40.0),
+        child: Center(child: CircularProgressIndicator(color: kBrownAccent)),
+      );
+    }
+
+    if (_searchResults != null && _searchResults!.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 40.0),
+        child: Center(
+          child: Column(
+            children: [
+              const Icon(Icons.search_off, size: 64, color: Colors.white24),
+              const SizedBox(height: 16),
+              Text(
+                'Tidak ditemukan hasil untuk "${_searchController.text}"',
+                style: const TextStyle(color: Colors.white54, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final results = _searchResults!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Found ${results.length} ${results.length == 1 ? 'result' : 'results'}",
+            style: const TextStyle(color: kBrownAccent, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          ...results.map((shop) => _buildBarbershopCard(context, shop)),
         ],
       ),
     );

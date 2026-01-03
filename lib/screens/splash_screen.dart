@@ -63,8 +63,8 @@ class _SplashScreenState extends State<SplashScreen>
               // Logo
               Image.asset(
                 'assets/images/ivon.png',
-                width: 150, // Ukuran logo proporsional
-                height: 150,
+                width: 100, // Ukuran logo lebih kecil & elegan
+                height: 100,
               ),
               const SizedBox(height: 24),
               // Opsional: Nama App atau Loading Indicator jika diinginkan

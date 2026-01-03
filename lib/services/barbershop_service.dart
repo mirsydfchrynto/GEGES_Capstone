@@ -464,8 +464,6 @@ class BarbershopService {
   Future<List<Barbershop>> searchBarbershops(String query) async {
     try {
       // 1. Get all active barbershops
-      // Note: For large datasets, this should be paginated or use a dedicated search service (Algolia/Typesense).
-      // For this scale, fetching all active shops is acceptable and allows for flexible client-side filtering.
       final snapshot = await _firestore
           .collection('barbershops')
           .where('isOpen', isEqualTo: true)
