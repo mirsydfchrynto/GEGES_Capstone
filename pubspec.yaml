@@ -37,7 +37,7 @@ dependencies:
   url_launcher: ^6.1.7
   file_picker: ^10.3.8
   flutter_launcher_icons: ^0.14.4
-  geolocator: ^14.0.2
+  geolocator: ^13.0.0
   geocoding: ^4.0.0
 
 
