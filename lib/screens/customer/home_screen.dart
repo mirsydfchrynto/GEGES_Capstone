@@ -10,6 +10,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/models/promo_banner.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
+import 'package:geges_smartbarber/services/location_service.dart'; // Location Service
 
 // Import Screens
 import 'package:geges_smartbarber/screens/customer/tabs/barbershop_detail_screen.dart';
@@ -27,7 +28,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final BarbershopService _barbershopService;
+  final BarbershopService _barbershopService = BarbershopService();
+  final LocationService _locationService = LocationService();
   final PageController _pageController = PageController();
   final TextEditingController _searchController = TextEditingController();
 
@@ -36,15 +38,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _selectedIndex = 0;
   late Future<List<Barbershop>> _barbershopFuture;
+  String _currentAddress = 'Menentukan lokasi...'; // Default loading text
   
-  // List of Screens (sesuai urutan BottomNavigationBar)
-  late final List<Widget> _widgetOptions = <Widget>[
-    _buildHomePageBody(), // Index 0: Home
-    const StyleScanScreen(), // Index 1: StyleScan
-    const ChatAssistantScreen(), // Index 2: Chatbot
-    const ProfileScreen(), // Index 3: Profile
-  ];
-
   // Search State
   List<Barbershop>? _searchResults;
   bool _isSearching = false;
@@ -55,6 +50,20 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _barbershopService = widget.barbershopService ?? BarbershopService();
     _barbershopFuture = _barbershopService.getAllBarbershops();
+    _updateLocation();
+  }
+
+  Future<void> _updateLocation() async {
+    final address = await _locationService.getCurrentLocationAddress();
+    if (mounted && address != null) {
+      setState(() {
+        _currentAddress = address;
+      });
+    } else if (mounted) {
+      setState(() {
+        _currentAddress = 'Lokasi tidak ditemukan';
+      });
+    }
   }
 
   @override
@@ -130,13 +139,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Lokasi Saya',
                     style: TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                   Text(
-                    'Mejasem, Tegal',
-                    style: TextStyle(
+                    _currentAddress,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,

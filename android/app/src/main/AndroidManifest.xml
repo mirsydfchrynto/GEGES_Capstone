@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Internet -->
     <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Location Permissions -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:label="geges_smartbarber"
