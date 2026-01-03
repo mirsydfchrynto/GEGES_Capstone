@@ -75,15 +75,16 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
-            #!/bin/bash
-            set -euo pipefail
             max=3
             i=1
             while [ $i -le $max ]; do
               echo "E2E attempt $i/$max"
-              # Use -d android to pick the running emulator automatically
-              flutter test integration_test/e2e_resume_payment_test.dart --dart-define=FIRESTORE_EMULATOR_HOST=localhost:8080 -d android --no-color --reporter=json 2>&1 | tee e2e-output.$i.log
-              rc=${PIPESTATUS[0]}
+              # Capture output to file to preserve exit code
+              flutter test integration_test/e2e_resume_payment_test.dart --dart-define=FIRESTORE_EMULATOR_HOST=localhost:8080 -d android --no-color --reporter=json > e2e-output.$i.log 2>&1
+              rc=$?
+              # Print output to console
+              cat e2e-output.$i.log
+              
               if [ $rc -eq 0 ]; then
                 echo "E2E passed on attempt $i"
                 break
