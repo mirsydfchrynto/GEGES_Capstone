@@ -83,6 +83,15 @@ class BarbermanService {
     }
   }
 
+  Future<void> deleteBarberman(String id) async {
+    try {
+      await _firestore.collection(_collection).doc(id).update({'isActive': false});
+    } catch (e) {
+      print("Error deleting barberman: $e");
+      rethrow;
+    }
+  }
+
   // -----------------------
   // BULK OFF-DAY HELPERS
   // -----------------------

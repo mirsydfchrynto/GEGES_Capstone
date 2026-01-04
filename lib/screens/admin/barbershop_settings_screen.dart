@@ -4,33 +4,40 @@ import 'package:geges_smartbarber/services/barbershop_service.dart';
 
 class BarbershopSettingsScreen extends StatefulWidget {
   final Barbershop barbershop;
-  const BarbershopSettingsScreen({required this.barbershop, super.key});
+  final BarbershopService? barbershopService;
+
+  const BarbershopSettingsScreen({
+    required this.barbershop,
+    this.barbershopService,
+    super.key,
+  });
 
   @override
-  State<BarbershopSettingsScreen> createState() => _BarbershopSettingsScreenState();
+  State<BarbershopSettingsScreen> createState() =>
+      _BarbershopSettingsScreenState();
 }
 
 class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controllers
   late TextEditingController _nameController;
   late TextEditingController _addressController;
   late TextEditingController _googleMapsController;
   late TextEditingController _openHourController;
   late TextEditingController _closeHourController;
-  
+
   late TextEditingController _instagramController;
   late TextEditingController _whatsappController;
   late TextEditingController _tiktokController;
   late TextEditingController _facebookController;
   late TextEditingController _twitterController;
-  
+
   late List<String> _facilities;
   final TextEditingController _facilityController = TextEditingController();
-  
+
   bool _isLoading = false;
-  final BarbershopService _service = BarbershopService();
+  late final BarbershopService _service;
 
   static const Color kBrownAccent = Color(0xFFC3A47B);
   static const Color kDarkSurface = Color(0xFF1E1E1E);
@@ -38,6 +45,7 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _service = widget.barbershopService ?? BarbershopService();
     final s = widget.barbershop;
     _nameController = TextEditingController(text: s.name);
     _addressController = TextEditingController(text: s.addres);

@@ -3,7 +3,7 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
-import 'auth_service_mocks.dart' show MockFirebaseAuth; // Reuse MockFirebaseAuth only
+import 'auth_service_mocks.dart' show MockFirebaseAuth;
 
 @GenerateMocks([
   FirebaseFirestore,
@@ -13,8 +13,32 @@ import 'auth_service_mocks.dart' show MockFirebaseAuth; // Reuse MockFirebaseAut
 ])
 import 'queue_service_payment_window_test.mocks.dart';
 
-// Minimal mock Transaction for runTransaction callbacks
-class MockTransaction extends Mock implements Transaction {}
+class FakeTx implements Transaction {
+  final DocumentSnapshot<Map<String, dynamic>>? snapToReturn;
+
+  FakeTx([this.snapToReturn]);
+
+  @override
+  Future<DocumentSnapshot<T>> get<T extends Object?>(DocumentReference<T> ref) async {
+    if (snapToReturn != null) return snapToReturn as DocumentSnapshot<T>;
+    throw UnimplementedError();
+  }
+
+  @override
+  Transaction set<T extends Object?>(DocumentReference<T> ref, T data, [SetOptions? options]) {
+    return this;
+  }
+
+  @override
+  Transaction update(DocumentReference ref, Map<String, dynamic> data) {
+    return this;
+  }
+
+  @override
+  Transaction delete(DocumentReference ref) {
+    return this;
+  }
+}
 
 void main() {
   late MockFirebaseFirestore mockFs;
@@ -47,6 +71,7 @@ void main() {
     'returns override when document has payment_window_minutes as int',
     () async {
       when(mockDocRef.get()).thenAnswer((_) async => mockDocSnap);
+      when(mockDocSnap.exists).thenReturn(true);
       when(mockDocSnap.data()).thenReturn({'payment_window_minutes': 15});
 
       final svc = QueueService(firestore: mockFs, auth: mockAuth);
@@ -59,6 +84,7 @@ void main() {
     'returns override when document has paymentWindowMinutes as string',
     () async {
       when(mockDocRef.get()).thenAnswer((_) async => mockDocSnap);
+      when(mockDocSnap.exists).thenReturn(true);
       when(mockDocSnap.data()).thenReturn({'paymentWindowMinutes': '20'});
 
       final svc = QueueService(firestore: mockFs, auth: mockAuth);
@@ -88,6 +114,7 @@ void main() {
     'returns override when document has payment_window_minutes as num/double',
     () async {
       when(mockDocRef.get()).thenAnswer((_) async => mockDocSnap);
+      when(mockDocSnap.exists).thenReturn(true);
       when(mockDocSnap.data()).thenReturn({'payment_window_minutes': 12.0});
 
       final svc = QueueService(firestore: mockFs, auth: mockAuth);
@@ -123,7 +150,9 @@ void main() {
         ),
       ).thenAnswer((inv) async {
         final cb = inv.positionalArguments[0] as dynamic;
-        await cb(MockTransaction());
+        // Cast the mockBsSnap to the expected type
+        final tx = FakeTx(mockBsSnap as DocumentSnapshot<Map<String, dynamic>>);
+        await cb(tx);
         return mockQueueRef;
       });
 

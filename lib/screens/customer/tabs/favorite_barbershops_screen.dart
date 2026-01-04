@@ -37,6 +37,7 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
 
   List<Barbershop> _favoriteBarbershops = [];
   bool _isLoading = true;
+  Map<String, String> _serviceNames = {};
 
   @override
   void initState() {
@@ -44,6 +45,20 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
     _barbershopService = BarbershopService(firestore: widget.firestore);
     _userId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid;
     _loadFavorites();
+    _fetchServiceNames();
+  }
+
+  Future<void> _fetchServiceNames() async {
+    try {
+      final services = await _barbershopService.getAllServices();
+      if (mounted) {
+        setState(() {
+          _serviceNames = {for (var s in services) s.id: s.name};
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching service names: $e");
+    }
   }
 
   Future<void> _loadFavorites() async {
@@ -243,6 +258,15 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8.0,
+                  runSpacing: 8.0,
+                  children: shop.services
+                      .where((s) => _serviceNames.containsKey(s))
+                      .map((s) => _buildTagChip(s))
+                      .toList(),
+                ),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -277,6 +301,21 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTagChip(String serviceId) {
+    final label = _serviceNames[serviceId] ?? serviceId;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade800,
+        borderRadius: BorderRadius.circular(30.0),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(color: Colors.white, fontSize: 12),
       ),
     );
   }

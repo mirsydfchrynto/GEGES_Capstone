@@ -15,6 +15,7 @@ class Barberman {
   final int monthlyHaircutCount; // New: for fairness formula
   final int annualLeaveDays;
   final bool onLeave;
+  final int age;
 
   Barberman({
     required this.id,
@@ -29,6 +30,7 @@ class Barberman {
     this.monthlyHaircutCount = 0,
     this.annualLeaveDays = 12,
     this.onLeave = false,
+    this.age = 0,
   });
 
   factory Barberman.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -53,6 +55,7 @@ class Barberman {
       monthlyHaircutCount: data['monthly_haircut_count'] ?? data['monthlyHaircutCount'] ?? 0,
       annualLeaveDays: data['annualLeaveDays'] as int? ?? 12,
       onLeave: data['onLeave'] as bool? ?? false,
+      age: data['age'] as int? ?? 0,
     );
   }
 
@@ -69,6 +72,7 @@ class Barberman {
       'monthly_haircut_count': monthlyHaircutCount,
       'annualLeaveDays': annualLeaveDays,
       'onLeave': onLeave,
+      'age': age,
     };
   }
 }

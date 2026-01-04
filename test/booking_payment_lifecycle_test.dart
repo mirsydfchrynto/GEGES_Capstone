@@ -7,6 +7,9 @@ import 'package:firebase_auth_mocks/firebase_auth_mocks.dart'; // Import MockFir
 // Reuse generated mocks from the admin payment test
 import 'queue_service_admin_payment_test.mocks.dart';
 
+class MockQuery<T extends Object?> extends Mock implements Query<T> {}
+class MockQuerySnapshot<T extends Object?> extends Mock implements QuerySnapshot<T> {}
+
 void main() {
   late MockFirebaseFirestore mockFs;
   late MockFirebaseAuth mockAuth; // Declare MockFirebaseAuth
@@ -27,6 +30,25 @@ void main() {
     when(mockFs.collection('queues')).thenReturn(mockQueuesColl);
     when(mockQueuesColl.add(any)).thenAnswer((inv) async => mockQueueRef);
     when(mockQueuesColl.doc(any)).thenReturn(mockQueueRef);
+    
+    // Stub conflict check query
+    final mockQuery = MockQuery<Map<String, dynamic>>();
+    final mockQueryTime = MockQuery<Map<String, dynamic>>();
+    final mockQueryFinal = MockQuery<Map<String, dynamic>>();
+    final mockQuerySnap = MockQuerySnapshot<Map<String, dynamic>>();
+    
+    // We need to allow any() calls on where because parameters can vary
+    when(mockQueuesColl.where('barberman_id', isEqualTo: anyNamed('isEqualTo'))).thenReturn(mockQuery);
+    
+    // Use specific strings for matching to satisfy null safety
+    when(mockQuery.where('status', whereIn: anyNamed('whereIn'))).thenReturn(mockQuery);
+    when(mockQuery.where('booking_time', isGreaterThanOrEqualTo: anyNamed('isGreaterThanOrEqualTo'))).thenReturn(mockQueryTime);
+    when(mockQueryTime.where('booking_time', isLessThanOrEqualTo: anyNamed('isLessThanOrEqualTo'))).thenReturn(mockQueryFinal);
+    
+    // Final get
+    when(mockQueryFinal.get()).thenAnswer((_) async => mockQuerySnap);
+    when(mockQuerySnap.docs).thenReturn([]); // No conflicts
+
     // barbershops collection for payment window lookups
     mockBsColl = MockCollectionReference<Map<String, dynamic>>();
     mockBsRef = MockDocumentReference<Map<String, dynamic>>();
@@ -54,7 +76,7 @@ void main() {
         ),
       ).thenAnswer((inv) async {
         final cb = inv.positionalArguments[0] as dynamic;
-        await cb(MockTransaction());
+        await cb(FakeTx(mockBsSnap, mockBsRef));
         return mockQueueRef;
       });
 
@@ -107,9 +129,6 @@ void main() {
     },
   );
 }
-
-/// Minimal mock Transaction implementation for runTransaction callbacks in tests.
-class MockTransaction extends Mock implements Transaction {}
 
 class FakeTx implements Transaction {
   final MockDocumentSnapshot<Map<String, dynamic>> snap;

@@ -53,12 +53,15 @@ void main() {
     ).thenReturn(mockQueryFinal);
 
     // By default, the primary final query returns a snapshot (this is overridden in tests when needed)
-    when(mockQueryFinal.get()).thenAnswer((_) async => mockQuerySnap);
+    when(mockQueryFinal.get(any)).thenAnswer((_) async => mockQuerySnap);
+    when(mockQueryFinal.get()).thenAnswer((_) async => mockQuerySnap); // Handle default arg
 
     // The fallback uses the base mockQuery.get()
-    when(mockQuery.get()).thenAnswer((_) async => mockQuerySnap);
+    when(mockQuery.get(any)).thenAnswer((_) async => mockQuerySnap);
+    when(mockQuery.get()).thenAnswer((_) async => mockQuerySnap); // Handle default arg
 
     when(mockQuerySnap.docs).thenReturn([mockDocSnap]);
+    when(mockQuerySnap.size).thenReturn(1);
     when(mockDocSnap.reference).thenReturn(mockDocRef);
   });
 
@@ -121,7 +124,7 @@ void main() {
       when(
         mockQueryFinal.where(any, isLessThan: anyNamed('isLessThan')),
       ).thenReturn(mockQueryFinal);
-      when(mockQueryFinal.get()).thenThrow(
+      when(mockQueryFinal.get(any)).thenThrow(
         FirebaseException(
           plugin: 'cloud_firestore',
           code: 'failed-precondition',
@@ -161,7 +164,7 @@ void main() {
       when(
         mockQueryFinal.where(any, isLessThan: anyNamed('isLessThan')),
       ).thenReturn(mockQueryFinal);
-      when(mockQueryFinal.get()).thenThrow(
+      when(mockQueryFinal.get(any)).thenThrow(
         FirebaseException(
           plugin: 'cloud_firestore',
           code: 'failed-precondition',

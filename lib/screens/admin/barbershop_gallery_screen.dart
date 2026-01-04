@@ -7,14 +7,21 @@ import 'package:geges_smartbarber/services/barbershop_service.dart';
 
 class BarbershopGalleryScreen extends StatefulWidget {
   final Barbershop barbershop;
-  const BarbershopGalleryScreen({required this.barbershop, super.key});
+  final BarbershopService? barbershopService;
+
+  const BarbershopGalleryScreen({
+    required this.barbershop,
+    this.barbershopService,
+    super.key,
+  });
 
   @override
-  State<BarbershopGalleryScreen> createState() => _BarbershopGalleryScreenState();
+  State<BarbershopGalleryScreen> createState() =>
+      _BarbershopGalleryScreenState();
 }
 
 class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
-  final BarbershopService _service = BarbershopService();
+  late final BarbershopService _service;
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
   late List<String> _gallery;
@@ -25,6 +32,7 @@ class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
   @override
   void initState() {
     super.initState();
+    _service = widget.barbershopService ?? BarbershopService();
     _gallery = List.from(widget.barbershop.galleryUrls);
   }
 

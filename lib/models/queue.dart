@@ -98,6 +98,7 @@ class Queue {
   final String? refundReason;
   final String? refundedBy;
   final String? refundProofBase64;
+  final String? customerName; // New: For manual booking display
 
   Queue({
     required this.id,
@@ -130,6 +131,7 @@ class Queue {
     this.refundReason,
     this.refundedBy,
     this.refundProofBase64,
+    this.customerName,
   });
 
   String? get firstServiceId {
@@ -177,6 +179,7 @@ class Queue {
       refundReason: readString(data['refund_reason'] ?? data['refundReason']),
       refundedBy: readString(data['refunded_by'] ?? data['refundedBy']),
       refundProofBase64: readString(data['refund_proof_base64'] ?? data['refundProofBase64']),
+      customerName: readString(data['customer_name'] ?? data['customerName']),
     );
   }
 
@@ -210,6 +213,7 @@ class Queue {
       'refund_reason': refundReason,
       'refunded_by': refundedBy,
       'refund_proof_base64': refundProofBase64,
+      'customer_name': customerName,
     };
     data.removeWhere((_, v) => v == null);
     return data;
@@ -246,6 +250,7 @@ class Queue {
     String? refundReason,
     String? refundedBy,
     String? refundProofBase64,
+    String? customerName,
   }) {
     return Queue(
       id: id ?? this.id,
@@ -278,6 +283,7 @@ class Queue {
       refundReason: refundReason ?? this.refundReason,
       refundedBy: refundedBy ?? this.refundedBy,
       refundProofBase64: refundProofBase64 ?? this.refundProofBase64,
+      customerName: customerName ?? this.customerName,
     );
   }
 }
