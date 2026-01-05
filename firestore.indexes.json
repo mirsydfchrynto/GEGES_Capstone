@@ -72,6 +72,15 @@
       ]
     },
     {
+      "collectionGroup": "queues",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "barbershop_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updated_at", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "tenants",
       "queryScope": "COLLECTION",
       "fields": [

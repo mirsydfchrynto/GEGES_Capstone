@@ -312,25 +312,66 @@ class BookingAntiDuplicateService {
   ///
   /// Admin melihat hanya booking yang payment.verificationStatus == 'pending'
   /// Deduplicate by bookingId untuk extra safety
-  Stream<List<DocumentSnapshot>> streamPaymentVerificationQueue() {
-    return _firestore
-        .collection('queues')
-        .where('payment.verificationStatus', isEqualTo: 'pending')
-        .orderBy('payment.proofUploadedAt', descending: false) // oldest first
+  Stream<List<DocumentSnapshot>> streamPaymentVerificationQueue({String? barbershopId}) {
+    Query<Map<String, dynamic>> query = _firestore.collection('queues');
+    
+    // 1. Query Dasar (Selalu didukung Firestore tanpa custom index)
+    if (barbershopId != null && barbershopId.isNotEmpty) {
+      query = query.where('barbershop_id', isEqualTo: barbershopId);
+    }
+
+    // 2. Ambil data (tanpa filter status/sorting kompleks di server untuk menghindari Missing Index)
+    //    Kita urutkan created_at desc agar data terbaru diambil jika ada limit, 
+    //    tapi di sini kita ambil stream murni.
+    return query
         .snapshots()
         .map((snapshot) {
-          final List<DocumentSnapshot> docs = snapshot.docs;
-
-          // Deduplicate by bookingId
+          final List<DocumentSnapshot> allDocs = snapshot.docs;
           final Map<String, DocumentSnapshot> unique = {};
-          for (var doc in docs) {
+          
+          // 3. Filter & Sort di Sisi Aplikasi (Client-Side)
+          //    Ini 'Robust Mode' sesungguhnya: Logic tidak bergantung pada index server.
+          final filteredDocs = allDocs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final status = data['status'] as String?;
+            
+            // Filter Status: Harus awaiting_payment
+            if (status != 'awaiting_payment') return false;
+
+            // Filter Bukti: Harus ada bukti bayar
+            final payment = Map<String, dynamic>.from(data['payment'] ?? {});
+            final hasProof = (payment['proofUrl'] != null && payment['proofUrl'].toString().isNotEmpty) ||
+                             (data['payment_proof_base64'] != null && data['payment_proof_base64'].toString().isNotEmpty);
+            
+            // Filter Verifikasi: Tidak boleh yang sudah selesai (accepted/rejected)
+            final vStatus = payment['verificationStatus'] ?? data['payment_verification_status'];
+            final isPending = vStatus == 'pending' || vStatus == null;
+
+            return hasProof && isPending;
+          }).toList();
+
+          // 4. Sorting Manual (Oldest First / Updated First)
+          filteredDocs.sort((a, b) {
+            final aData = a.data() as Map<String, dynamic>;
+            final bData = b.data() as Map<String, dynamic>;
+            // Prioritaskan updated_at, fallback ke created_at
+            final aTime = (aData['updated_at'] ?? aData['created_at']) as Timestamp?;
+            final bTime = (bData['updated_at'] ?? bData['created_at']) as Timestamp?;
+            
+            if (aTime == null) return 1;
+            if (bTime == null) return -1;
+            return aTime.compareTo(bTime); // Ascending (Terlama di atas)
+          });
+
+          // 5. Deduplikasi
+          for (var doc in filteredDocs) {
             if (!unique.containsKey(doc.id)) {
               unique[doc.id] = doc;
             }
           }
 
           debugPrint(
-            '[BookingAntiDupService] Verifikasi queue: ${unique.length} pending payments',
+            '[BookingAntiDupService] Verifikasi queue: ${unique.length} pending payments (Client-Side Filtered)',
           );
           return unique.values.toList();
         });

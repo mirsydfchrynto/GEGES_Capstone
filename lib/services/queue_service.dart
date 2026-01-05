@@ -320,22 +320,80 @@ class QueueService implements QueueServiceContract {
   }
 
   Future<List<DateTimeRange>> getShopBusySlots({required String barbershopId, required DateTime date}) async {
-    // Logic penyederhanaan untuk mempercepat proses (mengembalikan slot sibuk global toko)
     final startDay = DateTime(date.year, date.month, date.day);
+    final endDay = startDay.add(const Duration(days: 1));
+
+    // 1. Hitung Kapasitas Barber (Total Kursi)
+    //    Hanya hitung yang aktif, tidak cuti, dan tidak libur hari ini
+    final dayName = DateFormat('EEEE', 'en_US').format(date).toLowerCase();
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    
+    final barbersSnapshot = await _firestore.collection('barbermen')
+        .where('barbershop_id', isEqualTo: barbershopId)
+        .where('isActive', isEqualTo: true)
+        .get();
+    
+    final activeBarbers = barbersSnapshot.docs.where((doc) {
+      final data = doc.data();
+      if (data['onLeave'] == true) return false;
+      
+      final offDays = (data['offDays'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+      if (offDays.contains(dayName)) return false;
+
+      final specificOff = (data['specificOffDays'] as List?)?.map((e) => e.toString()).toList() ?? [];
+      if (specificOff.contains(dateStr)) return false;
+
+      return true;
+    }).toList();
+
+    final int totalCapacity = activeBarbers.length;
+    if (totalCapacity == 0) {
+      // Jika tidak ada barber masuk, tutup seharian
+      return [DateTimeRange(start: startDay, end: endDay)];
+    }
+
+    // 2. Ambil semua booking hari ini
     final qs = await _firestore.collection('queues')
         .where('barbershop_id', isEqualTo: barbershopId)
         .where('status', whereIn: ['booked', 'ongoing', 'awaiting_payment'])
         .where('booking_time', isGreaterThanOrEqualTo: Timestamp.fromDate(startDay))
-        .where('booking_time', isLessThanOrEqualTo: Timestamp.fromDate(startDay.add(const Duration(days: 1))))
+        .where('booking_time', isLessThanOrEqualTo: Timestamp.fromDate(endDay))
         .get();
+
+    // 3. Petakan Load per Slot Waktu (per 30 menit)
+    //    Map<JamString, JumlahBooking>
+    final Map<String, int> slotLoad = {};
     
-    // ... complex slot counting logic ...
-    // For now, return direct booking slots to prevent double booking simply
-    List<DateTimeRange> fullSlots = [];
     for (var doc in qs.docs) {
        final start = (doc.data()['booking_time'] as Timestamp).toDate();
-       fullSlots.add(DateTimeRange(start: start, end: start.add(const Duration(minutes: 30))));
+       final duration = (doc.data()['estimated_duration'] as num? ?? 30).toInt();
+       
+       // Mark setiap slot 30 menit yang terpakai oleh booking ini
+       // Contoh: Durasi 60 menit = makan 2 slot
+       int slotsConsumed = (duration / 30).ceil();
+       for (int i = 0; i < slotsConsumed; i++) {
+         final timeKey = start.add(Duration(minutes: 30 * i));
+         final key = DateFormat('HH:mm').format(timeKey);
+         slotLoad[key] = (slotLoad[key] ?? 0) + 1;
+       }
     }
+
+    // 4. Identifikasi Slot Penuh (Load >= Capacity)
+    List<DateTimeRange> fullSlots = [];
+    
+    // Kita cek setiap slot operasional (misal 9:00 - 21:00)
+    // Karena kita tidak tahu jam buka di sini (opsional fetch), kita iterate berdasarkan data load saja
+    slotLoad.forEach((timeStr, count) {
+      if (count >= totalCapacity) {
+        // Slot ini penuh!
+        final parts = timeStr.split(':');
+        final h = int.parse(parts[0]);
+        final m = int.parse(parts[1]);
+        final slotStart = DateTime(date.year, date.month, date.day, h, m);
+        fullSlots.add(DateTimeRange(start: slotStart, end: slotStart.add(const Duration(minutes: 30))));
+      }
+    });
+
     return fullSlots;
   }
 

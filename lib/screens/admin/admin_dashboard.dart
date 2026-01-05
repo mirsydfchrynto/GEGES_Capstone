@@ -194,7 +194,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _buildGridMenu(Map<String, int> stats) {
     return GridView.count(crossAxisCount: 2, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1.3, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), children: [
-      _menuItem(Icons.verified_user_outlined, 'Verifikasi Bayar', 'Pembayaran Masuk', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentVerificationScreenImproved())), badge: stats['verify_payment']!),
+      _menuItem(Icons.verified_user_outlined, 'Verifikasi Bayar', 'Pembayaran Masuk', () => Navigator.push(context, MaterialPageRoute(builder: (_) => PaymentVerificationScreenImproved(barbershopId: _adminBarbershopId))), badge: stats['verify_payment']!),
       _menuItem(Icons.playlist_add_check, 'Live Queue', 'Antrean Hari Ini', () => Navigator.push(context, MaterialPageRoute(builder: (_) => LiveQueueScreen(barbershopId: _adminBarbershopId!, initialFilter: ['booked', 'ongoing'], title: 'Antrean Live'))), badge: stats['today_booked']! + stats['today_ongoing']!),
       _menuItem(Icons.cancel_presentation, 'Request Batal', 'Pengajuan Refund', () => Navigator.push(context, MaterialPageRoute(builder: (_) => CancellationRequestsScreen(currentUserId: _adminUid))), badge: stats['cancellation_req']!),
       _menuItem(Icons.add_circle_outline, 'Booking Manual', 'Input Offline', _goToManualBooking),

@@ -8,13 +8,18 @@ import 'dart:convert';
 import 'package:geges_smartbarber/services/booking_anti_duplicate_service.dart';
 
 class PaymentVerificationScreenImproved extends StatefulWidget {
-  const PaymentVerificationScreenImproved({super.key});
+  final String? barbershopId;
+  const PaymentVerificationScreenImproved({super.key, this.barbershopId});
   @override
   State<PaymentVerificationScreenImproved> createState() => _PaymentVerificationScreenImprovedState();
 }
 
 class _PaymentVerificationScreenImprovedState extends State<PaymentVerificationScreenImproved> {
   final BookingAntiDuplicateService _antiDupService = BookingAntiDuplicateService();
+
+  Future<void> _refresh() async {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,11 +29,19 @@ class _PaymentVerificationScreenImprovedState extends State<PaymentVerificationS
         title: const Text('Verifikasi Pembayaran', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.black,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refresh,
+          )
+        ],
       ),
       body: StreamBuilder<List<DocumentSnapshot>>(
-        stream: _antiDupService.streamPaymentVerificationQueue(),
+        stream: _antiDupService.streamPaymentVerificationQueue(barbershopId: widget.barbershopId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+          
           final list = snapshot.data ?? [];
           if (list.isEmpty) return _buildEmpty();
 
