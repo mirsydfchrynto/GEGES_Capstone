@@ -190,19 +190,43 @@ class QueueService implements QueueServiceContract {
     return snap.exists ? Queue.fromFirestore(snap) : null;
   }
 
-  // New methods to satisfy static analysis
   Stream<List<Queue>> streamAllQueues({List<String>? statusFilter}) {
     Query<Map<String, dynamic>> query = _firestore.collection('queues');
-    if (statusFilter != null && statusFilter.isNotEmpty) {
-      query = query.where('status', whereIn: statusFilter);
-    }
+    
+    // Gunakan try-catch di dalam Stream untuk menangani error indeks
     return query.orderBy('booking_time', descending: true)
         .withConverter<Queue>(
           fromFirestore: (snap, _) => Queue.fromFirestore(snap),
           toFirestore: (queue, _) => queue.toJson(),
         )
         .snapshots()
-        .map((s) => s.docs.map((d) => d.data()).toList());
+        .map((s) {
+          final docs = s.docs.map((d) => d.data()).toList();
+          if (statusFilter != null && statusFilter.isNotEmpty) {
+            return docs.where((q) => statusFilter.contains(q.status.value)).toList();
+          }
+          return docs;
+        })
+        .handleError((error) {
+          if (error.toString().contains('FAILED_PRECONDITION')) {
+            debugPrint('⚠️ Database Index is building. Using in-memory fallback.');
+            // Fallback: Ambil data tanpa urutan/filter kompleks, lalu filter di aplikasi
+            return _firestore.collection('queues')
+                .withConverter<Queue>(
+                  fromFirestore: (snap, _) => Queue.fromFirestore(snap),
+                  toFirestore: (queue, _) => queue.toJson(),
+                )
+                .snapshots()
+                .map((s) {
+                  final docs = s.docs.map((d) => d.data()).toList();
+                  if (statusFilter != null && statusFilter.isNotEmpty) {
+                    return docs.where((q) => statusFilter.contains(q.status.value)).toList();
+                  }
+                  return docs;
+                });
+          }
+          throw error;
+        });
   }
 
   Future<void> adminRejectCancellation(String queueId) async {

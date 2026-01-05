@@ -64,6 +64,14 @@
       ]
     },
     {
+      "collectionGroup": "queues",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "booking_time", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "tenants",
       "queryScope": "COLLECTION",
       "fields": [
