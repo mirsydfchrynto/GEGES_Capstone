@@ -1,0 +1,75 @@
+# MASTER TASK: BUILD THE ULTIMATE SUPER ADMIN PORTAL (GEGES SMART BARBER)
+
+## 1. ARCHITECTURAL OVERVIEW
+You are building the central nervous system for a multi-tenant barber platform. This portal manages businesses, payments, and identities.
+
+## 2. THE CORE BUSINESS ENGINE (TENANT PROVISIONING)
+Implement the `ApproveTenant` logic as a dedicated Service. It must handle the following in one sequence:
+
+### A. Pre-Flight Checks
+- Verify `tenant.payment.verificationStatus === 'pending'`.
+- Generate a 12-character secure random password for the tenant.
+
+### B. The "Secondary App" Auth Execution
+```javascript
+// This is the logic you MUST implement
+const secondaryApp = initializeApp(firebaseConfig, "SecondaryInstance");
+const secondaryAuth = getAuth(secondaryApp);
+const userCredential = await createUserWithEmailAndPassword(secondaryAuth, tenant.owner_email, generatedPassword);
+const newTenantUid = userCredential.user.uid;
+await deleteApp(secondaryApp);
+```
+
+### C. The Firestore Multi-Write
+Execute these writes:
+1.  **Collection `barbershops`**: New Doc ID (auto-generated) containing shop details.
+2.  **Collection `users`**: New Doc ID = `newTenantUid`. Fields: `{ name: tenant.business_name, role: 'admin_owner', barbershop_id: NEW_SHOP_ID, email: tenant.owner_email }`.
+3.  **Collection `notifications`**: Target `tenant.owner_uid` (the applicant). Body: "Selamat! Barbershop Anda aktif. Login Admin: ${email} | Pass: ${generatedPassword}".
+4.  **Collection `tenants`**: Update the application doc to `status: 'active'`.
+
+## 3. UI/UX & PAGES SPECIFICATION
+
+### PAGE: Login
+- Email/Password field.
+- **AUTH GUARD:** After `signInWithEmailAndPassword`, fetch `/users/{uid}`. If `role !== 'super_admin'`, show "Access Denied" and sign out.
+
+### PAGE: Dashboard (The Command Center)
+- **Cards:** Active Shops, Pending Applications, Total Revenue (calculated from verified tenants).
+- **Charts:** Use `recharts` to show registration trends over time.
+
+### PAGE: Registration Inbox (The "Verifier")
+- **Split View:** List on the left, full details on the right.
+- **Image Previewer:** A high-quality modal to view `document_base64` and `payment_proof_base64`.
+- **Action Buttons:** "Verify & Provision" (triggers the engine) and "Reject" (prompts for a reason).
+
+### PAGE: Tenant Directory
+- A table showing all barbershops, their owners, and a "Quick Login Link" (for future features).
+
+## 4. SOURCE CODE REFERENCE (SOURCE OF TRUTH)
+
+### Firebase Config
+```javascript
+const firebaseConfig = {
+  apiKey: "AIzaSyDB2mkhbMiuKnvybfU-fIRhvWXnADEZa5o",
+  authDomain: "geges-smartbarber-project.firebaseapp.com",
+  projectId: "geges-smartbarber-project",
+  storageBucket: "geges-smartbarber-project.firebasestorage.app",
+  messagingSenderId: "51527807075",
+  appId: "1:51527807075:web:4943c3694db47a720a4856",
+  measurementId: "G-PGDQQQMVF8"
+};
+```
+
+### Field-Level Compatibility (CRITICAL)
+- **Barberman Model:** `isActive`, `onLeave`, `offDays`, `specificOffDays`, `monthlyHaircutCount`.
+- **Barbershop Model:** `name`, `address` (Note: Mobile uses `addres` in Dart but `address` in Firestore JSON), `imageUrl`, `gallery_urls`.
+- **Notification:** `user_id`, `title`, `body`, `delivered`, `created_at`.
+
+## 5. REFINEMENT & EDGE CASES
+- **Handling Base64 Size:** If an image is too large, use a simple canvas resize logic on the client-side before any new uploads.
+- **Session Persistence:** Use `browserSessionPersistence` for security.
+- **Error Handling:** Every Firebase call must be wrapped in `try-catch` with localized error messages via `react-hot-toast`.
+
+## 6. FINAL DIRECTIVE
+Build the entire application structure. I want a production-ready codebase. Provide the complete code for `firebase.js`, the `authSlice`, the `provisioningService`, and the `RegistrationDetails` page. 
+NO PLACEHOLDERS. FULL LOGIC ONLY.

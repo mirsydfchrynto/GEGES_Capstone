@@ -607,7 +607,7 @@ class QueueService implements QueueServiceContract {
       'created_at': FieldValue.serverTimestamp(),
     };
 
-    // Auto-set payment_deadline for waiting/awaiting_payment if missing
+    // Auto-set payment_deadline
     final status = dataToSave['status']?.toString();
     if ((status == 'waiting' || status == 'awaiting_payment') && 
         dataToSave['payment_deadline'] == null) {
@@ -616,46 +616,82 @@ class QueueService implements QueueServiceContract {
     }
 
     dataToSave.removeWhere((_, v) => v == null);
+    
+    // Log teknis
+    debugPrint("DEBUG QUEUE PAYLOAD: ${dataToSave.toString()}");
 
-    // Log teknis untuk validasi payload transmisi
-    debugPrint("DEBUG QUEUE PAYLOAD");
-    debugPrint("Payload: ${dataToSave.toString()}");
-    debugPrint("END DEBUG QUEUE PAYLOAD");
+    final String? shopIdRaw = dataToSave['barbershop_id']?.toString();
+    final String? shopId = (shopIdRaw != null && shopIdRaw.isNotEmpty) ? shopIdRaw : null;
+    final newQueueRef = _firestore.collection('queues').doc(); // Generate ID first
 
-    // VALIDATION: Opening Hours
-    try {
-      final shopId = dataToSave['barbershop_id'];
-      final shopDoc = await _firestore.collection('barbershops').doc(shopId).get();
-      if (shopDoc.exists) {
-        final shopData = shopDoc.data()!;
-        final open = (shopData['open_hour'] ?? shopData['openHour'] ?? 0) as int;
-        final close = (shopData['close_hour'] ?? shopData['closeHour'] ?? 24) as int;
+    await _firestore.runTransaction((transaction) async {
+      debugPrint('TX START: Validating slot for $shopId at $bookingTs');
+      
+      // 1. Validasi Jam Buka & Kapasitas (Hanya jika shopId valid)
+      if (shopId != null) {
+        final shopRef = _firestore.collection('barbershops').doc(shopId);
+        final shopSnapshot = await transaction.get(shopRef);
         
-        final bookingDateTime = bookingTs.toDate();
-        final hour = bookingDateTime.hour;
-        
-        if (hour < open || hour >= close) {
-          throw Exception('Booking time outside of operating hours ($open:00 - $close:00)');
+        if (shopSnapshot.exists && shopSnapshot.data() != null) {
+          final shopData = shopSnapshot.data()!;
+          final open = (shopData['open_hour'] ?? shopData['openHour'] ?? 0) as int;
+          final close = (shopData['close_hour'] ?? shopData['closeHour'] ?? 24) as int;
+          
+          final bookingDateTime = bookingTs.toDate();
+          final hour = bookingDateTime.hour;
+          
+          if (hour < open || hour >= close) {
+            throw Exception('Booking time outside of operating hours ($open:00 - $close:00)');
+          }
+
+          // 2. Race Condition Check (Capacity Validation)
+          final capacityQuery = await _firestore.collection('barbermen')
+              .where('barbershop_id', isEqualTo: shopId)
+              .where('isActive', isEqualTo: true)
+              .get();
+          
+          final dayName = DateFormat('EEEE', 'en_US').format(bookingDateTime).toLowerCase();
+          final dateStr = DateFormat('yyyy-MM-dd').format(bookingDateTime);
+          
+          int totalCapacity = 0;
+          for (var doc in capacityQuery.docs) {
+            final d = doc.data();
+            if (d['onLeave'] == true) continue;
+            final offDays = (d['offDays'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+            if (offDays.contains(dayName)) continue;
+            final specific = (d['specificOffDays'] as List?)?.map((e) => e.toString()).toList() ?? [];
+            if (specific.contains(dateStr)) continue;
+            totalCapacity++;
+          }
+
+          if (totalCapacity > 0) {
+            final existingBookings = await _firestore.collection('queues')
+                .where('barbershop_id', isEqualTo: shopId)
+                .where('status', whereIn: ['booked', 'ongoing', 'awaiting_payment'])
+                .where('booking_time', isEqualTo: bookingTs)
+                .get();
+            
+            debugPrint('TX LOAD CHECK: Current=$existingBookings.docs.length, Max=$totalCapacity');
+            if (existingBookings.docs.length >= totalCapacity) {
+              throw Exception('Slot penuh! Baru saja diambil orang lain.');
+            }
+          }
         }
       }
-    } catch (e) {
-      if (e.toString().contains('operating hours')) rethrow;
-      // Other errors (like network) are non-fatal for this validation
-    }
 
-    final ref = await _firestore.collection('queues').add(dataToSave);
+      // 3. Simpan Booking
+      transaction.set(newQueueRef, dataToSave);
+      debugPrint('TX COMMIT: Booking document created successfully');
+    });
     
-    // LOG SUCCESS: Konfirmasi booking berhasil disimpan
+    // LOG SUCCESS
     try {
       debugPrint('QUEUE SUCCESS: New booking created!');
-      debugPrint('   - ID: ${ref.id}');
-      debugPrint('   - Customer: ${dataToSave['customer_name'] ?? dataToSave['customer_id']}');
+      debugPrint('   - ID: ${newQueueRef.id}');
       debugPrint('   - Time: ${bookingTs.toDate()}');
-    } catch (_) {
-      // Avoid crashing in tests if mock ref.id is not stubbed
-    }
+    } catch (_) {}
     
-    return ref;
+    return newQueueRef;
   }
 
   Future<bool> isSlotAvailable({

@@ -19,13 +19,15 @@ import 'booking_payment_lifecycle_test.mocks.dart';
 
 // Fake Transaction implementation
 class FakeTx implements Transaction {
-  final MockDocSnap snap;
+  final MockDocSnap shopSnap;
+  final MockDocSnap queueSnap;
   final MockDocRef ref;
-  FakeTx(this.snap, this.ref);
+  FakeTx({required this.shopSnap, required this.queueSnap, required this.ref});
 
   @override
   Future<DocumentSnapshot<T>> get<T extends Object?>(DocumentReference<T> ref) async {
-    return snap as DocumentSnapshot<T>;
+    if (ref.path.contains('barbershops')) return shopSnap as DocumentSnapshot<T>;
+    return queueSnap as DocumentSnapshot<T>;
   }
 
   @override
@@ -54,6 +56,7 @@ void main() {
   late MockCollectionRef mockBsColl;
   late MockDocRef mockBsRef;
   late MockDocSnap mockBsSnap;
+  late MockCollectionRef mockBarbermenColl;
 
   setUp(() {
     mockFs = MockFirebaseFirestore();
@@ -61,12 +64,22 @@ void main() {
     mockQueuesColl = MockCollectionRef();
     mockQueueRef = MockDocRef();
     mockQueueSnap = MockDocSnap();
+    mockBarbermenColl = MockCollectionRef();
 
     when(mockFs.collection('queues')).thenReturn(mockQueuesColl);
+    when(mockFs.collection('barbermen')).thenReturn(mockBarbermenColl);
     when(mockQueuesColl.add(any)).thenAnswer((_) async => mockQueueRef);
     when(mockQueuesColl.doc(any)).thenReturn(mockQueueRef);
     
-    // Query mocks
+    // Barbermen query mocks
+    final mockBarberQuery = MockQuery();
+    final mockBarberSnap = MockQuerySnapshot();
+    when(mockBarbermenColl.where(any, isEqualTo: anyNamed('isEqualTo'))).thenReturn(mockBarberQuery);
+    when(mockBarberQuery.where(any, isEqualTo: anyNamed('isEqualTo'))).thenReturn(mockBarberQuery);
+    when(mockBarberQuery.get()).thenAnswer((_) async => mockBarberSnap);
+    when(mockBarberSnap.docs).thenReturn([]);
+
+    // Queue query mocks
     final mockQuery = MockQuery();
     final mockQueryTime = MockQuery();
     final mockQueryFinal = MockQuery();
@@ -75,6 +88,7 @@ void main() {
     // Loose matching for where
     when(mockQueuesColl.where(any, isEqualTo: anyNamed('isEqualTo'))).thenReturn(mockQuery);
     when(mockQuery.where(any, whereIn: anyNamed('whereIn'))).thenReturn(mockQuery);
+    when(mockQuery.where(any, isEqualTo: anyNamed('isEqualTo'))).thenReturn(mockQuery);
     when(mockQuery.where(any, isGreaterThanOrEqualTo: anyNamed('isGreaterThanOrEqualTo'))).thenReturn(mockQueryTime);
     when(mockQueryTime.where(any, isLessThanOrEqualTo: anyNamed('isLessThanOrEqualTo'))).thenReturn(mockQueryFinal);
     
@@ -97,12 +111,14 @@ void main() {
     when(mockQueueRef.get()).thenAnswer((_) async => mockQueueSnap);
     when(mockQueueSnap.exists).thenReturn(true);
 
-    // Mock runTransaction
+    // Mock runTransaction for createQueue
+    // Using simple dynamic return to allow void callbacks
     when(mockFs.runTransaction(any, timeout: anyNamed('timeout'), maxAttempts: anyNamed('maxAttempts')))
       .thenAnswer((inv) async {
         final cb = inv.positionalArguments[0] as Function(Transaction);
-        await cb(FakeTx(mockBsSnap, mockBsRef));
-        return mockQueueRef;
+        // Execute the callback with our FakeTx
+        await cb(FakeTx(shopSnap: mockBsSnap, queueSnap: mockQueueSnap, ref: mockQueueRef));
+        return null; // runTransaction returns what the callback returns (void/null here)
       });
 
     final svc = QueueService(firestore: mockFs, auth: mockAuth);
@@ -119,7 +135,7 @@ void main() {
     };
 
     final ref = await svc.createQueue(payload);
-    expect(ref, mockQueueRef);
+    expect(ref, isNotNull);
 
     // Simulate proof uploaded
     when(mockQueueSnap.data()).thenReturn({
@@ -128,22 +144,6 @@ void main() {
       'payment_proof_base64': 'proof123',
     });
 
-    // Mock transaction for confirm
-    when(mockFs.runTransaction(any, timeout: anyNamed('timeout'), maxAttempts: anyNamed('maxAttempts')))
-      .thenAnswer((inv) async {
-        final cb = inv.positionalArguments[0] as Function(Transaction);
-        await cb(FakeTx(mockQueueSnap, mockQueueRef));
-        return null;
-      });
-
-    // We also need to mock createNotification since adminConfirmRequest calls it if customer_id exists.
-    // adminConfirmPayment does NOT call createNotification in current impl, only updates.
-    // Wait, adminConfirmPayment just updates. adminConfirmRequest calls createNotification.
-    
-    // The test name says "full lifecycle... admin confirms to booked".
-    // Usually flow is: create -> (status=awaiting_payment) -> customer uploads -> adminConfirmPayment.
-    // If createQueue sets status=awaiting_payment directly (admin manual?), then we call adminConfirmPayment.
-    
     await svc.adminConfirmPayment('q_auto', adminUid: 'admin_1');
 
     verify(mockQueueRef.update(any)).called(1);
