@@ -25,4 +25,7 @@ abstract class QueueServiceContract {
 
   // Called as a fallback to cancel any expired awaiting_payment queues for a customer
   Future<int> cancelExpiredAwaitingPaymentQueuesForCustomer(String customerId);
+
+  // Called as a fallback to cancel any expired waiting queues for a customer
+  Future<int> cancelExpiredWaitingQueuesForCustomer(String customerId);
 }

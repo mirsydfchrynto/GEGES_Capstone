@@ -77,9 +77,42 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                 color: Colors.white, fontWeight: FontWeight.bold)),
         subtitle: Text('Rp ${s.price.toInt()} • ${s.defaultDuration} menit',
             style: const TextStyle(color: Colors.white54)),
-        trailing: IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white54),
-            onPressed: () => _showEditDialog(s)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+                icon: const Icon(Icons.edit, color: Colors.white54),
+                onPressed: () => _showEditDialog(s)),
+            IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                onPressed: () => _confirmDelete(s)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(Service s) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text("Hapus Layanan?", style: TextStyle(color: Colors.white)),
+        content: Text("Layanan '${s.name}' akan dihapus dari daftar toko Anda.", style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              await _service.removeServiceFromBarbershop(widget.barbershopId, s.id);
+              if (!mounted) return;
+              // ignore: use_build_context_synchronously
+              Navigator.pop(ctx);
+              setState(() {});
+            }, 
+            child: const Text("Hapus", style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
@@ -153,10 +186,10 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                     defaultDuration: int.tryParse(durCtrl.text) ?? 30,
                     isActive: isActive,
                   );
-                  await _service.saveService(service);
+                  final newId = await _service.saveService(service);
                   // If new, add to barbershop list
                   if (s == null) {
-                    // Logic to add to barbershop's service list should be here
+                    await _service.addServiceToBarbershop(widget.barbershopId, newId);
                   }
                   
                   if (!context.mounted) return;

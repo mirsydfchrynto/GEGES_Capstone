@@ -70,10 +70,10 @@ void main() {
     // ================================================================
     test('TC-04: HARUS return error jika pesanan tidak ditemukan', () async {
       when(
-        mockQueueService.getQueueByIdForCustomer(any, any),
+        mockQueueService.resolveQueueForCustomerByIdOrOrder(any, any),
       ).thenAnswer((_) async => null);
 
-      final queue = await mockQueueService.getQueueByIdForCustomer(
+      final queue = await mockQueueService.resolveQueueForCustomerByIdOrOrder(
         orderId,
         userId,
       );
@@ -99,10 +99,10 @@ void main() {
       );
 
       when(
-        mockQueueService.getQueueByIdForCustomer(any, any),
+        mockQueueService.resolveQueueForCustomerByIdOrOrder(any, any),
       ).thenAnswer((_) async => existingQueue);
 
-      final queue = await mockQueueService.getQueueByIdForCustomer(
+      final queue = await mockQueueService.resolveQueueForCustomerByIdOrOrder(
         orderId,
         userId,
       );
@@ -135,10 +135,10 @@ void main() {
         );
 
         when(
-          mockQueueService.getQueueByIdForCustomer(any, any),
+          mockQueueService.resolveQueueForCustomerByIdOrOrder(any, any),
         ).thenAnswer((_) async => expiredQueue);
 
-        final queue = await mockQueueService.getQueueByIdForCustomer(
+        final queue = await mockQueueService.resolveQueueForCustomerByIdOrOrder(
           orderId,
           userId,
         );
@@ -179,10 +179,10 @@ void main() {
       final base64Proof = 'base64_proof_valid';
 
       when(
-        mockQueueService.getQueueByIdForCustomer(any, any),
+        mockQueueService.resolveQueueForCustomerByIdOrOrder(any, any),
       ).thenAnswer((_) async => validQueue);
 
-      final queue = await mockQueueService.getQueueByIdForCustomer(
+      final queue = await mockQueueService.resolveQueueForCustomerByIdOrOrder(
         orderId,
         userId,
       );

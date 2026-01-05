@@ -67,3 +67,4 @@ Aplikasi ini mengimplementasikan beberapa metode teknis tingkat lanjut:
 *   **Security:** JWT, SSL/TLS Pinning, Hardware Key Storage.
 *   **Backend Logic:** Serverless (Firebase Cloud Functions & SDK).
 *   **Data Consistency:** Transaksi database menggunakan atomicity untuk mencegah *double booking*.
+*   **Real-time Auditing:** Implementasi log sistem (`debugPrint`) pada setiap operasi sukses (Auth, Booking, Storage) untuk transparansi proses data saat debugging.

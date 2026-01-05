@@ -36,6 +36,17 @@ class BarbershopService {
       }
 
       final snapshot = await _firestore.collection('barbershops').get();
+      
+      // Log teknis untuk pemantauan data Firestore
+      debugPrint("DEBUG FIRESTORE FETCH");
+      debugPrint("Koleksi: barbershops");
+      debugPrint("Jumlah Dokumen: ${snapshot.docs.length}");
+      if (snapshot.docs.isNotEmpty) {
+        debugPrint("Data Sample JSON:");
+        debugPrint(snapshot.docs.first.data().toString());
+      }
+      debugPrint("END DEBUG FIRESTORE FETCH");
+
       final list = snapshot.docs.map((doc) => Barbershop.fromFirestore(doc)).toList();
       
       // Update cache
@@ -121,13 +132,15 @@ class BarbershopService {
     }
   }
 
-  Future<void> saveService(Service service) async {
+  Future<String> saveService(Service service) async {
     try {
       final data = service.toJson();
       if (service.id.isEmpty) {
-        await _firestore.collection('services').add(data);
+        final ref = await _firestore.collection('services').add(data);
+        return ref.id;
       } else {
         await _firestore.collection('services').doc(service.id).set(data, SetOptions(merge: true));
+        return service.id;
       }
     } catch (e) {
       debugPrint('Error saveService: $e');
@@ -154,6 +167,34 @@ class BarbershopService {
       _cachedBarbershops = null;
     } catch (e) {
       debugPrint('Error updateBarbershopSettings: $e');
+      rethrow;
+    }
+  }
+
+  /// Add a service ID to the barbershop's list
+  Future<void> addServiceToBarbershop(String shopId, String serviceId) async {
+    try {
+      await _firestore.collection('barbershops').doc(shopId).update({
+        'services': FieldValue.arrayUnion([serviceId]),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      _cachedBarbershops = null;
+    } catch (e) {
+      debugPrint('Error addServiceToBarbershop: $e');
+      rethrow;
+    }
+  }
+
+  /// Remove a service ID from the barbershop's list
+  Future<void> removeServiceFromBarbershop(String shopId, String serviceId) async {
+    try {
+      await _firestore.collection('barbershops').doc(shopId).update({
+        'services': FieldValue.arrayRemove([serviceId]),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      _cachedBarbershops = null;
+    } catch (e) {
+      debugPrint('Error removeServiceFromBarbershop: $e');
       rethrow;
     }
   }

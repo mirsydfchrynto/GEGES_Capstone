@@ -46,20 +46,20 @@ void main() {
     await tester.pumpAndSettle();
 
     // Tap the set-off-day icon
-    final icon = find.byIcon(Icons.event_busy_outlined);
+    final icon = find.byIcon(Icons.calendar_month_outlined);
     expect(icon, findsOneWidget);
     await tester.tap(icon);
     await tester.pumpAndSettle();
 
     // Dialog should appear - choose a day from the dropdown
-    expect(find.text('Pilih hari'), findsOneWidget);
+    expect(find.text('Pilih Hari'), findsOneWidget);
 
     // Open the dropdown
     await tester.tap(find.byType(DropdownButton<DayOfWeek>));
     await tester.pumpAndSettle();
 
-    // Select 'monday' option (enum name)
-    await tester.tap(find.text('monday').last);
+    // Select 'MONDAY' option (enum name uppercase)
+    await tester.tap(find.text('MONDAY').last);
     await tester.pumpAndSettle();
 
     // Confirm with Terapkan button

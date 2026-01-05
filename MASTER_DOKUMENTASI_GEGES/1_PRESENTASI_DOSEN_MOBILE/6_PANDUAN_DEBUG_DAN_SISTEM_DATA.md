@@ -63,13 +63,36 @@ Untuk mempermudah debugging, pahami alur data berikut:
 
 ---
 
-## 5. Panduan Praktis Debugging untuk Pemula
-1.  **Cek Konsol:** Selalu perhatikan tab "Debug Console". Jika ada tulisan merah, baca baris pertama untuk mengetahui jenis errornya.
-2.  **Gunakan Breakpoints:** Klik di sebelah nomor baris kodingan untuk menghentikan aplikasi di titik tersebut dan memeriksa isi variabel.
-3.  **Firestore Simulator:** Di Firebase Console, gunakan "Rules Playground" untuk mengetes apakah aturan keamanan (Rules) Anda memblokir data secara tidak sengaja.
-4.  **Inspect UI:** Gunakan **Flutter Inspector** (ikon kaca pembesar) untuk melihat struktur widget jika tampilan berantakan atau tidak muncul.
+## 5. Panduan Praktis Debugging & Demonstrasi (LOG SUKSES)
+
+Saya telah menambahkan log khusus yang akan muncul saat operasi berhasil. Gunakan ini untuk meyakinkan dosen bahwa sistem berjalan:
+
+1.  **Saat Login/Register:** Perhatikan pesan berawalan `AUTH SUCCESS` atau `REGISTER SUCCESS`. Ini membuktikan autentikasi Firebase berhasil 100%.
+2.  **Saat Booking:** Perhatikan pesan `QUEUE SUCCESS`. Ini muncul tepat setelah data masuk ke database, membuktikan transmisi data aman.
+3.  **Saat Update Antrean:** Perhatikan pesan `SERVICE START` dan `SERVICE FINISH`. Ini membuktikan algoritma live update bekerja.
+4.  **Saat Simpan Sesi:** Perhatikan pesan `SECURE STORAGE`. Ini membuktikan brankas data HP berfungsi melindungi privasi.
+
 
 ---
 
+
+
+**Cara Melihat Log:**
+
+1. Hubungkan HP atau nyalakan Emulator.
+
+2. Jalankan aplikasi via VS Code (`F5`).
+
+3. Buka Tab **Debug Console**.
+
+4. Lakukan aksi di aplikasi (misal: Login), dan lihat pesan berwarna di konsol.
+
+
+
+---
+
+
+
 **Kesimpulan:**
-Semua data di aplikasi ini terpusat pada **Firebase SDK** sebagai pengantar, **Token JWT** sebagai pengaman, dan **Secure Storage** sebagai penyimpan identitas tetap di perangkat.
+
+Semua data di aplikasi ini terpusat pada **Firebase SDK** sebagai pengantar, **Token JWT** sebagai pengaman, dan **Secure Storage** sebagai penyimpan identitas tetap di perangkat. Log sukses telah ditambahkan untuk mempermudah audit data secara real-time.

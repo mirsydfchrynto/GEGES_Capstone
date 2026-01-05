@@ -23,7 +23,7 @@ void main() {
       'submitPaymentProof -> acceptPaymentVerification -> start/finish service',
       () async {
         // create booking
-        final bookingRef = await fs.collection('bookings').add({
+        final bookingRef = await fs.collection('queues').add({
           'barbershop_id': 'shop1',
           'customer_id': 'c1',
           'barberman_id': 'b1',
@@ -43,7 +43,7 @@ void main() {
           userId: 'c1',
         );
 
-        final afterProof = await fs.collection('bookings').doc(bookingId).get();
+        final afterProof = await fs.collection('queues').doc(bookingId).get();
         final payment =
             (afterProof.data()?['payment'] ?? {}) as Map<String, dynamic>;
 
@@ -58,7 +58,7 @@ void main() {
         );
 
         final afterAccept = await fs
-            .collection('bookings')
+            .collection('queues')
             .doc(bookingId)
             .get();
         final data = afterAccept.data()!;
@@ -71,12 +71,12 @@ void main() {
 
         // start service
         await queueSvc.startService(bookingId);
-        final mid = await fs.collection('bookings').doc(bookingId).get();
+        final mid = await fs.collection('queues').doc(bookingId).get();
         expect(mid.data()?['status'], 'ongoing');
 
         // finish service
         await queueSvc.finishService(bookingId);
-        final finished = await fs.collection('bookings').doc(bookingId).get();
+        final finished = await fs.collection('queues').doc(bookingId).get();
         expect(finished.data()?['status'], 'served');
       },
     );

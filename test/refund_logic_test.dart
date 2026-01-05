@@ -61,6 +61,7 @@ void main() {
       final doc = await fakeFs.collection('queues').doc(queueId).get();
       final data = doc.data()!;
 
+      // Expect refund_completed
       expect(data['status'], 'refund_completed');
       expect(data['refund_proof_base64'], 'refund_transfer_proof');
       expect(data['is_refunded'], true);

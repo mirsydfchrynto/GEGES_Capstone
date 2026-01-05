@@ -22,22 +22,20 @@ class ManualBookingFormState extends State<ManualBookingForm> {
   List<Service> _availableServices = [];
   final List<Service> _selectedServices = [];
   bool _isPremiumChoice = false; 
-  Barberman? _selectedBarberman; Barberman? _autoBarberman; 
+  Barberman? _selectedBarberman; 
   late DateTime _selectedDate; TimeOfDay? _selectedTime;
-  bool _isLoading = false; bool _submitting = false; bool _isCheckingAvailability = false; String? _availabilityError;
+  bool _submitting = false;
 
   final TextEditingController _custNameCtrl = TextEditingController();
   final TextEditingController _custPhoneCtrl = TextEditingController();
   String _paymentMethod = 'cash'; 
 
   int get _totalPrice => _selectedServices.fold(0, (p, s) => p + s.price.toInt()) + (_isPremiumChoice ? widget.barbershop.barberSelectionFee : 0);
-  int get _totalDuration => _selectedServices.fold(0, (p, s) => p + s.defaultDuration);
 
   @override void initState() { super.initState(); _selectedDate = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day); _initData(); }
 
   Future<void> _initData() async {
-    setState(() => _isLoading = true);
-    try { final all = await _bs.getAllServices(); final shopSet = widget.barbershop.services.toSet(); setState(() => _availableServices = all.where((s) => shopSet.contains(s.id)).toList()); } finally { if (mounted) setState(() => _isLoading = false); }
+    try { final all = await _bs.getAllServices(); final shopSet = widget.barbershop.services.toSet(); setState(() => _availableServices = all.where((s) => shopSet.contains(s.id)).toList()); } catch (_) {}
   }
 
   void _nextStep() {
@@ -113,6 +111,10 @@ class ManualBookingFormState extends State<ManualBookingForm> {
         'barbershop_id': widget.barbershop.id, 'barberman_id': barberId, 'customer_id': 'MANUAL_${DateTime.now().millisecondsSinceEpoch}', 'customer_name': _custNameCtrl.text.trim(), 'customer_phone': _custPhoneCtrl.text.trim(), 'customer_is_manual': true, 'service_ids': _selectedServices.map((s) => s.id).toList(), 'total_price': _totalPrice, 'booking_time': Timestamp.fromDate(bdt), 'status': 'booked', 'payment_method': _paymentMethod,
       });
       if (mounted) Navigator.pop(context);
-    } catch (e) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"))); } finally { if (mounted) setState(() => _submitting = false); }
+    } catch (e) { 
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"))); 
+    } finally { 
+      if (mounted) setState(() => _submitting = false); 
+    }
   }
 }

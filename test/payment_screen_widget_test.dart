@@ -47,6 +47,11 @@ class FakeQueueService implements QueueServiceContract {
   Future<int> cancelExpiredAwaitingPaymentQueuesForCustomer(
     String customerId,
   ) async => 0;
+
+  @override
+  Future<int> cancelExpiredWaitingQueuesForCustomer(
+    String customerId,
+  ) async => 0;
 }
 
 void main() {

@@ -18,7 +18,11 @@ class SessionService {
       key: _kLastLogin,
       value: DateTime.now().toIso8601String(),
     );
-    if (kDebugMode) debugPrint('Session saved for $uid');
+    
+    // LOG SUCCESS: Konfirmasi penyimpanan ke Secure Storage
+    debugPrint('SECURE STORAGE: Session persisted successfully!');
+    debugPrint('   - Saved UID: $uid');
+    if (idToken != null) debugPrint('   - ID Token stored');
   }
 
   Future<Map<String, String?>> getSession() async {

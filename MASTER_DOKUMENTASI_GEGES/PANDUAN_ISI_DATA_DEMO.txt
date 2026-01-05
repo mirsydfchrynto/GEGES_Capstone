@@ -1,0 +1,31 @@
+
+PANDUAN ISI DATA (SEEDING) AGAR DEMO TERLIHAT BAGUS
+===================================================
+
+Sebelum maju ke depan juri/dosen, pastikan lakukan ini:
+
+1. LOGIN SEBAGAI ADMIN:
+   - Buka menu 'Karyawan'.
+   - Tambahkan minimal 3 Barberman:
+     * Nama: 'Budi' (Rating 4.8)
+     * Nama: 'Andi' (Rating 4.5)
+     * Nama: 'Siti' (Rating 5.0 - untuk demo fairness)
+
+2. BUKA MENU 'LAYANAN':
+   - Pastikan ada 3 layanan dasar:
+     * Haircut (Rp 40.000 - 45 menit)
+     * Shaving (Rp 20.000 - 15 menit)
+     * Hair Color (Rp 100.000 - 90 menit)
+
+3. SIMULASI BOOKING (PENTING!):
+   - Gunakan HP lain (atau mode manual admin) untuk membuat 2 pesanan:
+     * Satu pesanan 'Ongoing' (Sedang dicukur).
+     * Satu pesanan 'Booked' (Akan datang).
+   - Tujuannya: Agar Dashboard Admin terlihat ada grafik/angka, tidak 0 semua.
+
+4. CEK PENGATURAN TOKO:
+   - Isi 'Special Order Fee' dengan angka 5000.
+   - Isi Link Sosmed (asal saja) agar icon di Booking Detail menyala.
+
+Data yang lengkap membuat aplikasi terlihat 10x lebih profesional.
+

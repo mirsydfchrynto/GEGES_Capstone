@@ -28,12 +28,27 @@ class _QueueCardState extends State<QueueCard> {
   String _customerName = 'Loading...'; String _barberName = 'Loading...'; bool _isProcessing = false;
 
   @override void initState() { super.initState(); _loadDetails(); }
-  @override void didUpdateWidget(QueueCard old) { super.didUpdateWidget(old); if (old.queue.id != widget.queue.id) _loadDetails(); }
+  @override 
+  void didUpdateWidget(QueueCard old) { 
+    super.didUpdateWidget(old); 
+    if (old.queue.id != widget.queue.id) {
+      _loadDetails();
+    }
+  }
 
   Future<void> _loadDetails() async {
-    if (widget.queue.customerName != null && widget.queue.customerName!.isNotEmpty) setState(() => _customerName = widget.queue.customerName!);
-    else { final user = await _authService.getUserById(widget.queue.customerId); if (mounted) setState(() => _customerName = user?.name ?? 'Pelanggan'); }
-    final barber = await _barbershopService.getBarbermanById(widget.queue.barbermanId); if (mounted) setState(() => _barberName = barber?.name ?? 'Barber Unknown');
+    if (widget.queue.customerName != null && widget.queue.customerName!.isNotEmpty) {
+      setState(() => _customerName = widget.queue.customerName!);
+    } else { 
+      final user = await _authService.getUserById(widget.queue.customerId); 
+      if (mounted) {
+        setState(() => _customerName = user?.name ?? 'Pelanggan');
+      }
+    }
+    final barber = await _barbershopService.getBarbermanById(widget.queue.barbermanId); 
+    if (mounted) {
+      setState(() => _barberName = barber?.name ?? 'Barber Unknown');
+    }
   }
 
   @override Widget build(BuildContext context) {
@@ -45,8 +60,11 @@ class _QueueCardState extends State<QueueCard> {
     
     BoxBorder? border;
     if (q.status == QueueStatus.booked && isToday) {
-      if (diff < -10) border = Border.all(color: kRedAlert, width: 2);
-      else if (diff <= 15) border = Border.all(color: kYellowWarning, width: 2);
+      if (diff < -10) {
+        border = Border.all(color: kRedAlert, width: 2);
+      } else if (diff <= 15) {
+        border = Border.all(color: kYellowWarning, width: 2);
+      }
     }
 
     return Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: kDarkSurface, borderRadius: BorderRadius.circular(16), border: border), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -71,10 +89,21 @@ class _QueueCardState extends State<QueueCard> {
   }
 
   Widget _buildAction(Queue q, bool isToday) {
-    onTap(FutureOr<void> Function()? f) async { if (f == null || _isProcessing) return; setState(() => _isProcessing = true); await f(); if (mounted) setState(() => _isProcessing = false); }
-    if (q.status == QueueStatus.waiting) return ElevatedButton(onPressed: () => onTap(widget.onConfirmBooking), style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black), child: const Text('KONFIRMASI'));
-    if (q.status == QueueStatus.booked) return ElevatedButton(onPressed: isToday ? () => onTap(widget.onStartService) : null, style: ElevatedButton.styleFrom(backgroundColor: kGreenSuccess, foregroundColor: Colors.white, disabledBackgroundColor: Colors.grey[800]), child: Text(isToday ? 'MULAI' : 'HARI LAIN'));
-    if (q.status == QueueStatus.ongoing) return ElevatedButton(onPressed: () => onTap(widget.onFinishService), style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black), child: const Text('SELESAI'));
+    onTap(FutureOr<void> Function()? f) async { 
+      if (f == null || _isProcessing) return; 
+      setState(() => _isProcessing = true); 
+      await f(); 
+      if (mounted) setState(() => _isProcessing = false); 
+    }
+    if (q.status == QueueStatus.waiting) {
+      return ElevatedButton(onPressed: () => onTap(widget.onConfirmBooking), style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black), child: const Text('KONFIRMASI'));
+    }
+    if (q.status == QueueStatus.booked) {
+      return ElevatedButton(onPressed: isToday ? () => onTap(widget.onStartService) : null, style: ElevatedButton.styleFrom(backgroundColor: kGreenSuccess, foregroundColor: Colors.white, disabledBackgroundColor: Colors.grey[800]), child: Text(isToday ? 'MULAI' : 'HARI LAIN'));
+    }
+    if (q.status == QueueStatus.ongoing) {
+      return ElevatedButton(onPressed: () => onTap(widget.onFinishService), style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black), child: const Text('SELESAI'));
+    }
     return const SizedBox.shrink();
   }
 }

@@ -101,7 +101,7 @@ void main() {
 
     // 6. FINAL VERIFICATION
     expect(find.text('DIBATALKAN'), findsOneWidget);
-    expect(find.text('INFORMASI REFUND'), findsOneWidget);
+    expect(find.text('INFORMASI PEMBATALAN / REFUND'), findsOneWidget);
     expect(find.text('Alasan: Refund disetujui'), findsOneWidget);
     expect(find.text('Bukti Refund:'), findsOneWidget);
     

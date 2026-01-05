@@ -14,13 +14,14 @@ import 'package:geges_smartbarber/screens/customer/notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final BarbershopService? barbershopService;
-  const HomeScreen({super.key, this.barbershopService});
+  final LocationService? locationService;
+  const HomeScreen({super.key, this.barbershopService, this.locationService});
   @override State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   late final BarbershopService _barbershopService;
-  final LocationService _locationService = LocationService();
+  late final LocationService _locationService;
   final PageController _pageController = PageController();
   final TextEditingController _searchController = TextEditingController();
   static const Color kBrownAccent = Color(0xFFC3A47B);
@@ -40,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override void initState() {
     super.initState();
     _barbershopService = widget.barbershopService ?? BarbershopService();
+    _locationService = widget.locationService ?? LocationService();
     _barbershopFuture = _barbershopService.getAllBarbershops();
     _updateLocation();
     _fetchServiceNames();
@@ -90,16 +92,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBarbershopCard(BuildContext context, Barbershop shop) {
+    // FILTER LOGIC: Hanya tampilkan service yang ada di map _serviceNames (valid)
+    final validServices = shop.services.where((id) => _serviceNames.containsKey(id)).toList();
+
     return GestureDetector(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => BarbershopDetailScreen(barbershop: shop))), child: Container(margin: const EdgeInsets.only(bottom: 20.0), decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(20)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(20)), child: SizedBox(height: 180, width: double.infinity, child: _buildImage(shop.imageUrl))),
       Padding(padding: const EdgeInsets.all(20.0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Expanded(child: Text(shop.name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)), const SizedBox(width: 16), Row(children: [const Icon(Icons.access_time, color: kBrownAccent, size: 18), const SizedBox(width: 6), Text("${shop.openHour}:00 - ${shop.closeHour}:00", style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold))])]),
         const SizedBox(height: 8), Text(shop.addres, style: const TextStyle(color: Colors.white70, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 16),
+        // RENDER TAGS
         Wrap(
           spacing: 8.0,
           runSpacing: 8.0,
-          children: shop.services.map((id) => _buildTagChip(id)).toList(),
+          children: validServices.map((id) => _buildTagChip(id)).toList(),
         ),
         const SizedBox(height: 20), 
         ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => BarbershopDetailScreen(barbershop: shop))), style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 55), backgroundColor: kBrownAccent, foregroundColor: Colors.black), child: const Text('Book Now', style: TextStyle(fontWeight: FontWeight.bold)))
@@ -110,9 +116,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildImage(String path) => path.startsWith('http') ? CachedNetworkImage(imageUrl: path, fit: BoxFit.cover, placeholder: (c, u) => Container(color: kDarkGrey), errorWidget: (c, u, e) => Container(color: kDarkGrey, child: const Icon(Icons.broken_image, color: Colors.white54, size: 48))) : Image.asset(path, fit: BoxFit.cover, errorBuilder: (c, e, s) => Container(color: kDarkGrey, child: const Icon(Icons.broken_image, color: Colors.white54, size: 48)));
 
   Widget _buildTagChip(String id) {
-    final bool loading = _serviceNames.isEmpty;
-    final String label = loading ? "••••••" : (_serviceNames[id] ?? id);
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0), decoration: BoxDecoration(color: loading ? Colors.white10 : Colors.grey.shade800, borderRadius: BorderRadius.circular(30.0)), child: Text(label, style: TextStyle(color: loading ? Colors.transparent : Colors.white, fontSize: 12)));
+    // Karena kita sudah filter di atas, id pasti ada di map.
+    final String label = _serviceNames[id] ?? id;
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0), decoration: BoxDecoration(color: Colors.grey.shade800, borderRadius: BorderRadius.circular(30.0)), child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)));
   }
 
   Widget _buildHomePageBody() {
@@ -126,7 +132,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSearch(String q) {
     if (_searchResults == null) return const Padding(padding: EdgeInsets.only(top: 40.0), child: Center(child: CircularProgressIndicator(color: kBrownAccent)));
     if (_searchResults!.isEmpty) return Padding(padding: const EdgeInsets.only(top: 40.0), child: Center(child: Column(children: [const Icon(Icons.search_off, size: 64, color: Colors.white24), const SizedBox(height: 16), Text('Tidak ditemukan hasil untuk "$q"', style: const TextStyle(color: Colors.white54, fontSize: 16))])));
-    return Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Found ${_searchResults!.length} results", style: const TextStyle(color: kBrownAccent, fontWeight: FontWeight.bold)), const SizedBox(height: 16), ..._searchResults!.map((shop) => _buildBarbershopCard(context, shop))]));
+    final count = _searchResults!.length;
+    final resultText = count == 1 ? "Found 1 result" : "Found $count results";
+    return Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(resultText, style: const TextStyle(color: kBrownAccent, fontWeight: FontWeight.bold)), const SizedBox(height: 16), ..._searchResults!.map((shop) => _buildBarbershopCard(context, shop))]));
   }
 
   Widget _buildTitle(String t) => Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 35, fontFamily: 'Poppins', fontWeight: FontWeight.w800, height: 0.7)));

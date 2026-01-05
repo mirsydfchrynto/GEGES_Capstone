@@ -24,6 +24,7 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
   late TextEditingController _nameController;
   late TextEditingController _addressController;
   late TextEditingController _googleMapsController;
+  late TextEditingController _barberSelectionFeeController;
   late TextEditingController _openHourController;
   late TextEditingController _closeHourController;
 
@@ -50,6 +51,7 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
     _nameController = TextEditingController(text: s.name);
     _addressController = TextEditingController(text: s.addres);
     _googleMapsController = TextEditingController(text: s.googleMapsUrl ?? '');
+    _barberSelectionFeeController = TextEditingController(text: s.barberSelectionFee.toString());
     _openHourController = TextEditingController(text: s.openHour.toString());
     _closeHourController = TextEditingController(text: s.closeHour.toString());
     
@@ -67,6 +69,7 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
     _nameController.dispose();
     _addressController.dispose();
     _googleMapsController.dispose();
+    _barberSelectionFeeController.dispose();
     _openHourController.dispose();
     _closeHourController.dispose();
     _instagramController.dispose();
@@ -97,6 +100,7 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
         'name': _nameController.text.trim(),
         'address': _addressController.text.trim(),
         'google_maps_url': _googleMapsController.text.trim(),
+        'barber_selection_fee': int.tryParse(_barberSelectionFeeController.text) ?? 5000,
         'open_hour': int.tryParse(_openHourController.text) ?? 9,
         'close_hour': int.tryParse(_closeHourController.text) ?? 21,
         'instagram_url': _instagramController.text.trim(),
@@ -146,6 +150,8 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
               _buildTextField(_addressController, 'Address Description', Icons.location_on_outlined, maxLines: 2, validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null),
               const SizedBox(height: 15),
               _buildTextField(_googleMapsController, 'Google Maps URL (Link)', Icons.map_outlined),
+              const SizedBox(height: 15),
+              _buildTextField(_barberSelectionFeeController, 'Barber Selection Fee (Special Order)', Icons.payments_outlined, keyboardType: TextInputType.number),
               
               const SizedBox(height: 30),
               _buildSectionTitle('Working Hours (24h format)'),

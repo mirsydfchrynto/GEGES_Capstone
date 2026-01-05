@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
-import 'package:geges_smartbarber/services/auth_service.dart';
-import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/widgets/admin/queue_card.dart';
 import 'package:geges_smartbarber/widgets/utility/loading_widget.dart';
 

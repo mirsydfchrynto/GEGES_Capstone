@@ -98,7 +98,15 @@ class _BarberManagementScreenState extends State<BarberManagementScreen> with Si
 
   Future<void> _showBulkOffDialog() async {
     final day = await showDialog<DayOfWeek?>(context: context, builder: (c) { DayOfWeek? sel; return StatefulBuilder(builder: (ctx, setS) => AlertDialog(backgroundColor: kDarkSurface, title: const Text('Set Libur Mingguan Massal', style: TextStyle(color: Colors.white)), content: Column(mainAxisSize: MainAxisSize.min, children: [const Text('Pilih hari untuk dijadikan hari libur bagi SEMUA karyawan aktif.', style: TextStyle(color: Colors.white70)), const SizedBox(height: 16), DropdownButton<DayOfWeek>(value: sel, dropdownColor: kDarkSurface, hint: const Text('Pilih Hari', style: TextStyle(color: Colors.white54)), items: DayOfWeek.values.map((d) => DropdownMenuItem(value: d, child: Text(d.name.toUpperCase(), style: const TextStyle(color: Colors.white)))).toList(), onChanged: (v) => setS(() => sel = v))]), actions: [TextButton(onPressed: () => Navigator.pop(c), child: const Text('Batal')), ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent), onPressed: () => Navigator.pop(c, sel), child: const Text('Terapkan', style: TextStyle(color: Colors.black)))])); });
-    if (day != null) { await _svc.applyOffDayToAll(widget.barbershopId, day.name); if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Berhasil set libur ${day.name} untuk semua barber'), backgroundColor: Colors.green)); }
+    
+    if (day == null) return;
+
+    await _svc.bulkSetOffDay(widget.barbershopId, day);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('Hari libur diterapkan ke semua barber'),
+      action: SnackBarAction(label: 'Undo', onPressed: () => _svc.undoBulkSetOffDay(widget.barbershopId, day)),
+    ));
   }
 }
 
@@ -112,10 +120,21 @@ class _ScheduleEditorState extends State<_ScheduleEditor> {
   late List<DayOfWeek> _offDays; late List<String> _specificOffDays; late int _annualLeave;
   @override void initState() { super.initState(); _offDays = List.from(widget.barber.offDays ?? []); _specificOffDays = List.from(widget.barber.specificOffDays); _annualLeave = widget.barber.annualLeaveDays; }
   Future<void> _save() async { await widget.service.saveBarberman(Barberman(id: widget.barber.id, name: widget.barber.name, barbershopId: widget.barber.barbershopId, imageUrl: widget.barber.imageUrl, avgDuration: widget.barber.avgDuration, rating: widget.barber.rating, isActive: widget.barber.isActive, onLeave: widget.barber.onLeave, offDays: _offDays, specificOffDays: _specificOffDays, annualLeaveDays: _annualLeave)); if (mounted) Navigator.pop(context); }
-  void _toggleDay(DayOfWeek day) => setState(() { if (_offDays.contains(day)) _offDays.remove(day); else _offDays.add(day); });
+  void _toggleDay(DayOfWeek day) => setState(() {
+        if (_offDays.contains(day)) {
+          _offDays.remove(day);
+        } else {
+          _offDays.add(day);
+        }
+      });
   Future<void> _pickDate() async {
     final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)), builder: (context, child) => Theme(data: ThemeData.dark().copyWith(colorScheme: const ColorScheme.dark(primary: Color(0xFFC3A47B), onPrimary: Colors.black, surface: Color(0xFF1E1E1E))), child: child!));
-    if (picked != null) { final str = DateFormat('yyyy-MM-dd').format(picked); if (!_specificOffDays.contains(str)) setState(() => _specificOffDays.add(str)); }
+    if (picked != null) {
+      final str = DateFormat('yyyy-MM-dd').format(picked);
+      if (!_specificOffDays.contains(str)) {
+        setState(() => _specificOffDays.add(str));
+      }
+    }
   }
   @override Widget build(BuildContext context) { return Container(height: MediaQuery.of(context).size.height * 0.85, padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Jadwal & Cuti', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)), TextButton(onPressed: _save, child: const Text('SIMPAN', style: TextStyle(color: Color(0xFFC3A47B), fontWeight: FontWeight.bold)))]), const Divider(color: Colors.white24), const SizedBox(height: 10), const Text('1. Libur Mingguan (Rutin)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), const SizedBox(height: 8), Wrap(spacing: 8, runSpacing: 8, children: DayOfWeek.values.map((d) { final isSel = _offDays.contains(d); return FilterChip(label: Text(d.name.toUpperCase().substring(0, 3)), selected: isSel, onSelected: (_) => _toggleDay(d), selectedColor: const Color(0xFFC3A47B), checkmarkColor: Colors.black, labelStyle: TextStyle(color: isSel ? Colors.black : Colors.white), backgroundColor: Colors.white10); }).toList()), const SizedBox(height: 24), Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('2. Cuti / Libur Khusus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), IconButton(onPressed: _pickDate, icon: const Icon(Icons.add_circle, color: Color(0xFFC3A47B)))]), const Text('Tanggal spesifik dimana barber ini tidak bisa dibooking.', style: TextStyle(color: Colors.white54, fontSize: 12)), const SizedBox(height: 8), Expanded(child: _specificOffDays.isEmpty ? const Center(child: Text('Tidak ada jadwal cuti khusus', style: TextStyle(color: Colors.white24))) : ListView.builder(itemCount: _specificOffDays.length, itemBuilder: (c, i) { final dateStr = _specificOffDays[i]; return ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.event, color: Colors.white70), title: Text(dateStr, style: const TextStyle(color: Colors.white)), trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.redAccent), onPressed: () => setState(() => _specificOffDays.removeAt(i)))); })), const SizedBox(height: 16), const Text('3. Kuota Cuti Tahunan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), const SizedBox(height: 8), Row(children: [IconButton(onPressed: () => setState(() => _annualLeave > 0 ? _annualLeave-- : null), icon: const Icon(Icons.remove_circle_outline, color: Colors.white54)), Text('$_annualLeave Hari', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)), IconButton(onPressed: () => setState(() => _annualLeave++), icon: const Icon(Icons.add_circle_outline, color: Colors.white54))])])); }
 }

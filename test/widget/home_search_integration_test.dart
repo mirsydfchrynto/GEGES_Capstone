@@ -3,7 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/screens/customer/home_screen.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
+import 'package:geges_smartbarber/services/location_service.dart';
 import 'package:network_image_mock/network_image_mock.dart';
+
+class MockLocationService extends LocationService {
+  @override
+  Future<String?> getCurrentLocationAddress() async {
+    return 'Test Location, Indonesia';
+  }
+}
 
 void main() {
   late FakeFirebaseFirestore fakeFs;
@@ -35,9 +43,13 @@ void main() {
     mockNetworkImagesFor(() async {
       // Inject real service with fake firestore to test logic flow
       final service = BarbershopService(firestore: fakeFs);
+      final mockLoc = MockLocationService();
       
       await tester.pumpWidget(MaterialApp(
-        home: HomeScreen(barbershopService: service),
+        home: HomeScreen(
+          barbershopService: service,
+          locationService: mockLoc,
+        ),
       ));
       
       // Initial wait
@@ -51,13 +63,11 @@ void main() {
       // 2. Search "febrian" (lowercase)
       final searchField = find.byType(TextField);
       await tester.enterText(searchField, 'febrian');
-      await tester.pump(); // Trigger setState(_isSearching = true)
-
-      // Verify loading state logic (in test mode debounce is 0, so likely too fast to catch, but we verify result) 
       
-      // Wait for async search
-      await tester.pump(); 
-      await tester.pump(const Duration(milliseconds: 100)); // Allow microtasks
+      // Advance time for debounce and search result processing
+      for(int i=0; i<5; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
 
       // 3. Verify Result
       expect(find.text('Found 1 result'), findsOneWidget);
@@ -66,8 +76,9 @@ void main() {
 
       // 4. Search "slawi" (address)
       await tester.enterText(searchField, 'slawi');
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      for(int i=0; i<5; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
 
       // 5. Verify Result
       expect(find.text('Found 1 result'), findsOneWidget);
@@ -76,7 +87,7 @@ void main() {
 
       // 6. Clear Search
       await tester.tap(find.byIcon(Icons.clear));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.pump();
 
       // Verify Back to Home

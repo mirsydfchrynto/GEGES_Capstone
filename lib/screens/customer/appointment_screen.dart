@@ -52,8 +52,10 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     setState(() { _busySlots = []; _isFetchingSlots = true; });
     try {
       List<DateTimeRange> slots = [];
-      if (_isPremiumChoice && _selectedBarberman != null) slots = await _queueService.getBarberBusyTimeRanges(_selectedBarberman!.id, _selectedDate);
-      else if (!_isPremiumChoice) slots = await _queueService.getShopBusySlots(barbershopId: widget.barbershop.id, date: _selectedDate);
+      if (_isPremiumChoice && _selectedBarberman != null) {
+        slots = await _queueService.getBarberBusyTimeRanges(_selectedBarberman!.id, _selectedDate);
+      // ignore: curly_braces_in_flow_control_structures
+      } else if (!_isPremiumChoice) slots = await _queueService.getShopBusySlots(barbershopId: widget.barbershop.id, date: _selectedDate);
       if (mounted) setState(() { _busySlots = slots; _isFetchingSlots = false; });
     } catch (e) { if (mounted) setState(() => _isFetchingSlots = false); }
   }
@@ -82,12 +84,36 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     } catch (e) { setState(() => _availabilityError = e.toString()); } finally { setState(() => _isCheckingAvailability = false); }
   }
 
-  void _nextStep() { if (_currentStep < 2) { if (_currentStep == 0 && _selectedServices.isEmpty) { _showSnack("Pilih minimal satu layanan"); return; } if (_currentStep == 1 && _isPremiumChoice && _selectedBarberman == null) { _showSnack("Silakan pilih barber favorit Anda"); return; } setState(() => _currentStep++); if (_currentStep == 2) _fetchBusySlots(); } }
-  void _prevStep() { if (_currentStep > 0) setState(() => _currentStep--); }
+  void _nextStep() {
+    if (_currentStep < 2) {
+      if (_currentStep == 0 && _selectedServices.isEmpty) {
+        _showSnack("Pilih minimal satu layanan");
+        return;
+      }
+      if (_currentStep == 1 && _isPremiumChoice && _selectedBarberman == null) {
+        _showSnack("Silakan pilih barber favorit Anda");
+        return;
+      }
+      setState(() => _currentStep++);
+      if (_currentStep == 2) {
+        _fetchBusySlots();
+      }
+    }
+  }
+
+  void _prevStep() {
+    if (_currentStep > 0) {
+      setState(() => _currentStep--);
+    }
+  }
   void _showSnack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   @override Widget build(BuildContext context) {
-    return PopScope(canPop: false, onPopInvokedWithResult: (didPop, result) { if (didPop) return; if (_currentStep > 0) _prevStep(); else Navigator.pop(context); },
+    return PopScope(canPop: false, onPopInvokedWithResult: (didPop, result) { if (didPop) return; if (_currentStep > 0) {
+      _prevStep();
+    } else {
+      Navigator.pop(context);
+    } },
       child: Scaffold(backgroundColor: kSurface, appBar: AppBar(backgroundColor: kSurface, title: Text(widget.barbershop.name, style: const TextStyle(fontWeight: FontWeight.bold)), elevation: 0, leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new, size: 20), onPressed: () => _currentStep > 0 ? _prevStep() : Navigator.pop(context))),
         body: Column(children: [_buildProgressHeader(), Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: _buildCurrentStepView())), _buildBottomSummary()])));
   }
@@ -142,8 +168,14 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
   Widget _buildDateRow() {
     return SizedBox(height: 90, child: ListView.builder(scrollDirection: Axis.horizontal, itemCount: 14, itemBuilder: (context, i) {
-      final date = DateTime.now().add(Duration(days: i)); bool isOpen = _isShopOpenOn(date);
-      if (isOpen && _isPremiumChoice && _selectedBarberman != null) { final b = _selectedBarberman!; final dayName = DateFormat('EEEE', 'en_US').format(date).toLowerCase(); if (b.offDays != null && b.offDays!.any((d) => d.name == dayName)) isOpen = false; if (b.specificOffDays.contains(DateFormat('yyyy-MM-dd').format(date))) isOpen = false; }
+      final date = DateTime.now().add(Duration(days: i)); 
+      bool isOpen = _isShopOpenOn(date);
+      if (isOpen && _isPremiumChoice && _selectedBarberman != null) { 
+        final b = _selectedBarberman!; 
+        final dayName = DateFormat('EEEE', 'en_US').format(date).toLowerCase(); 
+        if (b.offDays != null && b.offDays!.any((d) => d.name == dayName)) isOpen = false; 
+        if (b.specificOffDays.contains(DateFormat('yyyy-MM-dd').format(date))) isOpen = false; 
+      }
       bool isSelected = _selectedDate.day == date.day && _selectedDate.month == date.month;
       return Padding(padding: const EdgeInsets.only(right: 10), child: InkWell(onTap: isOpen ? () { setState(() { _selectedDate = date; _selectedTime = null; _availabilityError = null; }); _fetchBusySlots(); } : null, child: Container(width: 65, decoration: BoxDecoration(color: isSelected ? kBrownAccent : (isOpen ? kCardBg : Colors.black26), borderRadius: BorderRadius.circular(16)), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(DateFormat('EEE').format(date), style: TextStyle(color: isSelected ? Colors.black : Colors.white54, fontSize: 12)), const SizedBox(height: 4), Text("${date.day}", style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), if (!isOpen) const Text("LIBUR", style: TextStyle(color: Colors.redAccent, fontSize: 8, fontWeight: FontWeight.bold))]))));
     }));

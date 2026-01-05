@@ -28,7 +28,7 @@ void main() {
         });
 
         // Create booking with awaiting_payment
-        final bookingRef = await fs.collection('bookings').add({
+        final bookingRef = await fs.collection('queues').add({
           'barbershop_id': 'shop1',
           'customer_id': 'u1',
           'barberman_id': 'b1',
@@ -46,7 +46,7 @@ void main() {
 
         // Submit payment proof (simulate customer)
         // Use direct update to simulate proof upload because submitPaymentProof expects FirebaseAuth user ID in real app
-        await fs.collection('bookings').doc(bookingId).update({
+        await fs.collection('queues').doc(bookingId).update({
           'payment': {
             'proofUrl': 'https://example.com/proof.png',
             'proofUploadedAt': FieldValue.serverTimestamp(),
@@ -60,7 +60,7 @@ void main() {
         // We will mimic that by calling the service method (which uses Firestore.instance, but our fake fs is not the global instance). To keep tests deterministic, use direct update to simulate verification flow.
 
         // Simulate admin verifying payment
-        await fs.collection('bookings').doc(bookingId).update({
+        await fs.collection('queues').doc(bookingId).update({
           'payment.verificationStatus': 'accepted',
           'payment.verificationAcceptedAt': FieldValue.serverTimestamp(),
           'payment.verificationAcceptedBy': 'admin1',
@@ -68,25 +68,25 @@ void main() {
         });
 
         // Check transition to booked
-        final after = await fs.collection('bookings').doc(bookingId).get();
+        final after = await fs.collection('queues').doc(bookingId).get();
         expect(after.data()?['status'], 'booked');
         expect(after.data()?['payment']['verificationStatus'], 'accepted');
 
         // Start service (ongoing)
-        await fs.collection('bookings').doc(bookingId).update({
+        await fs.collection('queues').doc(bookingId).update({
           'status': 'ongoing',
           'start_time': FieldValue.serverTimestamp(),
         });
 
-        final mid = await fs.collection('bookings').doc(bookingId).get();
+        final mid = await fs.collection('queues').doc(bookingId).get();
         expect(mid.data()?['status'], 'ongoing');
 
         // Finish service
-        await fs.collection('bookings').doc(bookingId).update({
+        await fs.collection('queues').doc(bookingId).update({
           'status': 'served',
           'finish_time': FieldValue.serverTimestamp(),
         });
-        final finished = await fs.collection('bookings').doc(bookingId).get();
+        final finished = await fs.collection('queues').doc(bookingId).get();
         expect(finished.data()?['status'], 'served');
       },
     );
@@ -95,7 +95,7 @@ void main() {
       'adminRefundBooking does not set is_refunded for unpaid booking',
       () async {
         // booking without payment
-        final ref = await fs.collection('bookings').add({
+        final ref = await fs.collection('queues').add({
           'barbershop_id': 'shop1',
           'customer_id': 'u2',
           'status': 'waiting',
@@ -108,7 +108,7 @@ void main() {
           reason: 'test',
           adminUid: 'admin1',
         );
-        final after = await fs.collection('bookings').doc(ref.id).get();
+        final after = await fs.collection('queues').doc(ref.id).get();
         final data = after.data()!;
 
         expect(data['status'], 'cancelled');

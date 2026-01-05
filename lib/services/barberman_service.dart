@@ -1,5 +1,6 @@
 // lib/services/barberman_service.dart
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // Import model Barberman yang sudah Anda sediakan
@@ -30,7 +31,7 @@ class BarbermanService {
       return null;
     } catch (e) {
       // ignore: avoid_print
-      print("Error fetching barberman $barbermanId: $e");
+      debugPrint("Error fetching barberman $barbermanId: $e");
       return null;
     }
   }
@@ -78,7 +79,7 @@ class BarbermanService {
       }
     } catch (e) {
       // ignore: avoid_print
-      print("Error saving barberman: $e");
+      debugPrint("Error saving barberman: $e");
       rethrow;
     }
   }
@@ -87,7 +88,7 @@ class BarbermanService {
     try {
       await _firestore.collection(_collection).doc(id).update({'isActive': false});
     } catch (e) {
-      print("Error deleting barberman: $e");
+      debugPrint("Error deleting barberman: $e");
       rethrow;
     }
   }
@@ -95,6 +96,23 @@ class BarbermanService {
   // -----------------------
   // BULK OFF-DAY HELPERS
   // -----------------------
+
+  // Internal cache for undo functionality
+  final Map<String, Map<String, List<String>>> _undoCache = {};
+
+  Future<void> bulkSetOffDay(String barbershopId, DayOfWeek day) async {
+    final dayName = day.name.toLowerCase();
+    final prev = await applyOffDayToAll(barbershopId, dayName);
+    _undoCache[barbershopId] = prev;
+  }
+
+  Future<void> undoBulkSetOffDay(String barbershopId, DayOfWeek day) async {
+    final prev = _undoCache[barbershopId];
+    if (prev != null && prev.isNotEmpty) {
+      await revertOffDayByPrevious(prev);
+      _undoCache.remove(barbershopId);
+    }
+  }
 
   /// Apply an off-day (dayName) to all barbermen in a barbershop.
   /// Returns a map of docId -> previous offDays list so the caller can revert if needed.
@@ -161,7 +179,7 @@ class BarbermanService {
       });
     } catch (e) {
       // ignore: avoid_print
-      print("Error creating booking request: $e");
+      debugPrint("Error creating booking request: $e");
       rethrow;
     }
   }
@@ -181,7 +199,7 @@ class BarbermanService {
       await bookingDoc.update({'status': status});
     } catch (e) {
       // ignore: avoid_print
-      print("Error updating booking status: $e");
+      debugPrint("Error updating booking status: $e");
       rethrow;
     }
   }
@@ -202,7 +220,7 @@ class BarbermanService {
       }
     } catch (e) {
       // ignore: avoid_print
-      print("Error cancelling unpaid bookings: $e");
+      debugPrint("Error cancelling unpaid bookings: $e");
       rethrow;
     }
   }

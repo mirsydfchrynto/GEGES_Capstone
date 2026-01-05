@@ -25,6 +25,11 @@ class _NoOpQueueService implements QueueServiceContract {
   ) async => 0;
 
   @override
+  Future<int> cancelExpiredWaitingQueuesForCustomer(
+    String customerId,
+  ) async => 0;
+
+  @override
   Future<void> cancelQueue(
     String queueId, {
     String reason = '',

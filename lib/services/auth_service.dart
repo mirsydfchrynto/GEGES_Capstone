@@ -55,14 +55,29 @@ class AuthService implements AuthServiceBase {
 
       final data = doc.data() as Map<String, dynamic>;
       final role = (data['role'] as String?) ?? 'customer';
-      // Persist session info (uid & token) for better UX across app restarts
+      
+      // LOG SUCCESS: Tampilkan di konsol saat berhasil login
+      debugPrint('AUTH SUCCESS: User logged in!');
+      debugPrint('   - UID: $uid');
+      debugPrint('   - Role: $role');
+
+      // Log teknis untuk validasi token JWT
+      debugPrint("DEBUG AUTHENTICATION");
+      debugPrint("User UID: $uid");
       try {
         final current = _auth.currentUser;
         if (current != null) {
           final token = await current.getIdToken();
+          debugPrint("Firebase ID Token (JWT):");
+          debugPrint(token);
+          
+          // Persist session info (uid & token)
           await SessionService().saveSession(uid: uid, idToken: token);
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint("Error retrieving token: $e");
+      }
+      debugPrint("END DEBUG AUTHENTICATION");
 
       // Record login audit (non-blocking)
       try {
@@ -122,6 +137,12 @@ class AuthService implements AuthServiceBase {
 
       // Update display name pada Firebase Auth
       await userCredential.user?.updateDisplayName(name);
+
+      // LOG SUCCESS: Tampilkan di konsol saat registrasi berhasil
+      debugPrint('REGISTER SUCCESS: New customer created!');
+      debugPrint('   - Name: $name');
+      debugPrint('   - Email: $email');
+      debugPrint('   - UID: $uid');
 
       // Buat dokumen user di Firestore
       await _firestore.collection('users').doc(uid).set({

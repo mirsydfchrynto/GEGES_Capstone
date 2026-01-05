@@ -46,6 +46,7 @@ void main() {
   late MockCollectionReference<Map<String, dynamic>> mockColl;
   late MockDocumentReference<Map<String, dynamic>> mockDocRef;
   late MockDocumentSnapshot<Map<String, dynamic>> mockDocSnap;
+  late MockCollectionReference<Map<String, dynamic>> mockNotifColl;
 
   setUp(() {
     mockFs = MockFirebaseFirestore();
@@ -53,9 +54,14 @@ void main() {
     mockColl = MockCollectionReference<Map<String, dynamic>>();
     mockDocRef = MockDocumentReference<Map<String, dynamic>>();
     mockDocSnap = MockDocumentSnapshot<Map<String, dynamic>>();
+    mockNotifColl = MockCollectionReference<Map<String, dynamic>>();
 
     when(mockFs.collection('barbershops')).thenReturn(mockColl);
     when(mockColl.doc(any)).thenReturn(mockDocRef);
+    
+    // Default stub for notifications
+    when(mockFs.collection('notifications')).thenReturn(mockNotifColl);
+    when(mockNotifColl.add(any)).thenAnswer((_) async => MockDocumentReference());
   });
 
   test('returns default when barbershop doc missing or has no value', () async {
@@ -139,7 +145,15 @@ void main() {
       when(mockFs.collection('barbershops')).thenReturn(mockBsColl);
       when(mockBsColl.doc('shop_window')).thenReturn(mockBsRef);
       when(mockBsRef.get()).thenAnswer((_) async => mockBsSnap);
+      when(mockBsSnap.exists).thenReturn(true);
       when(mockBsSnap.data()).thenReturn({'payment_window_minutes': 13});
+
+      // Stub direct get calls for barbershops collection
+      when(mockColl.doc(any)).thenReturn(mockBsRef);
+      // Ensure queues doc get works for resolveQueueDocRef
+      when(mockDocRef.get()).thenAnswer((_) async => mockDocSnap);
+      when(mockDocSnap.exists).thenReturn(true);
+      when(mockDocSnap.data()).thenReturn({'barbershop_id': 'shop_override'});
 
       // Simulate runTransaction to call the callback and return our mocked ref
       when(
@@ -150,7 +164,6 @@ void main() {
         ),
       ).thenAnswer((inv) async {
         final cb = inv.positionalArguments[0] as dynamic;
-        // Cast the mockBsSnap to the expected type
         final tx = FakeTx(mockBsSnap as DocumentSnapshot<Map<String, dynamic>>);
         await cb(tx);
         return mockQueueRef;
@@ -184,8 +197,6 @@ void main() {
     },
   );
 
-  // Minimal mock Transaction for runTransaction callbacks
-
   test(
     'adminConfirmRequest uses per-shop window when setting payment_deadline',
     () async {
@@ -197,7 +208,8 @@ void main() {
       when(mockFs.collection('queues')).thenReturn(mockQueuesColl);
       when(mockQueuesColl.doc('q_1')).thenReturn(mockQueueRef);
       when(mockQueueRef.get()).thenAnswer((_) async => mockQueueSnap);
-      when(mockQueueSnap.data()).thenReturn({'barbershop_id': 'shop_override'});
+      when(mockQueueSnap.exists).thenReturn(true);
+      when(mockQueueSnap.data()).thenReturn({'barbershop_id': 'shop_override', 'customer_id': 'c1'});
 
       // Prepare barbershops collection mock (override = 7 minutes)
       final mockBsColl = MockCollectionReference<Map<String, dynamic>>();
@@ -207,6 +219,7 @@ void main() {
       when(mockFs.collection('barbershops')).thenReturn(mockBsColl);
       when(mockBsColl.doc('shop_override')).thenReturn(mockBsRef);
       when(mockBsRef.get()).thenAnswer((_) async => mockBsSnap);
+      when(mockBsSnap.exists).thenReturn(true);
       when(mockBsSnap.data()).thenReturn({'payment_window_minutes': 7});
 
       final svc = QueueService(firestore: mockFs, auth: mockAuth);
