@@ -1,0 +1,182 @@
+# INSTRUKSI LENGKAP PENGEMBANGAN: GEGES SMART BARBER - SUPER ADMIN WEB PORTAL
+# DOKUMEN SPESIFIKASI TEKNIS & INTEGRASI EKOSISTEM
+
+## BAB 1: PENDAHULUAN & LATAR BELAKANG (BIG PICTURE)
+
+Halo Agent. Kita sedang dalam misi besar untuk menyempurnakan ekosistem digital bernama "Geges Smart Barber". Ini bukan sekadar aplikasi booking pangkas rambut biasa; ini adalah **Sistem Multi-Tenant (SaaS)**. Bayangkan ini seperti "GrabFood" atau "Gofood", tapi khusus untuk Barbershop.
+
+### Status Project Saat Ini (Existing Condition)
+Saat ini, kita sudah memiliki **Aplikasi Mobile (Flutter)** yang sudah aktif dan berfungsi. Berikut adalah alur yang sudah berjalan di sisi mobile:
+1.  **Customer** (pengguna biasa) bisa login.
+2.  Customer bisa masuk ke menu "Gabung Mitra" (Register Tenant).
+3.  Mereka mengisi form pendaftaran (Nama Bisnis, Paket Langganan, dll).
+4.  Mereka mengunggah **Bukti Pembayaran** dan Dokumen Pendukung. Karena keterbatasan infrastruktur, gambar ini diunggah bukan ke Cloud Storage, melainkan dikonversi menjadi string **Base64** dan disimpan langsung di dokumen Firestore.
+5.  Setelah submit, status mereka di database menjadi `waiting_proof` atau `pending`.
+
+### Masalah (The Problem)
+Di sinilah kita berhenti. Saat ini, Customer yang sudah mendaftar dan bayar itu "terjebak". Tidak ada sistem yang memproses pendaftaran mereka. Kita belum memiliki "Pintu Belakang" atau Dashboard untuk Super Admin memverifikasi data tersebut. Kita butuh jembatan untuk mengubah status mereka dari "Pendaftar" menjadi "Pemilik Bisnis Resmi".
+
+## BAB 2: TUJUAN & MISI KAMU (THE MISSION)
+
+Tugasmu adalah membangun **Website Super Admin Portal** yang profesional, canggih, dan aman. Website ini adalah "Pusat Komando".
+
+**Tujuan Akhir:**
+Seorang Super Admin harus bisa login ke website ini, melihat daftar orang yang mendaftar, mengecek bukti bayar mereka, dan dengan satu tombol **"APPROVE"**, sistem harus secara otomatis:
+1.  Mendirikan bangunan digital (Dokumen Barbershop).
+2.  Mencetak kunci digital (Akun Login Admin).
+3.  Mengirimkan kunci tersebut ke pemilik lewat notifikasi Mobile App.
+
+## BAB 3: KETERBATASAN TEKNIS & REALITA INFRASTRUKTUR (CRITICAL)
+
+Dengarkan baik-baik bagian ini, karena ini adalah **Hukum Alam** di project ini. Jika kamu melanggarnya, sistem akan gagal total. Kita menggunakan **Firebase Spark Plan (Gratis)**, yang artinya:
+
+### 1. DILARANG KERAS Menggunakan Cloud Functions
+Kita tidak punya backend server-less. Biasanya, logika pembuatan akun user lain dilakukan di backend. Tapi di sini, **TIDAK BISA**.
+*   **Solusi Kamu:** Kamu harus menerapkan pola **"Secondary Firebase App Instance"**.
+*   **Penjelasan:** Di dalam kode React (Frontend), saat Admin klik Approve, kamu harus menginisialisasi *instance* Firebase kedua secara sementara, gunakan instance itu untuk membuat user baru (`createUserWithEmailAndPassword`), ambil UID-nya, lalu hapus instance tersebut. Ini mencegah Admin ter-logout dari akunnya sendiri.
+
+### 2. DILARANG KERAS Menggunakan Firebase Storage
+Kita tidak punya bucket penyimpanan gambar.
+*   **Solusi Kamu:** Semua gambar (Logo Barbershop, Bukti Bayar, Foto Profil) harus dikelola sebagai **String Base64**.
+*   **Perhatian:** Saat menampilkan gambar di website, gunakan tag `<img src="data:image/jpeg;base64,..." />`. Pastikan kamu menangani string yang panjang ini dengan efisien agar browser tidak crash (gunakan *lazy loading* atau optimasi render).
+
+## BAB 4: SPESIFIKASI TEKNOLOGI (THE STACK)
+
+Kamu akan berperan sebagai **Senior Fullstack Engineer**. Gunakan stack berikut:
+*   **Framework:** React (Vite). Cepat, ringan, modern.
+*   **Bahasa:** JavaScript (ES6+).
+*   **State Management:** **Redux Toolkit**. Ini WAJIB. Saya ingin manajemen data (Auth, List Pendaftar, List Tenant) terpusat dan rapi, bukan berserakan di `useState`.
+*   **Styling:** **Tailwind CSS**. Buat tampilan yang *Sleek*, *Dark Mode*, dan *Professional*. Gunakan konsep *Glassmorphism* (efek kaca) untuk dashboard.
+*   **UI Components:**
+    *   Ikon: `lucide-react` (Ikon yang tajam dan modern).
+    *   Animasi: `framer-motion` (Setiap perpindahan halaman atau munculnya modal harus ada animasi halus).
+    *   Notifikasi: `react-hot-toast` (Untuk feedback Sukses/Gagal).
+    *   Forms: `react-hook-form` (Untuk menangani input login dan validasi).
+
+## BAB 5: BLUEPRINT INTEGRASI DATA (THE SOURCE OF TRUTH)
+
+Ini adalah bagian paling krusial. Mobile App kita sudah jadi. Kamu **TIDAK BOLEH** menebak nama field database. Kamu harus mengikuti struktur ini **HURUF DEMI HURUF**. Salah satu huruf saja, aplikasi mobile akan error.
+
+### A. Konfigurasi Firebase (Web)
+Gunakan konfigurasi ini di file `src/lib/firebase.js` kamu:
+```javascript
+const firebaseConfig = {
+  apiKey: "AIzaSyDB2mkhbMiuKnvybfU-fIRhvWXnADEZa5o",
+  authDomain: "geges-smartbarber-project.firebaseapp.com",
+  projectId: "geges-smartbarber-project",
+  storageBucket: "geges-smartbarber-project.firebasestorage.app",
+  messagingSenderId: "51527807075",
+  appId: "1:51527807075:web:4943c3694db47a720a4856",
+  measurementId: "G-PGDQQQMVF8"
+};
+```
+
+### B. Struktur Collection `users` (Model User)
+Saat kamu membuat akun Admin Owner baru, dokumen di Firestore harus persis seperti ini:
+```javascript
+// Path: users/{uid}
+{
+  "name": "Nama Pemilik",
+  "role": "admin_owner",      // JANGAN UBAH STRING INI. Mobile App mendeteksi role ini.
+  "barbershop_id": "shop_123", // Link ke dokumen barbershop baru
+  "phone_number": "0812345678",
+  "photo_base64": "...",       // Base64 string (boleh kosong/null)
+  "favorite_barbershops": []   // Array kosong untuk inisialisasi
+}
+```
+
+### C. Struktur Collection `barbershops` (Model Toko)
+```javascript
+// Path: barbershops/{shop_id}
+{
+  "name": "Geges Barber Cabang 1",
+  "address": "Jl. Mawar No. 1", // PERHATIAN: Di kode Dart mungkin tertulis 'addres', tapi di Firestore JSON gunakan 'address' atau sesuaikan dengan data existing.
+  "rating": 5.0,                // Default rating awal
+  "imageUrl": "...",            // Base64 string gambar utama
+  "gallery_urls": [],           // Array Base64 string untuk galeri
+  "services": [],               // Array ID services
+  "facilities": ["AC", "Wifi"],
+  "isOpen": false,              // Default tutup saat baru dibuat
+  "open_hour": 9,
+  "close_hour": 21,
+  "weekly_holidays": [],        // 0=Senin, 6=Minggu
+  "barber_selection_fee": 5000  // Default fee
+}
+```
+
+### D. Struktur Collection `tenants` (Data Pendaftaran)
+Ini adalah data yang akan kamu BACA (Read Only) untuk verifikasi:
+```javascript
+// Path: tenants/{tenant_id}
+{
+  "business_name": "Nama Bisnis Yang Didaftarkan",
+  "owner_email": "email@pendaftar.com",
+  "owner_uid": "uid_customer_asli",
+  "document_base64": "...", // Dokumen identitas
+  "status": "waiting_proof", // Kamu akan ubah ini jadi 'active'
+  "payment": {
+    "payment_proof_base64": "...", // Bukti transfer
+    "verificationStatus": "pending" // Kamu akan ubah ini jadi 'verified'
+  }
+}
+```
+
+### E. Struktur Collection `notifications` (Komunikasi ke Mobile)
+Ini cara kita memberitahu Customer bahwa mereka diterima.
+```javascript
+// Path: notifications/{doc_id}
+{
+  "user_id": "uid_customer_asli", // Target UID
+  "title": "Pendaftaran Disetujui!",
+  "body": "Selamat! Akun Bisnis Anda telah aktif.\nEmail: email@baru.com\nPassword: password123",
+  "delivered": false,
+  "created_at": serverTimestamp()
+}
+```
+
+## BAB 6: ALUR KERJA LOGIKA "APPROVE" (THE CORE ENGINE)
+
+Saya minta kamu membuat sebuah fungsi khusus (bisa di dalam Service atau Redux Thunk) bernama `approveTenantRegistration`. Fungsi ini harus menjalankan langkah-langkah atomik berikut secara berurutan:
+
+1.  **Validasi Awal:** Pastikan data tenant lengkap.
+2.  **Generate Password:** Buat password acak yang aman (misal 10 karakter alfanumerik).
+3.  **Auth Creation (Secondary App):**
+    *   Inisialisasi `secondaryApp`.
+    *   Create User dengan email pendaftar dan password acak tadi.
+    *   Dapatkan `newUid`.
+    *   Hapus `secondaryApp`.
+4.  **Database Batch Write (Firestore):**
+    *   Buat Doc `barbershops/{newShopId}`.
+    *   Buat Doc `users/{newUid}` dengan role `admin_owner` dan `barbershop_id` yang baru.
+    *   Buat Doc `notifications` ke user lama berisi kredensial baru.
+    *   Update Doc `tenants/{tenantId}` set status `active` dan payment `verified`.
+5.  **Feedback:** Tampilkan notifikasi Sukses di layar Admin.
+
+## BAB 7: INSTRUKSI VISUAL & HALAMAN (UI/UX)
+
+Saya ingin website ini memiliki struktur halaman sebagai berikut:
+
+1.  **Halaman Login:**
+    *   Desain minimalis modern.
+    *   **Security Check:** Setelah login, cek dokumen `users/{uid}`. Jika `role` BUKAN `super_admin`, tolak akses dan logout paksa.
+
+2.  **Dashboard Utama:**
+    *   Sidebar statis di kiri (Logo, Menu: Dashboard, Inbox Pendaftaran, Data Tenant, Logout).
+    *   Konten utama di kanan.
+    *   Tampilkan "Statistik Ringkas" (Total Toko, Total Pendapatan, Menunggu Verifikasi).
+
+3.  **Halaman Inbox Pendaftaran (Registration Request):**
+    *   Tabel daftar pendaftar dengan status `waiting_proof`.
+    *   Tombol "Review" yang membuka **Modal Detail**.
+    *   **Modal Detail:** Menampilkan Foto Bukti Bayar (Base64) dengan jelas. Di sini ada tombol sakral: **"APPROVE & PROVISION"** (Hijau) dan **"REJECT"** (Merah).
+
+## BAB 8: INSTRUKSI FINAL KEPADA AGENT
+
+Agent, saya tidak membatasi jumlah baris kodemu. Jangan menyingkat kode. Berikan saya:
+1.  **Setup Awal:** File `firebase.js` dan konfigurasi `store` (Redux).
+2.  **Logic Service:** File terpisah (misal `src/services/provisioningService.js`) yang berisi logika berat "Secondary App" tadi. Jangan campur ini di UI Component.
+3.  **Komponen UI:** Kode lengkap untuk halaman Dashboard dan Modal Approval.
+
+Pastikan kodemu rapi, memiliki komentar penjelas dalam Bahasa Indonesia/Inggris (opsional), dan siap dijalankan (`npm install` -> `npm run dev`).
+
+Tunjukkan kemampuan terbaikmu. Buatlah sistem ini stabil, aman, dan indah. Selamat bekerja.

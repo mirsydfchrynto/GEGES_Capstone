@@ -35,11 +35,15 @@ class BarbershopService {
         return _cachedBarbershops!;
       }
 
-      final snapshot = await _firestore.collection('barbershops').get();
+      // Filter hanya yang aktif secara sistem (isActive == true)
+      // isOpen (buka/tutup harian) tetap diambil untuk ditampilkan statusnya
+      final snapshot = await _firestore.collection('barbershops')
+          .where('isActive', isEqualTo: true)
+          .get();
       
       // Log teknis untuk pemantauan data Firestore
       debugPrint("DEBUG FIRESTORE FETCH");
-      debugPrint("Koleksi: barbershops");
+      debugPrint("Koleksi: barbershops (Active Only)");
       debugPrint("Jumlah Dokumen: ${snapshot.docs.length}");
       if (snapshot.docs.isNotEmpty) {
         debugPrint("Data Sample JSON:");
@@ -57,6 +61,21 @@ class BarbershopService {
     } catch (e) {
       debugPrint('Error getAllBarbershops: $e');
       return [];
+    }
+  }
+
+  /// Super Admin Only: Toggle active status (Soft Delete)
+  Future<void> setBarbershopActiveStatus(String id, bool isActive) async {
+    try {
+      await _firestore.collection('barbershops').doc(id).update({
+        'isActive': isActive,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      // Clear cache to force refresh on next fetch
+      _cachedBarbershops = null;
+    } catch (e) {
+      debugPrint('Error setBarbershopActiveStatus: $e');
+      rethrow;
     }
   }
 

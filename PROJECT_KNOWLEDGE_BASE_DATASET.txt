@@ -1,0 +1,134 @@
+DOKUMEN PENGETAHUAN SISTEM GEGES SMART BARBER
+VERSI DOKUMEN 2.0
+JENIS DOKUMEN: DATASET RAG DAN ARSITEKTUR SISTEM
+
+BAGIAN 1: IDENTITAS DAN FILOSOFI PROYEK
+
+Nama Proyek adalah Geges Smart Barber.
+Jenis Sistem adalah Platform SaaS (Software as a Service) Multi-Tenant untuk manajemen bisnis Barbershop.
+Tujuan Utama sistem ini adalah mendigitalisasi operasional barbershop konvensional, mulai dari pendaftaran mitra secara mandiri melalui aplikasi mobile, verifikasi oleh super admin melalui website, hingga manajemen operasional harian seperti antrean dan laporan keuangan.
+
+Arsitektur sistem ini unik karena dibangun di atas infrastruktur Firebase Spark Plan atau Paket Gratis. Hal ini menciptakan batasan teknis yang ketat yang menjadi hukum dasar pengembangan sistem ini, yaitu:
+1. Tidak ada penggunaan Cloud Functions atau backend serverless. Semua logika bisnis dijalankan di sisi klien atau frontend.
+2. Tidak ada penggunaan Firebase Cloud Storage. Semua file media seperti gambar harus dikonversi menjadi string Base64 dan disimpan langsung di dalam dokumen database Firestore.
+3. Ketergantungan penuh pada integrasi antara Aplikasi Mobile berbasis Flutter dan Website Admin berbasis React JS.
+
+BAGIAN 2: EKOSISTEM APLIKASI DAN PENGGUNA
+
+Sistem ini terdiri dari dua gerbang utama:
+
+Aplikasi Mobile (Platform Flutter)
+Aplikasi ini digunakan oleh tiga jenis pengguna:
+1. Customer atau Pelanggan Akhir. Mereka menggunakan aplikasi untuk mencari barbershop terdekat, melihat layanan, dan melakukan booking antrean.
+2. Admin Owner atau Pemilik Barbershop. Mereka adalah mitra yang telah disetujui. Mereka menggunakan aplikasi untuk mengelola toko, mengatur jam buka, mengedit layanan, dan memantau pendapatan.
+3. Barberman atau Karyawan Pangkas. Mereka menggunakan aplikasi untuk melihat antrean yang ditugaskan kepada mereka dan memproses pesanan.
+
+Website Portal Admin (Platform React JS Vite)
+Aplikasi ini khusus digunakan oleh satu jenis pengguna:
+1. Super Admin atau Pemilik Platform Geges. Fungsi utama portal ini adalah sebagai pusat komando untuk memverifikasi pendaftaran mitra baru. Karena tidak ada backend otomatis, Super Admin bertindak sebagai verifikator manual yang memicu skrip provisioning akun melalui website ini.
+
+BAGIAN 3: ALUR KERJA PENDAFTARAN MITRA (TENANT PROVISIONING)
+
+Ini adalah fitur inti yang menghubungkan Mobile App dengan Web App. Alurnya adalah sebagai berikut:
+
+Fase 1: Pendaftaran di Mobile
+Seorang pengguna biasa (role customer) login ke aplikasi mobile. Mereka masuk ke menu Mitra atau Register Tenant. Di sana mereka mengisi formulir yang mencakup Nama Bisnis, Pemilihan Paket Langganan, dan data diri.
+Setelah mengisi data, mereka diwajibkan membayar biaya pendaftaran. Bukti pembayaran difoto atau diunggah. Karena tidak ada Storage, aplikasi mobile mengompresi gambar tersebut dan mengubahnya menjadi string Base64.
+Data ini kemudian dikirim ke Firestore ke dalam koleksi bernama tenants. Status awal pendaftaran diset sebagai waiting_proof atau awaiting_payment.
+
+Fase 2: Verifikasi di Website
+Super Admin membuka Website Portal. Website membaca data dari koleksi tenants secara realtime. Admin melihat detail pendaftaran dan gambar bukti transfer yang diterjemahkan dari Base64.
+Jika Admin menekan tombol Approve, website akan menjalankan serangkaian proses kompleks secara berurutan di sisi klien (Client-Side Logic).
+
+Fase 3: Logika Approval dan Pembuatan Akun (Penting)
+Karena tidak ada Cloud Functions, website menggunakan teknik Secondary Firebase App Instance.
+Langkah 1: Website menginisialisasi instance Firebase kedua secara sementara di latar belakang.
+Langkah 2: Menggunakan instance kedua tersebut, website membuat akun Firebase Authentication baru menggunakan email pendaftar dan password acak yang digenerate sistem.
+Langkah 3: Website menyimpan UID (User ID) dari akun baru tersebut.
+Langkah 4: Website menghapus instance kedua agar sesi login Super Admin tidak terganggu.
+
+Fase 4: Penulisan Data ke Database
+Setelah akun Auth terbentuk, website melakukan penulisan data ke Firestore:
+1. Membuat dokumen baru di koleksi barbershops berisi detail toko.
+2. Membuat dokumen baru di koleksi users dengan ID yang sama dengan UID akun baru. Di dokumen ini, field role diatur menjadi admin_owner dan field barbershop_id diisi dengan ID toko yang baru dibuat.
+3. Mengupdate dokumen di koleksi tenants, mengubah status menjadi active.
+4. Membuat dokumen baru di koleksi notifications yang ditujukan kepada pengguna asli (customer). Isi notifikasi adalah kredensial login baru berupa email dan password.
+
+Fase 5: Serah Terima
+Pengguna asli di aplikasi mobile menerima notifikasi. Mereka kemudian logout dari akun customer, dan login kembali menggunakan email dan password baru yang diberikan. Saat login, aplikasi mobile mendeteksi role mereka sebagai admin_owner dan mengubah tampilan antarmuka menjadi Dashboard Mitra.
+
+BAGIAN 4: STRUKTUR DATA DAN SKEMA DATABASE
+
+Berikut adalah rincian teknis struktur data di Firestore yang wajib diikuti demi integritas sistem.
+
+Koleksi users (Data Pengguna)
+Dokumen ini menyimpan profil pengguna.
+Field name bertipe String menyimpan nama lengkap.
+Field email bertipe String menyimpan alamat email.
+Field role bertipe String adalah penentu hak akses. Nilai yang valid adalah customer, admin_owner, barberman, dan super_admin.
+Field phone_number bertipe String menyimpan nomor telepon.
+Field barbershop_id bertipe String menyimpan ID toko. Field ini wajib ada untuk role admin_owner dan barberman.
+Field photo_base64 bertipe String menyimpan foto profil dalam format teks Base64.
+Field favorite_barbershops bertipe Array menyimpan daftar ID toko yang disukai pengguna.
+
+Koleksi barbershops (Data Toko)
+Dokumen ini menyimpan informasi publik dan pengaturan toko.
+Field name bertipe String menyimpan nama branding toko.
+Field address bertipe String menyimpan alamat toko. Catatan Penting: Terdapat anomali pada kode aplikasi mobile versi lama yang menggunakan nama field addres (typo kurang huruf s). Sistem pembaca harus mentoleransi atau memastikan konsistensi menggunakan address yang benar sesuai perbaikan terbaru.
+Field rating bertipe Number menyimpan nilai rating toko, default 5.0.
+Field imageUrl bertipe String menyimpan gambar utama toko dalam format Base64.
+Field gallery_urls bertipe Array menyimpan daftar string Base64 untuk galeri foto toko.
+Field services bertipe Array menyimpan daftar ID layanan yang tersedia.
+Field open_hour dan close_hour bertipe Number menyimpan jam operasional (format 24 jam).
+Field isOpen bertipe Boolean menyimpan status buka atau tutup toko.
+Field weekly_holidays bertipe Array Number menyimpan hari libur rutin (0 untuk Senin, 6 untuk Minggu).
+Field barber_selection_fee bertipe Number menyimpan biaya tambahan jika customer memilih barberman spesifik.
+
+Koleksi tenants (Data Pendaftaran)
+Koleksi ini berfungsi sebagai formulir pendaftaran sementara.
+Field business_name bertipe String menyimpan nama bisnis yang diajukan.
+Field owner_uid bertipe String menyimpan UID akun customer yang mengajukan.
+Field owner_email bertipe String.
+Field status bertipe String menyimpan status proses (draft, waiting_proof, active, rejected).
+Field payment bertipe Map atau Object, yang berisi sub-field payment_proof_base64 (String gambar bukti bayar) dan verificationStatus (String).
+
+Koleksi queues (Data Antrean)
+Dokumen ini menyimpan transaksi booking.
+Field status bertipe String menyimpan status pesanan (waiting, booked, ongoing, served, cancelled).
+Field booking_time bertipe Timestamp menyimpan jadwal pangkas.
+Field estimated_duration bertipe Number menyimpan estimasi lama pengerjaan dalam menit.
+Field barberman_id bertipe String menyimpan ID karyawan yang menangani.
+Field total_price bertipe Number menyimpan total biaya.
+
+Koleksi notifications (Data Komunikasi)
+Dokumen ini menyimpan pesan untuk pengguna.
+Field user_id bertipe String menyimpan target penerima pesan.
+Field title bertipe String menyimpan judul pesan.
+Field body bertipe String menyimpan isi pesan.
+Field delivered bertipe Boolean menyimpan status apakah pesan sudah dibaca atau diterima.
+Field created_at bertipe Timestamp menyimpan waktu pembuatan.
+
+BAGIAN 5: ALGORITMA DAN LOGIKA KHUSUS
+
+Algoritma Keadilan Barberman (Fairness Algorithm)
+Sistem ini memiliki fitur otomatisasi pembagian tugas. Jika seorang customer melakukan booking tanpa memilih barberman tertentu (opsi Any Barber), sistem tidak memilih secara acak. Sistem akan:
+1. Memfilter barberman yang statusnya aktif dan tidak sedang cuti.
+2. Memfilter barberman yang tidak libur pada hari tersebut (cek weekly_holidays dan specific_holidays).
+3. Memastikan barberman tersebut tidak memiliki jadwal yang bentrok di jam yang diminta.
+4. Dari kandidat yang lolos, sistem akan memilih barberman dengan jumlah pekerjaan bulanan (monthlyHaircutCount) yang paling sedikit. Tujuannya adalah pemerataan pendapatan dan beban kerja antar karyawan.
+
+Mekanisme Anti Duplikasi Booking
+Untuk mencegah booking ganda (double booking), sistem menerapkan pengecekan ketat sebelum menulis data ke koleksi queues. Sistem membaca apakah ada dokumen lain dengan barberman_id yang sama yang memiliki rentang waktu booking yang tumpang tindih dengan waktu yang diminta.
+
+Penanganan Gambar Base64
+Mengingat batas dokumen Firestore adalah 1 Megabyte, aplikasi mobile dan website wajib melakukan kompresi gambar di sisi klien sebelum diupload. Gambar bukti bayar dan foto profil biasanya diubah ukurannya menjadi maksimal 800x800 piksel dengan kualitas kompresi JPEG sekitar 70 persen untuk memastikan string Base64 yang dihasilkan berukuran di bawah 500 Kilobyte.
+
+BAGIAN 6: INSTRUKSI INTEGRASI KHUSUS
+
+Bagi pengembang atau agen AI yang mengerjakan proyek ini, perhatikan hal-hal berikut:
+Pertama, selalu gunakan konfigurasi Firebase Project ID geges-smartbarber-project.
+Kedua, saat membuat fitur di Website React, pastikan menggunakan Redux Toolkit untuk manajemen state agar data realtime dari Firestore tersinkronisasi dengan baik tanpa perlu refresh halaman.
+Ketiga, selalu verifikasi field role pada dokumen users setiap kali login. Jika role bukan super_admin, akses ke dashboard website harus ditolak demi keamanan.
+Keempat, hati-hati dengan field addres versus address. Periksa kode sumber yang ada untuk memastikan mana yang sedang aktif digunakan, namun standarnya adalah address.
+
+AKHIR DOKUMEN PENGETAHUAN SISTEM

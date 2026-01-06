@@ -16,6 +16,7 @@ class Barbershop {
   final int? specialOrderFee;
   final int barberSelectionFee; 
   final bool isOpen;
+  final bool isActive; // Status aktif sistem (Super Admin Control)
   final List<int> weeklyHolidays; 
   final List<String> specificHolidays; 
   
@@ -42,6 +43,7 @@ class Barbershop {
     this.specialOrderFee,
     this.barberSelectionFee = 5000,
     required this.isOpen,
+    this.isActive = true, // Default true agar data lama tetap muncul
     this.weeklyHolidays = const [],
     this.specificHolidays = const [],
     this.instagramUrl,
@@ -80,6 +82,7 @@ class Barbershop {
       specialOrderFee: (data['special_order_fee'] ?? data['specialOrderFee'])?.toInt(),
       barberSelectionFee: (data['barber_selection_fee'] ?? data['barberSelectionFee'])?.toInt() ?? 5000,
       isOpen: data['isOpen'] as bool? ?? false,
+      isActive: data['isActive'] as bool? ?? true, // Fallback ke true
       weeklyHolidays: List<int>.from(data['weekly_holidays'] ?? data['weeklyHolidays'] ?? []),
       specificHolidays: List<String>.from(data['specific_holidays'] ?? data['specific_holidays'] ?? []),
       instagramUrl: data['instagram_url'],
@@ -106,6 +109,7 @@ class Barbershop {
       'special_order_fee': specialOrderFee,
       'barber_selection_fee': barberSelectionFee,
       'isOpen': isOpen,
+      'isActive': isActive,
       'weekly_holidays': weeklyHolidays,
       'specific_holidays': specificHolidays,
       'instagram_url': instagramUrl,
