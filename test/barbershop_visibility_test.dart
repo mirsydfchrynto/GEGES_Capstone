@@ -16,20 +16,18 @@ void main() {
       // Shop 1: Active
       await fs.collection('barbershops').doc('shop_active').set({
         'name': 'Active Barber',
-        'addres': 'Jalan Hidup',
+        'address': 'Jalan Hidup',
         'isActive': true,
         'isOpen': true,
-        'rating': 5.0,
         'services': ['Cut'],
       });
 
       // Shop 2: Inactive (Soft Deleted / Banned)
       await fs.collection('barbershops').doc('shop_inactive').set({
         'name': 'Inactive Barber',
-        'addres': 'Jalan Mati',
+        'address': 'Jalan Mati',
         'isActive': false, // This should hide it
         'isOpen': true,
-        'rating': 4.0,
         'services': ['Cut'],
       });
     });

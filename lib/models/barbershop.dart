@@ -71,7 +71,7 @@ class Barbershop {
       name: data['name'] ?? 'Nama Barbershop',
       addres: (data['address'] ?? data['addres'] ?? 'Alamat Tidak Diketahui') as String,
       googleMapsUrl: data['google_maps_url'],
-      rating: (data['rating'] as num?)?.toDouble() ?? 5.0,
+      rating: (data['rating'] as num?)?.toDouble() ?? 0.0, // Default 0.0 jika rating dihapus
       imageUrl: data['imageUrl'] ?? 'https://cdn-icons-png.flaticon.com/512/706/706830.png',
       services: List<String>.from(data['services'] ?? []),
       facilities: List<String>.from(data['facilities'] ?? []),
@@ -96,9 +96,9 @@ class Barbershop {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'address': addres,
+      'address': addres, // Standardize to 'address' for new writes
       'google_maps_url': googleMapsUrl,
-      'rating': rating,
+      // 'rating': rating, // Don't write rating back to Firestore
       'imageUrl': imageUrl,
       'services': services,
       'facilities': facilities,

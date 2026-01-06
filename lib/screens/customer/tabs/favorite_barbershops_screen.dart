@@ -155,6 +155,8 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
   }
 
   Widget _buildBarbershopCard(Barbershop shop) {
+    final bool isClosed = !shop.isOpen;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 20.0),
       decoration: BoxDecoration(
@@ -166,42 +168,40 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
         children: [
           GestureDetector(
             onTap: () async {
-              // Navigasi ke detail barbershop dan tunggu hasil (jika ada update favorit di sana)
               await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) =>
-                      BarbershopDetailScreen(barbershop: shop),
+                  builder: (context) => BarbershopDetailScreen(barbershop: shop),
                 ),
               );
-              _loadFavorites(); // Refresh list saat kembali
+              _loadFavorites();
             },
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-              child: CachedNetworkImage(
-                imageUrl: shop.imageUrl,
-                height: 180,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: kSurface,
-                  child: const Center(
-                    child: CircularProgressIndicator(color: kBrownAccent, strokeWidth: 2),
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: CachedNetworkImage(
+                    imageUrl: shop.imageUrl,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    color: isClosed ? Colors.grey : null,
+                    colorBlendMode: isClosed ? BlendMode.saturation : null,
+                    placeholder: (context, url) => Container(color: kSurface, child: const Center(child: CircularProgressIndicator(color: kBrownAccent, strokeWidth: 2))),
+                    errorWidget: (context, url, error) => Container(color: kSurface, child: const Center(child: Icon(Icons.storefront, color: Colors.white54, size: 48))),
                   ),
                 ),
-                errorWidget: (context, url, error) => Container(
-                  color: kSurface,
-                  child: const Center(
-                    child: Icon(
-                      Icons.storefront,
-                      color: Colors.white54,
-                      size: 48,
+                if (isClosed)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(color: kRedDanger, borderRadius: BorderRadius.circular(20)),
+                      child: const Text('CLOSED', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                     ),
                   ),
-                ),
-              ),
+              ],
             ),
           ),
           Padding(
@@ -215,8 +215,8 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
                     Expanded(
                       child: Text(
                         shop.name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: isClosed ? kTextGrey : Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -225,77 +225,52 @@ class _FavoriteBarbershopsScreenState extends State<FavoriteBarbershopsScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
-                        Icons.favorite,
-                        color: kRedDanger,
-                        size: 28,
-                      ),
+                      icon: const Icon(Icons.favorite, color: kRedDanger, size: 28),
                       onPressed: () => _removeFromFavorites(shop),
                       tooltip: 'Hapus dari Favorit',
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  shop.addres,
-                  style: TextStyle(color: kTextGrey, fontSize: 14),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.star, color: kBrownAccent, size: 20),
-                    const SizedBox(width: 4),
-                    Text(
-                      shop.rating.toStringAsFixed(1),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+                Text(shop.addres, style: TextStyle(color: kTextGrey, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 8.0,
                   runSpacing: 8.0,
-                  children: shop.services
-                      .where((s) => _serviceNames.containsKey(s))
-                      .map((s) => _buildTagChip(s))
-                      .toList(),
+                  children: shop.services.where((s) => _serviceNames.containsKey(s)).map((s) => _buildTagChip(s)).toList(),
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              BarbershopDetailScreen(barbershop: shop),
+                  child: isClosed
+                      ? ElevatedButton(
+                          onPressed: null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kRedDanger,
+                            disabledBackgroundColor: kRedDanger,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text('TUTUP / CLOSED', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                        )
+                      : ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => BarbershopDetailScreen(barbershop: shop),
+                              ),
+                            ).then((_) => _loadFavorites());
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kBrownAccent,
+                            foregroundColor: kTextBlack,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: const Text('Book Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
-                      ).then((_) => _loadFavorites());
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kBrownAccent,
-                      foregroundColor: kTextBlack,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Book Now',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
                 ),
               ],
             ),

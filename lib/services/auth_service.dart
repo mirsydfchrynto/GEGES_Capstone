@@ -26,6 +26,8 @@ class AuthService implements AuthServiceBase {
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
 
+  FirebaseAuth get auth => _auth;
+
   // Constructor defined below (includes optional GoogleSignIn injection)
   User? get currentUser => _auth.currentUser;
 

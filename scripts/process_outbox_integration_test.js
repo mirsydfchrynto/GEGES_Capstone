@@ -7,7 +7,9 @@ const admin = require('firebase-admin');
 async function main() {
   try {
     // Initialize with default project id; emulator will handle connection
-    admin.initializeApp();
+    admin.initializeApp({
+      projectId: 'geges-smartbarber-project'
+    });
     const db = admin.firestore();
 
     console.log('Creating outbox_emails document (expect functions emulator to process it)...');

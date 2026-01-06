@@ -303,13 +303,23 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
 
           const SizedBox(width: 16), // Beri jarak
           // Tombol Kanan
-          ElevatedButton(
-            onPressed: _goToAppointment, // Navigasi ke Halaman Booking
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-            ),
-            child: const Text('Book Now'),
-          ),
+          widget.barbershop.isOpen
+              ? ElevatedButton(
+                  onPressed: _goToAppointment, // Navigasi ke Halaman Booking
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  ),
+                  child: const Text('Book Now'),
+                )
+              : ElevatedButton(
+                  onPressed: null,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                    backgroundColor: Colors.redAccent,
+                    disabledBackgroundColor: Colors.redAccent,
+                  ),
+                  child: const Text('TUTUP / CLOSED', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
         ],
       ),
     );

@@ -40,7 +40,7 @@ class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1024,
+        maxWidth: 800,
         imageQuality: 70,
       );
       

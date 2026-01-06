@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/models/service.dart';
@@ -59,7 +60,7 @@ class ManualBookingFormState extends State<ManualBookingForm> {
     if (_currentStep == 1) return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("Pilihan Hairstylist", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)), const SizedBox(height: 20), _choice(Icons.shuffle, "Acak / Otomatis", "System pilih barber tersedia", !_isPremiumChoice, () => setState(() => _isPremiumChoice = false)), const SizedBox(height: 12), _choice(Icons.person_search, "Request Barber Spesifik", "Customer request barber tertentu", _isPremiumChoice, () => setState(() => _isPremiumChoice = true)), if (_isPremiumChoice) ...[const SizedBox(height: 30), _buildBarberList()]]);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Text("Data Pelanggan", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)), const SizedBox(height: 16),
-      TextField(controller: _custNameCtrl, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: 'Nama Pelanggan', filled: true, fillColor: kCardBg)), const SizedBox(height: 12),
+      TextField(controller: _custNameCtrl, style: const TextStyle(color: Colors.white), decoration: const InputDecoration(labelText: 'Nama Pelanggan (Opsional)', filled: true, fillColor: kCardBg)), const SizedBox(height: 12),
       TextField(controller: _custPhoneCtrl, style: const TextStyle(color: Colors.white), keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'No. HP (Opsional)', filled: true, fillColor: kCardBg)), const SizedBox(height: 24),
       const Text("Metode Pembayaran", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)), const SizedBox(height: 16),
       Row(children: [Expanded(child: _payOpt("Tunai", "cash", Icons.money)), const SizedBox(width: 12), Expanded(child: _payOpt("Transfer", "transfer", Icons.account_balance))]), const SizedBox(height: 24),
@@ -95,7 +96,7 @@ class ManualBookingFormState extends State<ManualBookingForm> {
   }
 
   Widget _buildBottomSummary() {
-    bool can = (_currentStep == 0 && _selectedServices.isNotEmpty) || (_currentStep == 1 && (!_isPremiumChoice || _selectedBarberman != null)) || (_currentStep == 2 && _selectedTime != null && _custNameCtrl.text.isNotEmpty);
+    bool can = (_currentStep == 0 && _selectedServices.isNotEmpty) || (_currentStep == 1 && (!_isPremiumChoice || _selectedBarberman != null)) || (_currentStep == 2 && _selectedTime != null);
     return Container(padding: const EdgeInsets.all(20), decoration: const BoxDecoration(color: kCardBg, border: Border(top: BorderSide(color: Colors.white10))), child: Row(children: [
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [const Text("Total (Tunai)", style: TextStyle(color: Colors.white54, fontSize: 12)), Text("Rp ${NumberFormat('#,###', 'id_ID').format(_totalPrice)}", style: const TextStyle(color: kBrownAccent, fontSize: 18, fontWeight: FontWeight.bold))])),
       ElevatedButton(onPressed: (can && !_submitting) ? (_currentStep == 2 ? _submit : _nextStep) : null, style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 15)), child: _submitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)) : Text(_currentStep == 2 ? "BOOKING" : "LANJUT")),
@@ -107,8 +108,30 @@ class ManualBookingFormState extends State<ManualBookingForm> {
     try {
       final bdt = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _selectedTime!.hour, _selectedTime!.minute);
       final barberId = _isPremiumChoice ? _selectedBarberman!.id : (await widget.queueService.getFairAvailableBarberman(barbershopId: widget.barbershop.id, bookingTime: bdt, serviceIds: _selectedServices.map((s) => s.id).toList())) ?? '';
+      
+      // Auto-generate name if empty
+      String name = _custNameCtrl.text.trim();
+      if (name.isEmpty) {
+        final rand = Random().nextInt(9999).toString().padLeft(4, '0');
+        name = "Walk-in #$rand";
+      }
+      
+      // Use '-' for phone if empty
+      String phone = _custPhoneCtrl.text.trim();
+      if (phone.isEmpty) phone = "-";
+
       await widget.queueService.createQueue({
-        'barbershop_id': widget.barbershop.id, 'barberman_id': barberId, 'customer_id': 'MANUAL_${DateTime.now().millisecondsSinceEpoch}', 'customer_name': _custNameCtrl.text.trim(), 'customer_phone': _custPhoneCtrl.text.trim(), 'customer_is_manual': true, 'service_ids': _selectedServices.map((s) => s.id).toList(), 'total_price': _totalPrice, 'booking_time': Timestamp.fromDate(bdt), 'status': 'booked', 'payment_method': _paymentMethod,
+        'barbershop_id': widget.barbershop.id, 
+        'barberman_id': barberId, 
+        'customer_id': 'MANUAL_${DateTime.now().millisecondsSinceEpoch}', 
+        'customer_name': name, 
+        'customer_phone': phone, 
+        'customer_is_manual': true, 
+        'service_ids': _selectedServices.map((s) => s.id).toList(), 
+        'total_price': _totalPrice, 
+        'booking_time': Timestamp.fromDate(bdt), 
+        'status': 'booked', 
+        'payment_method': _paymentMethod,
       });
       if (mounted) Navigator.pop(context);
     } catch (e) { 

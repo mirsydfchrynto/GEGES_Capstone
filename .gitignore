@@ -47,3 +47,4 @@ app.*.map.json
 
 DOKUMENTASI_FINAL_OVERVIEW.md
 DOKUMENTASI_INLINE_AUTH_SCREENS.md
+scripts/*.json

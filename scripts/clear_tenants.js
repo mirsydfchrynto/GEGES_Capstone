@@ -5,7 +5,9 @@ const admin = require('firebase-admin');
 // Otherwise it attempts to connect to the real project configured in environment or default credentials.
 if (!admin.apps.length) {
   try {
-    admin.initializeApp();
+    admin.initializeApp({
+      projectId: 'geges-smartbarber-project'
+    });
   } catch (e) {
     console.error('Failed to initialize admin:', e);
     process.exit(1);

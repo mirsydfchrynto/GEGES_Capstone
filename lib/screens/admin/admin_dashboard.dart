@@ -17,6 +17,8 @@ import 'package:geges_smartbarber/screens/admin/barber_management_screen.dart';
 import 'package:geges_smartbarber/screens/admin/cancellation_requests_screen.dart';
 import 'package:geges_smartbarber/screens/admin/barbershop_settings_screen.dart';
 import 'package:geges_smartbarber/screens/admin/barbershop_gallery_screen.dart';
+import 'package:geges_smartbarber/screens/admin/account_management_screen.dart';
+import 'package:geges_smartbarber/screens/admin/sales_report_screen.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
 const Color kDarkSurface = Color(0xFF1E1E1E);
@@ -95,7 +97,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (_loadingError.isNotEmpty) return Scaffold(backgroundColor: kBlack, body: Center(child: Text(_loadingError, style: const TextStyle(color: Colors.red))));
     if (_adminBarbershopId == null) return const Scaffold(backgroundColor: kBlack, body: Center(child: CircularProgressIndicator(color: kBrownAccent)));
 
-    final stream = _queueService.streamQueuesForBarbershop(_adminBarbershopId!, statusFilter: ['waiting', 'awaiting_payment', 'booked', 'ongoing', 'served', 'cancelled', 'cancellation_requested'], limit: 100);
+    final stream = _queueService.streamQueuesForBarbershop(_adminBarbershopId!, statusFilter: ['waiting', 'awaiting_payment', 'booked', 'ongoing', 'served', 'cancelled', 'cancellation_requested'], limit: 30);
 
     return Scaffold(
       backgroundColor: kBlack,
@@ -208,6 +210,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         final shop = await _barbershopService.getBarbershopById(_adminBarbershopId!);
         if (shop != null && mounted) Navigator.push(context, MaterialPageRoute(builder: (_) => BarbershopGalleryScreen(barbershop: shop)));
       }),
+      _menuItem(Icons.analytics_outlined, 'Laporan Penjualan', 'Revenue Report', () => Navigator.push(context, MaterialPageRoute(builder: (_) => SalesReportScreen(barbershopId: _adminBarbershopId!)))),
+      _menuItem(Icons.manage_accounts_outlined, 'Akun Saya', 'Edit Profile', () => Navigator.push(context, MaterialPageRoute(builder: (_) => AccountManagementScreen(userId: _adminUid!)))),
     ]);
   }
 

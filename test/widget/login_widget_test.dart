@@ -94,6 +94,9 @@ class FakeAuthService implements AuthService {
   User? get currentUser => null;
 
   @override
+  FirebaseAuth get auth => throw UnimplementedError();
+
+  @override
   Future<bool> isAdmin(String uid) {
     throw UnimplementedError();
   }

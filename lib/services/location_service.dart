@@ -18,72 +18,139 @@ class LocationService {
   Future<String?> _getLocation() async {
     try {
       debugPrint('LocationService: Checking service and permissions...');
-      // 1. Cek apakah GPS aktif
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint('Location services are disabled.');
-        return null;
+        return 'GPS Mati';
       }
 
-      // 2. Cek permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           debugPrint('Location permissions are denied');
-          return null;
+          return 'Izin Ditolak';
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
         debugPrint('Location permissions are permanently denied.');
-        return null;
+        return 'Izin Permanen Ditolak';
       }
 
       debugPrint('LocationService: Getting position...');
-      // 3. Prioritaskan Last Known Position (Instan)
+      // Coba Last Known Position dulu untuk kecepatan
       Position? position = await Geolocator.getLastKnownPosition();
       
+      // Jika null, ambil Current Position dengan timeout yang wajar
       if (position == null) {
         debugPrint('LocationService: Last known null, getting current position...');
-        position = await Geolocator.getCurrentPosition(
-          locationSettings: AndroidSettings(
-            accuracy: LocationAccuracy.medium,
-            timeLimit: const Duration(seconds: 4),
-            forceLocationManager: true, // Sering lebih stabil di beberapa device Android
-          ),
+        try {
+          position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high, // Gunakan high agar lebih akurat
+              timeLimit: Duration(seconds: 10), // Timeout 10 detik
+            ),
+          );
+        } catch (e) {
+           debugPrint("Error getting current position: $e");
+           return 'Gagal Deteksi';
+        }
+      }
+
+      if (position == null) return 'Lokasi Null';
+
+      debugPrint('LocationService: Position found (${position.latitude}, ${position.longitude}). Geocoding...');
+
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
         );
-      }
 
-      debugPrint('LocationService: Position found. Geocoding...');
-
-      // 4. Reverse Geocoding dengan Timeout (agar tidak hanging)
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      ).timeout(const Duration(seconds: 3));
-
-      if (placemarks.isNotEmpty) {
-        Placemark place = placemarks.first;
-        debugPrint('LocationService: Placemark found: ${place.locality}');
-        
-        // Prioritaskan Nama Kota (Locality) sesuai permintaan user
-        if (place.locality != null && place.locality!.isNotEmpty) {
-          return place.locality!;
+        if (placemarks.isNotEmpty) {
+          Placemark place = placemarks.first;
+          debugPrint('LocationService: Placemark found: ${place.locality}');
+          
+          if ((place.locality ?? '').isNotEmpty) {
+            return place.locality;
+          }
+          if ((place.subAdministrativeArea ?? '').isNotEmpty) {
+            return place.subAdministrativeArea;
+          }
+          return place.administrativeArea ?? 'Indonesia';
         }
-        
-        // Fallback ke Kabupaten/Kota (SubAdministrativeArea)
-        if (place.subAdministrativeArea != null && place.subAdministrativeArea!.isNotEmpty) {
-          return place.subAdministrativeArea!;
-        }
-
-        // Fallback terakhir: Provinsi
-        return place.administrativeArea ?? 'Unknown Location';
+      } catch (e) {
+        debugPrint("Geocoding error: $e");
+        // Fallback jika geocoding gagal (misal tidak ada internet)
+        return "Lokasi (Lat: ${position.latitude.toStringAsFixed(2)})";
       }
-      return null;
+      return 'Tidak Dikenali';
     } catch (e) {
       debugPrint('Error getting location: $e');
+      return 'Error System';
+    }
+  }
+
+  /// Mendapatkan objek Position (Lat/Lng) mentah
+  Future<Position?> getCurrentPosition() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return null;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return null;
+      }
+      if (permission == LocationPermission.deniedForever) return null;
+
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error getting position: $e");
       return null;
     }
+  }
+
+  /// Mengubah alamat string menjadi koordinat (Geocoding)
+  Future<Location?> getCoordinatesFromAddress(String address) async {
+    try {
+      if (address.isEmpty) return null;
+      List<Location> locations = await locationFromAddress(address);
+      if (locations.isNotEmpty) return locations.first;
+      return null;
+    } catch (e) {
+      // debugPrint("Geocoding error for '$address': $e");
+      return null;
+    }
+  }
+
+  /// Menghitung jarak dalam meter, lalu format ke String (misal: 1.2 km)
+  String formatDistance(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()} m';
+    } else {
+      return '${(meters / 1000).toStringAsFixed(1)} km';
+    }
+  }
+
+  /// Hitung jarak antara user dan toko
+  Future<String?> calculateDistanceToShop(Position userPos, String shopAddress) async {
+    final shopLoc = await getCoordinatesFromAddress(shopAddress);
+    if (shopLoc == null) return null;
+
+    final double distanceInMeters = Geolocator.distanceBetween(
+      userPos.latitude, 
+      userPos.longitude, 
+      shopLoc.latitude, 
+      shopLoc.longitude
+    );
+    
+    return formatDistance(distanceInMeters);
   }
 }

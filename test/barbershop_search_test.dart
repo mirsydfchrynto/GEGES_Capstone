@@ -16,6 +16,7 @@ void main() {
         'name': 'Geges Barber',
         'addres': 'Jalan Mawar',
         'isOpen': true,
+        'isActive': true,
         'services': ['Haircut'],
         'rating': 4.5,
       });
@@ -24,6 +25,7 @@ void main() {
         'name': 'Luxury Cuts',
         'addres': 'Jalan Melati',
         'isOpen': true,
+        'isActive': true,
         'services': ['Shave'],
         'rating': 5.0,
       });
@@ -31,7 +33,8 @@ void main() {
       await firestore.collection('barbershops').doc('shop3').set({
         'name': 'Closed Barber',
         'addres': 'Jalan Anggrek',
-        'isOpen': false, // Should not appear
+        'isOpen': false, 
+        'isActive': true,
         'services': ['Haircut'],
         'rating': 4.0,
       });

@@ -383,8 +383,8 @@ class QueueService implements QueueServiceContract {
     
     // Kita cek setiap slot operasional (misal 9:00 - 21:00)
     // Karena kita tidak tahu jam buka di sini (opsional fetch), kita iterate berdasarkan data load saja
-    slotLoad.forEach((timeStr, count) {
-      if (count >= totalCapacity) {
+    slotLoad.forEach((timeStr, loadCount) {
+      if (loadCount >= totalCapacity) {
         // Slot ini penuh!
         final parts = timeStr.split(':');
         final h = int.parse(parts[0]);

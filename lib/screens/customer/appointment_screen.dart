@@ -109,6 +109,59 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   void _showSnack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   @override Widget build(BuildContext context) {
+    // 1. BLOCKING LOGIC: If shop is closed, show "Shop Closed" screen
+    if (!widget.barbershop.isOpen) {
+      return Scaffold(
+        backgroundColor: kSurface,
+        appBar: AppBar(
+          backgroundColor: kSurface,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, size: 20), 
+            onPressed: () => Navigator.pop(context)
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.storefront, size: 64, color: Colors.redAccent),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                "${widget.barbershop.name} Sedang Tutup",
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "Maaf, barbershop ini sedang tidak menerima pesanan.\nSilakan cek kembali nanti.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white54, fontSize: 14),
+              ),
+              const SizedBox(height: 32),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white24),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                ),
+                child: const Text("Kembali ke Home", style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 2. NORMAL FLOW
     return PopScope(canPop: false, onPopInvokedWithResult: (didPop, result) { if (didPop) return; if (_currentStep > 0) {
       _prevStep();
     } else {

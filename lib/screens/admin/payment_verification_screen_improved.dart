@@ -93,7 +93,7 @@ class _PaymentVerificationScreenImprovedState extends State<PaymentVerificationS
                 borderRadius: BorderRadius.circular(8),
                 child: proof.toString().startsWith('http') 
                   ? Image.network(proof, height: 150, width: double.infinity, fit: BoxFit.cover)
-                  : Image.memory(base64Decode(proof), height: 150, width: double.infinity, fit: BoxFit.cover),
+                  : Image.memory(base64Decode(proof), height: 150, width: double.infinity, fit: BoxFit.cover, cacheWidth: 500),
               ),
             ),
           
