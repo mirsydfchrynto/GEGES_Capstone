@@ -32,12 +32,24 @@ class QueueService implements QueueServiceContract {
         'queue_id': queueId,
         'created_at': FieldValue.serverTimestamp(),
         'read': false,
-        'type': 'order_update'
+        'type': 'order_update',
+        'delivered': false, // For local notif tracking
       });
       debugPrint("Notification sent to $userId: $title");
     } catch (e) {
       debugPrint("Failed to send notification: $e");
     }
+  }
+
+  Stream<int> streamUnreadNotificationCount(String userId) {
+    if (userId.isEmpty) return Stream.value(0);
+    return _firestore
+        .collection('notifications')
+        .where('user_id', isEqualTo: userId)
+        .where('read', isEqualTo: false)
+        .snapshots()
+        .map((snap) => snap.docs.length)
+        .handleError((_) => 0); // Gracefully handle errors like missing index
   }
 
   // -----------------------
@@ -447,13 +459,22 @@ class QueueService implements QueueServiceContract {
   @override
   Future<void> cancelQueue(String queueId, {String reason = 'Cancellation', String? cancelledBy}) async {
     final by = cancelledBy ?? _auth.currentUser?.uid ?? 'system';
-    await _firestore.collection('queues').doc(queueId).update({
+    final ref = _firestore.collection('queues').doc(queueId);
+    
+    await ref.update({
       'status': 'cancelled',
       'cancellation_reason': reason,
       'cancelled_by_uid': by,
       'cancelled_at': FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
     });
+
+    // NOTIFIKASI
+    final doc = await ref.get();
+    final uid = doc.data()?['customer_id'];
+    if (uid != null && !uid.startsWith('MANUAL_')) {
+      await _sendNotification(uid, "Pesanan Dibatalkan", "Maaf, pesanan Anda dibatalkan: $reason", queueId);
+    }
   }
 
   Future<void> deleteQueue(String queueId) async {
@@ -627,22 +648,84 @@ class QueueService implements QueueServiceContract {
     await _firestore.runTransaction((transaction) async {
       debugPrint('TX START: Validating slot for $shopId at $bookingTs');
       
-      // 1. Validasi Jam Buka & Kapasitas (Hanya jika shopId valid)
+      // 0. Validasi Waktu (Tidak Boleh Masa Lalu)
+      // Buffer 5 menit untuk toleransi clock skew
+      if (bookingTs.toDate().isBefore(DateTime.now().subtract(const Duration(minutes: 5)))) {
+        throw Exception('Tidak dapat membuat booking di waktu lampau.');
+      }
+
+      // 0.5 Validasi Barber Spesifik (PENTING: Mencegah booking saat libur)
+      final String? targetBarberId = dataToSave['barberman_id'];
+      if (targetBarberId != null && targetBarberId.isNotEmpty) {
+        final barberRef = _firestore.collection('barbermen').doc(targetBarberId);
+        final barberSnap = await transaction.get(barberRef);
+        
+        if (barberSnap.exists) {
+          final bData = barberSnap.data() ?? {};
+          if (bData['isActive'] == false) throw Exception('Barber ini sedang tidak aktif.');
+          if (bData['onLeave'] == true) throw Exception('Barber sedang cuti.');
+          
+          final dayName = DateFormat('EEEE', 'en_US').format(bookingTs.toDate()).toLowerCase();
+          final offDays = (bData['offDays'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+          final legacyOff = (bData['off_days'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+          
+          if (offDays.contains(dayName) || legacyOff.contains(dayName)) {
+            throw Exception('Barber ini libur setiap hari $dayName.');
+          }
+
+          final dateStr = DateFormat('yyyy-MM-dd').format(bookingTs.toDate());
+          final specificOff = (bData['specificOffDays'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          final legacySpecific = (bData['specific_off_days'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
+          if (specificOff.contains(dateStr) || legacySpecific.contains(dateStr)) {
+            throw Exception('Barber ini libur pada tanggal $dateStr.');
+          }
+        }
+      }
+
+      // 1. Validasi Jam Buka & Kapasitas & HARGA (Security Check)
       if (shopId != null) {
         final shopRef = _firestore.collection('barbershops').doc(shopId);
         final shopSnapshot = await transaction.get(shopRef);
         
         if (shopSnapshot.exists && shopSnapshot.data() != null) {
           final shopData = shopSnapshot.data()!;
+          
+          // A. Validasi Jam Operasional
           final open = (shopData['open_hour'] ?? shopData['openHour'] ?? 0) as int;
           final close = (shopData['close_hour'] ?? shopData['closeHour'] ?? 24) as int;
-          
           final bookingDateTime = bookingTs.toDate();
           final hour = bookingDateTime.hour;
           
           if (hour < open || hour >= close) {
             throw Exception('Booking time outside of operating hours ($open:00 - $close:00)');
           }
+
+          // B. Validasi Harga (Anti-Tamper)
+          // Hitung ulang harga berdasarkan data asli di DB
+          double serverCalculatedPrice = 0.0;
+          final List<dynamic>? sIds = dataToSave['service_ids'];
+          if (sIds != null && sIds.isNotEmpty) {
+            for (var sId in sIds) {
+              final serviceRef = _firestore.collection('services').doc(sId.toString());
+              final serviceSnap = await transaction.get(serviceRef);
+              if (serviceSnap.exists) {
+                final sPrice = (serviceSnap.data()?['price'] as num?)?.toDouble() ?? 0.0;
+                serverCalculatedPrice += sPrice;
+              }
+            }
+          }
+          
+          // Tambah fee barber jika ada
+          final barberFee = (dataToSave['barber_selection_fee'] as num?)?.toDouble() ?? 0.0;
+          final isPaidBarber = dataToSave['paid_barber_selection'] == true;
+          if (isPaidBarber) {
+             serverCalculatedPrice += barberFee;
+          }
+
+          // Override client price with server price
+          dataToSave['total_price'] = serverCalculatedPrice;
+          debugPrint("SECURITY: Price recalculated by server: $serverCalculatedPrice");
 
           // 2. Race Condition Check (Capacity Validation)
           final capacityQuery = await _firestore.collection('barbermen')
@@ -689,6 +772,17 @@ class QueueService implements QueueServiceContract {
       debugPrint('QUEUE SUCCESS: New booking created!');
       debugPrint('   - ID: ${newQueueRef.id}');
       debugPrint('   - Time: ${bookingTs.toDate()}');
+
+      // NOTIFIKASI KE CUSTOMER (Jika bukan walk-in manual)
+      final custId = dataToSave['customer_id']?.toString();
+      if (custId != null && !custId.startsWith('MANUAL_')) {
+        await _sendNotification(
+          custId, 
+          "Booking Berhasil", 
+          "Pesanan Anda telah diterima. Tunggu konfirmasi admin.", 
+          newQueueRef.id
+        );
+      }
     } catch (_) {}
     
     return newQueueRef;
@@ -700,7 +794,39 @@ class QueueService implements QueueServiceContract {
     required DateTime bookingTime,
     required List<String> serviceIds,
   }) async {
-    // Simplified conflict check
+    // 1. Strict Barber Availability Check (Off Days & Leave)
+    try {
+      final barberDoc = await _firestore.collection('barbermen').doc(barbermanId).get();
+      if (!barberDoc.exists) return false;
+      
+      final bData = barberDoc.data()!;
+      
+      // A. Is Active?
+      if (bData['isActive'] == false) return false;
+      
+      // B. Is On Leave?
+      if (bData['onLeave'] == true) return false;
+      
+      // C. Is Weekly Off Day?
+      final dayName = DateFormat('EEEE', 'en_US').format(bookingTime).toLowerCase();
+      final offDays = (bData['offDays'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+      final legacyOff = (bData['off_days'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+      
+      if (offDays.contains(dayName) || legacyOff.contains(dayName)) return false;
+
+      // D. Is Specific Off Day (Holiday)?
+      final dateStr = DateFormat('yyyy-MM-dd').format(bookingTime);
+      final specificOff = (bData['specificOffDays'] as List?)?.map((e) => e.toString()).toList() ?? [];
+      final legacySpecific = (bData['specific_off_days'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
+      if (specificOff.contains(dateStr) || legacySpecific.contains(dateStr)) return false;
+
+    } catch (e) {
+      debugPrint("Error validating barber availability: $e");
+      return false; 
+    }
+
+    // 2. Existing Conflict Check
     final start = bookingTime.subtract(const Duration(hours: 4));
     final end = bookingTime.add(const Duration(hours: 4));
     final qs = await _firestore.collection('queues')
@@ -773,6 +899,14 @@ class QueueService implements QueueServiceContract {
       'payment_verification_status': 'pending',
       'updated_at': FieldValue.serverTimestamp(),
     });
+
+    // NOTIFIKASI KE CUSTOMER
+    await _sendNotification(
+      userId, 
+      "Pembayaran Diunggah", 
+      "Bukti bayar Anda telah kami terima. Mohon tunggu verifikasi admin.", 
+      queueId
+    );
   }
 
   Future<void> customerRequestCancellation(String queueId, {required String reason, String? customerId}) async {

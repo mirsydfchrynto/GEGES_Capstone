@@ -3,6 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
+import 'package:geges_smartbarber/utils/locale_provider.dart';
 import 'firebase_options.dart';
 import 'package:geges_smartbarber/services/notification_service.dart';
 import 'package:geges_smartbarber/services/app_navigator.dart';
@@ -11,7 +15,7 @@ import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart
 import 'package:geges_smartbarber/screens/admin/tenant_requests_screen.dart';
 import 'package:geges_smartbarber/screens/legal/terms_page.dart';
 import 'package:geges_smartbarber/screens/legal/privacy_page.dart';
-import 'package:geges_smartbarber/screens/splash_screen.dart'; // Import Splash Screen
+import 'package:geges_smartbarber/screens/splash_screen.dart';
 
 // ==========================================
 // file: lib/main.dart
@@ -63,7 +67,12 @@ void main() async {
   // - runApp() menjalankan aplikasi flutter
   // - MyApp() adalah root widget dari aplikasi
   // - semua widget di bawah MyApp adalah app tree
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => LocaleProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -127,6 +136,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<LocaleProvider>(context);
+
     // penjelasan materialapp:
     // - materialapp adalah root widget dari aplikasi
     // - ini setup material design theme, navigation, locale, dll
@@ -139,6 +150,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       navigatorKey: appNavigatorKey,
       title: 'GEGES SmartBarber',
       debugShowCheckedModeBanner: false,
+      
+      // Localization configuration
+      locale: provider.locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+
       // admin routes
       routes: {
         '/admin/barber-management': (_) => const BarberShopsListScreen(),

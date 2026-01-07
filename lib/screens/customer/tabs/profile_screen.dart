@@ -1,3 +1,6 @@
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
+import 'package:geges_smartbarber/utils/locale_provider.dart';
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -87,12 +90,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final localeProvider = Provider.of<LocaleProvider>(context);
+
+    // Update name if loading
+    String displayName = _currentUser.name;
+    if (displayName == "Loading...") displayName = l10n.loading;
+
     return Scaffold(
       backgroundColor: kSurface,
       appBar: AppBar(
-        title: const Text(
-          'My Profile',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        title: Text(
+          l10n.profileTab,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: kSurface,
         elevation: 0,
@@ -109,12 +119,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildProfileHeader(),
+              _buildProfileHeader(displayName),
               const SizedBox(height: 20),
 
               // --- MENU UTAMA ---
               _buildMenuCard(
-                title: 'History',
+                title: l10n.history,
                 icon: Icons.history,
                 onTap: () {
                   Navigator.push(
@@ -126,8 +136,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
               const SizedBox(height: 12),
+
+              // --- MENU BAHASA ---
               _buildMenuCard(
-                title: 'Favorite Barbers',
+                title: l10n.language,
+                icon: Icons.language,
+                onTap: () => _showLanguageDialog(context, localeProvider),
+              ),
+              const SizedBox(height: 12),
+              _buildMenuCard(
+                title: l10n.favoriteBarbers,
                 icon: Icons.favorite_border,
                 onTap: () {
                   Navigator.push(
@@ -143,7 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               // --- MENU RATING ---
               _buildMenuCard(
-                title: 'Rating Aplikasi',
+                title: l10n.appRating,
                 icon: Icons.star_outline,
                 onTap: () {
                   Navigator.push(
@@ -156,7 +174,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 12),
               _buildMenuCard(
-                title: 'Terms of Service',
+                title: l10n.termsOfService,
                 icon: Icons.description_outlined,
                 onTap: () {
                   Navigator.of(context).pushNamed('/legal/terms');
@@ -177,9 +195,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   elevation: 0,
                 ),
-                child: const Text(
-                  'Log Out',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                child: Text(
+                  l10n.signOut,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
 
@@ -194,7 +212,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileHeader() {
+  void _showLanguageDialog(BuildContext context, LocaleProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
+        return AlertDialog(
+          backgroundColor: kCardColor,
+          title: Text(l10n.changeLanguage, style: const TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('Bahasa Indonesia', style: TextStyle(color: Colors.white)),
+                leading: Radio<Locale>(
+                  value: const Locale('id'),
+                  groupValue: provider.locale,
+                  onChanged: (Locale? v) {
+                    if (v != null) provider.setLocale(v);
+                    Navigator.pop(context);
+                  },
+                ),
+                onTap: () {
+                  provider.setLocale(const Locale('id'));
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: const Text('English', style: TextStyle(color: Colors.white)),
+                leading: Radio<Locale>(
+                  value: const Locale('en'), groupValue: provider.locale,
+                  onChanged: (Locale? v) {
+                    if (v != null) provider.setLocale(v);
+                    Navigator.pop(context);
+                  },
+                ),
+                onTap: () {
+                  provider.setLocale(const Locale('en'));
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileHeader(String displayName) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -219,7 +284,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _currentUser.name,
+                  displayName,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -230,7 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 Text(
                   _userEmail,
-                  style: TextStyle(color: kTextGrey, fontSize: 13),
+                  style: const TextStyle(color: kTextGrey, fontSize: 13),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -240,7 +305,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Tombol Settings/Edit Profile
           IconButton(
             onPressed: _goToEditProfile,
-            icon: Icon(Icons.settings, color: kTextGrey, size: 24),
+            icon: const Icon(Icons.settings, color: kTextGrey, size: 24),
           ),
         ],
       ),
@@ -280,6 +345,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildBarbershopPromoCard() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -289,18 +355,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Grow Your Barbershop with us',
-            style: TextStyle(
+          Text(
+            l10n.promoGrowTitle,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Join out network of Profesional Barbers',
-            style: TextStyle(color: kTextGrey, fontSize: 14),
+          Text(
+            l10n.promoGrowSubtitle,
+            style: const TextStyle(color: kTextGrey, fontSize: 14),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -323,9 +389,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 elevation: 0,
               ),
-              child: const Text(
-                'Register my Barbershop',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              child: Text(
+                l10n.registerMyBarbershop,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ),

@@ -10,6 +10,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/screens/customer/home_screen.dart';
 import 'package:geges_smartbarber/screens/admin/admin_dashboard.dart';
@@ -97,16 +98,17 @@ class _LoginScreenState extends State<LoginScreen> {
   void _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    final l10n = AppLocalizations.of(context)!;
 
     if (email.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = 'email dan password wajib diisi.');
+      setState(() => _errorMessage = l10n.errLoginEmpty);
       return;
     }
 
     // Simple email format validation
     final emailRegex = RegExp(r"^[\w\.-]+@[\w\.-]+\.\w+");
     if (!emailRegex.hasMatch(email)) {
-      setState(() => _errorMessage = 'Format email salah.');
+      setState(() => _errorMessage = l10n.errEmailFormat);
       return;
     }
     setState(() {
@@ -122,13 +124,13 @@ class _LoginScreenState extends State<LoginScreen> {
       if (result['success'] == true) {
         _navigateByRole(result['role']);
       } else {
-        setState(() => _errorMessage = result['message'] ?? 'login gagal.');
+        setState(() => _errorMessage = result['message'] ?? l10n.errLoginFailed);
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'terjadi kesalahan: $e';
+        _errorMessage = l10n.errGeneric(e.toString());
       });
     }
   }
@@ -143,6 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // - jika admin_owner, navigasi ke AdminDashboardScreen
     // - pushReplacement() berarti ganti layar ini dengan layar baru (jadi tidak bisa kembali ke login)
 
+    final l10n = AppLocalizations.of(context)!;
     Widget targetScreen;
     if (role == 'customer') {
       targetScreen = widget.homeBuilder?.call(context) ?? const HomeScreen();
@@ -152,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
           widget.adminBuilder?.call(context) ?? const AdminDashboardScreen();
     } else {
       setState(
-        () => _errorMessage = 'Role pengguna tidak valid: ${role ?? '<null>'}',
+        () => _errorMessage = l10n.errRoleInvalid(role ?? '<null>'),
       );
       return;
     }
@@ -193,6 +196,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // - kirim link reset password ke email melalui firebase
 
     final email = _emailController.text.trim();
+    final l10n = AppLocalizations.of(context)!;
 
     // penjelasan kondisi:
     // - jika email kosong, tanyakan via dialog
@@ -202,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final typed = await _askForEmailDialog();
       if (typed == null || typed.trim().isEmpty) {
         _showSnackbar(
-          'masukkan email untuk menerima link reset.',
+          l10n.dialogResetHint, // Using hint as instruction "Enter email"
           const Color(0xFFD32F2F),
         );
         return;
@@ -220,6 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // - setelah selesai, tampilkan snackbar sukses/gagal
   Future<void> _sendResetEmail(String email) async {
     setState(() => _isLoading = true);
+    final l10n = AppLocalizations.of(context)!;
     try {
       final auth = _authService ?? AuthService();
       final res = await auth.sendPasswordResetEmail(email: email);
@@ -228,19 +233,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (res['success'] == true) {
         _showSnackbar(
-          'link reset password telah dikirim ke $email.',
+          l10n.msgResetSent(email),
           kBrownAccent,
         );
       } else {
         _showSnackbar(
-          res['message'] ?? 'gagal mengirim link reset password.',
+          res['message'] ?? l10n.msgResetFail,
           const Color(0xFFD32F2F),
         );
       }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      _showSnackbar('terjadi kesalahan: $e', const Color(0xFFD32F2F));
+      _showSnackbar(l10n.errGeneric(e.toString()), const Color(0xFFD32F2F));
     }
   }
 
@@ -253,6 +258,8 @@ class _LoginScreenState extends State<LoginScreen> {
     // - panggil _authService.signInWithGoogle() untuk authenticate dengan google
     // - jika sukses, navigasi ke home atau admin berdasarkan role
     // - jika gagal, tampilkan error message
+
+    final l10n = AppLocalizations.of(context)!;
 
     setState(() {
       _isLoading = true;
@@ -288,7 +295,7 @@ class _LoginScreenState extends State<LoginScreen> {
               content: Text('$message'),
               backgroundColor: const Color(0xFFD32F2F),
               action: SnackBarAction(
-                label: 'Retry',
+                label: l10n.btnRetry,
                 textColor: Colors.white,
                 onPressed: _signInWithGoogle,
               ),
@@ -300,7 +307,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'terjadi kesalahan: $e';
+        _errorMessage = l10n.errGeneric(e.toString());
       });
       // If error string contains recaptcha or credential hints, provide a retry
       final msg = e.toString().toLowerCase();
@@ -308,14 +315,14 @@ class _LoginScreenState extends State<LoginScreen> {
           msg.contains('recaptcha') ||
           msg.contains('credential') ||
           msg.contains('developer_error');
-      _showSnackbar('terjadi kesalahan: $e', const Color(0xFFD32F2F));
+      _showSnackbar(l10n.errGeneric(e.toString()), const Color(0xFFD32F2F));
       if (shouldOfferRetry) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Terjadi kesalahan autentikasi: $e'),
+            content: Text(l10n.errGeneric(e.toString())),
             backgroundColor: const Color(0xFFD32F2F),
             action: SnackBarAction(
-              label: 'Retry',
+              label: l10n.btnRetry,
               textColor: Colors.white,
               onPressed: _signInWithGoogle,
             ),
@@ -334,26 +341,27 @@ class _LoginScreenState extends State<LoginScreen> {
     // - user bisa input email & tekan "kirim" atau tekan "batal"
     // - mengembalikan email yang diinput atau null jika dibatalkan
 
+    final l10n = AppLocalizations.of(context)!;
     String typed = '';
     return showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
           backgroundColor: Colors.black,
-          title: const Text(
-            'reset password',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            l10n.dialogResetTitle,
+            style: const TextStyle(color: Colors.white),
           ),
           content: TextField(
             keyboardType: TextInputType.emailAddress,
             style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(hintText: 'masukkan email anda'),
+            decoration: InputDecoration(hintText: l10n.dialogResetHint),
             onChanged: (v) => typed = v,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(null),
-              child: const Text('batal'),
+              child: Text(l10n.dialogResetCancel),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -361,7 +369,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 foregroundColor: Colors.black,
               ),
               onPressed: () => Navigator.of(context).pop(typed),
-              child: const Text('kirim'),
+              child: Text(l10n.btnSend),
             ),
           ],
         );
@@ -374,36 +382,22 @@ class _LoginScreenState extends State<LoginScreen> {
   // ========================================
   void _showAuthTroubleshootDialog() {
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Troubleshoot Sign-in'),
-        content: const SingleChildScrollView(
+        title: Text(l10n.troubleshootTitle),
+        content: SingleChildScrollView(
           child: ListBody(
             children: [
-              Text(
-                'Jika Anda melihat pesan reCAPTCHA atau Developer Error, periksa langkah-langkah berikut:',
-              ),
-              SizedBox(height: 8),
-              Text(
-                '- Pastikan SHA-1 debug/release ditambahkan ke Firebase Console',
-              ),
-              Text(
-                '- Ganti google-services.json bila diperlukan dan rebuild aplikasi',
-              ),
-              Text(
-                '- Untuk masalah reCAPTCHA, coba login dengan email/password sebagai fallback',
-              ),
-              Text(
-                '- App Check dapat diabaikan pada development atau dikonfigurasi untuk production',
-              ),
+              Text(l10n.troubleshootContent),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup'),
+            child: Text(l10n.btnClose),
           ),
         ],
       ),
@@ -427,6 +421,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -448,29 +443,33 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Icon(Icons.cut, color: kBrownAccent, size: 120),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'Welcome to GEGES',
+                Text(
+                  l10n.welcome,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Sign in or create an account to get started.',
+                Text(
+                  l10n.welcomeSubtitle,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
                 ),
                 const SizedBox(height: 32),
-                _buildAuthTabs(isLogin: true, onSignUpTap: _goToRegister),
+                _buildAuthTabs(
+                    isLogin: true,
+                    onSignUpTap: _goToRegister,
+                    loginLabel: l10n.signInTab,
+                    signUpLabel: l10n.signUp),
                 const SizedBox(height: 32),
 
                 // Email
                 _buildTextField(
                   controller: _emailController,
-                  hintText: 'Email',
+                  hintText: l10n.email,
                   icon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
                   focusNode: _emailFocusNode,
@@ -480,7 +479,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Password with toggle
                 _buildTextField(
                   controller: _passwordController,
-                  hintText: 'Password',
+                  hintText: l10n.password,
                   icon: Icons.lock_outline,
                   obscureText: _obscurePassword,
                   focusNode: _passwordFocusNode,
@@ -494,9 +493,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: _forgotPassword,
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(color: kBrownAccent),
+                    child: Text(
+                      l10n.forgotPassword,
+                      style: const TextStyle(color: kBrownAccent),
                     ),
                   ),
                 ),
@@ -544,9 +543,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             backgroundColor: kBrownAccent,
                             foregroundColor: Colors.black,
                           ),
-                          child: const Text(
-                            'Sign In',
-                            style: TextStyle(
+                          child: Text(
+                            l10n.login,
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
@@ -559,11 +558,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   children: [
                     Expanded(child: Divider(color: Colors.grey.shade800)),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: Text(
-                        'or',
-                        style: TextStyle(color: Colors.white70),
+                        l10n.orSplit,
+                        style: const TextStyle(color: Colors.white70),
                       ),
                     ),
                     Expanded(child: Divider(color: Colors.grey.shade800)),
@@ -590,9 +589,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   size: 24,
                                 ),
                           ),
-                          label: const Text(
-                            'Continue with Google',
-                            style: TextStyle(fontSize: 16),
+                          label: Text(
+                            l10n.continueWithGoogle,
+                            style: const TextStyle(fontSize: 16),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: kDarkGrey,
@@ -612,9 +611,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   text: TextSpan(
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                     children: [
-                      const TextSpan(text: 'By continuing, you agree to our\n'),
+                      TextSpan(text: l10n.termFooterPre),
                       TextSpan(
-                        text: 'Term of Services',
+                        text: l10n.termFooterService,
                         style: const TextStyle(
                           color: kBrownAccent,
                           decoration: TextDecoration.underline,
@@ -625,9 +624,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.of(context).pushNamed('/legal/terms');
                           },
                       ),
-                      const TextSpan(text: ' and '),
+                      TextSpan(text: l10n.termFooterAnd),
                       TextSpan(
-                        text: 'Privacy Policy',
+                        text: l10n.termFooterPrivacy,
                         style: const TextStyle(
                           color: kBrownAccent,
                           decoration: TextDecoration.underline,
@@ -654,6 +653,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildAuthTabs({
     required bool isLogin,
     required VoidCallback onSignUpTap,
+    required String loginLabel,
+    required String signUpLabel,
   }) {
     // penjelasan:
     // - widget ini menampilkan 2 tab: "log in" dan "sign up"
@@ -679,10 +680,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: kBrownAccent,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
-                'Log in',
+              child: Text(
+                loginLabel,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.black,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -703,10 +704,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'Sign Up',
+                child: Text(
+                  signUpLabel,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,

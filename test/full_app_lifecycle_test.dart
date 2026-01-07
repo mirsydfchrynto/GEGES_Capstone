@@ -7,6 +7,7 @@ import 'package:geges_smartbarber/screens/customer/tabs/my_bookings_screen.dart'
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:mockito/mockito.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'test_helpers.dart';
 
 // Mock User for Auth
 class MockUser extends Mock implements User {
@@ -59,8 +60,7 @@ void main() {
 
     // 3. Pump MyBookingsScreen (The new Sliver Version)
     await tester.pumpWidget(
-      MaterialApp(
-        home: MyBookingsScreen(
+      wrapWithLocalization(MyBookingsScreen(
           firestore: fakeFs,
           queueService: queueService,
           currentUserId: userId,
@@ -77,8 +77,8 @@ void main() {
     await tester.tap(specialOrderBtn);
     await tester.pumpAndSettle();
 
-    // Verify SpecialOrdersScreen content
-    expect(find.text('Special Orders'), findsOneWidget);
+    // Verify SpecialOrdersScreen content (localized: Pesanan Khusus)
+    expect(find.text('Pesanan Khusus'), findsOneWidget);
     expect(find.text('My New Franchise'), findsOneWidget, reason: 'Tenant application should be visible in special orders');
     expect(find.text('LANJUTKAN PEMBAYARAN'), findsOneWidget, reason: 'Resume payment button should be visible');
 
@@ -86,11 +86,11 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pumpAndSettle();
 
-    // 5. Switch to "Terjadwal" Tab
+    // 5. Switch to "Terjadwal" Tab (localized: Terjadwal)
     await tester.tap(find.text('Terjadwal'));
     await tester.pumpAndSettle(const Duration(seconds: 1)); // Give more time for stream
 
-    // Check Booking Card presence
+    // Check Booking Card presence (localized: TERJADWAL)
     expect(find.text('TERJADWAL'), findsOneWidget); // Status badge label
     expect(find.textContaining('Booking #'), findsOneWidget, reason: 'Booking should be visible in Terjadwal tab');
     

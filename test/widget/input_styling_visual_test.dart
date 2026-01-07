@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/screens/register_screen.dart';
+import '../test_helpers.dart';
 
 void main() {
   group('Input Styling Visual Tests', () {
@@ -17,7 +18,7 @@ void main() {
     testWidgets(
       'TC-VISUAL-01: LoginScreen email field has rounded border (radius 20)',
       (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+        await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
         // Find email TextField
         final emailField = find.byType(TextField).first;
@@ -32,7 +33,7 @@ void main() {
     testWidgets(
       'TC-VISUAL-02: LoginScreen password field has rounded border (radius 20)',
       (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+        await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
         // Find all TextFields (email + password)
         final textFields = find.byType(TextField);
@@ -68,7 +69,7 @@ void main() {
     testWidgets('TC-VISUAL-03: LoginScreen focused input styling', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
       // Find email TextField
       final emailField = find.byType(TextField).first;
@@ -86,7 +87,7 @@ void main() {
     testWidgets(
       'TC-VISUAL-04: RegisterScreen name field styling matches LoginScreen',
       (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
+        await tester.pumpWidget(wrapWithLocalization(const RegisterScreen()));
 
         // Find name TextField (first input field)
         final textFields = find.byType(TextField);
@@ -120,7 +121,7 @@ void main() {
     testWidgets(
       'TC-VISUAL-05: Input field colors match design (dark grey bg, brown accent focus)',
       (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+        await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
         // Verify AnimatedContainer colors
         final animatedContainers = find.byType(AnimatedContainer);
@@ -152,7 +153,7 @@ void main() {
     testWidgets('TC-VISUAL-06: Focused border uses brown accent color', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
       // Find and focus email field
       final emailField = find.byType(TextField).first;
@@ -176,7 +177,7 @@ void main() {
     testWidgets('TC-VISUAL-07: Hint text color is subtle (gray)', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
       // Find email field
       final emailField = find.byType(TextField).first;

@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 
@@ -39,6 +43,11 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
 
   bool _isLoading = false;
   late final BarbershopService _service;
+  
+  // Image handling
+  File? _imageFile;
+  String? _currentImageUrl;
+  final ImagePicker _picker = ImagePicker();
 
   static const Color kBrownAccent = Color(0xFFC3A47B);
   static const Color kDarkSurface = Color(0xFF1E1E1E);
@@ -62,6 +71,7 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
     _twitterController = TextEditingController(text: s.twitterUrl ?? '');
     
     _facilities = List.from(s.facilities);
+    _currentImageUrl = s.imageUrl;
   }
 
   @override
@@ -91,12 +101,50 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        imageQuality: 70,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _imageFile = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengambil gambar: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     
     setState(() => _isLoading = true);
     try {
-      await _service.updateBarbershopSettings(widget.barbershop.id, {
+      String? base64Image;
+      if (_imageFile != null) {
+        final bytes = await _imageFile!.readAsBytes();
+        // Cek ukuran, jika terlalu besar mungkin perlu warning atau compress lagi
+        if (bytes.length > 1000000) { // Limit roughly 1MB
+           if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(
+               const SnackBar(content: Text('Gambar terlalu besar (>1MB). Mohon pilih gambar yang lebih kecil.'), backgroundColor: Colors.red),
+             );
+             setState(() => _isLoading = false);
+             return;
+           }
+        }
+        base64Image = base64Encode(bytes);
+      }
+
+      final Map<String, dynamic> updates = {
         'name': _nameController.text.trim(),
         'address': _addressController.text.trim(),
         'google_maps_url': _googleMapsController.text.trim(),
@@ -109,11 +157,19 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
         'facebook_url': _facebookController.text.trim(),
         'twitter_url': _twitterController.text.trim(),
         'facilities': _facilities,
-      });
+      };
+
+      if (base64Image != null) {
+        updates['imageUrl'] = base64Image;
+      }
+
+      await _service.updateBarbershopSettings(widget.barbershop.id, updates);
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Settings updated successfully!')),
+          const SnackBar(content: Text('Profil toko berhasil diperbarui!')),
         );
+        setState(() => _isLoading = false);
         Navigator.pop(context);
       }
     } catch (e) {
@@ -121,9 +177,8 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
+        setState(() => _isLoading = false);
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -143,6 +198,48 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // --- IMAGE PICKER SECTION ---
+              Center(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: kDarkSurface,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: kBrownAccent, width: 2),
+                          image: _imageFile != null
+                              ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
+                              : (_currentImageUrl != null && _currentImageUrl!.isNotEmpty)
+                                  ? DecorationImage(
+                                      image: _currentImageUrl!.startsWith('http')
+                                          ? CachedNetworkImageProvider(_currentImageUrl!)
+                                          : (_currentImageUrl!.length > 200 // Base64 check roughly
+                                              ? MemoryImage(base64Decode(_currentImageUrl!))
+                                              : NetworkImage(_currentImageUrl!) as ImageProvider),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
+                        ),
+                        child: (_imageFile == null && (_currentImageUrl == null || _currentImageUrl!.isEmpty))
+                            ? const Icon(Icons.add_a_photo, color: kBrownAccent, size: 40)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton.icon(
+                      onPressed: _pickImage,
+                      icon: const Icon(Icons.edit, color: kBrownAccent, size: 16),
+                      label: const Text('Ubah Foto Profil', style: TextStyle(color: kBrownAccent)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+
               _buildSectionTitle('Basic Information'),
               const SizedBox(height: 15),
               _buildTextField(_nameController, 'Barbershop Name', Icons.storefront, validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null),
@@ -158,9 +255,21 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
               const SizedBox(height: 15),
               Row(
                 children: [
-                  Expanded(child: _buildTextField(_openHourController, 'Open Hour', Icons.login, keyboardType: TextInputType.number)),
+                  Expanded(child: _buildTextField(_openHourController, 'Open Hour', Icons.login, keyboardType: TextInputType.number, 
+                    validator: (v) {
+                      final n = int.tryParse(v ?? '');
+                      if (n == null || n < 0 || n > 23) return '0-23';
+                      return null;
+                    }
+                  )),
                   const SizedBox(width: 15),
-                  Expanded(child: _buildTextField(_closeHourController, 'Close Hour', Icons.logout, keyboardType: TextInputType.number)),
+                  Expanded(child: _buildTextField(_closeHourController, 'Close Hour', Icons.logout, keyboardType: TextInputType.number,
+                    validator: (v) {
+                      final n = int.tryParse(v ?? '');
+                      if (n == null || n < 0 || n > 23) return '0-23';
+                      return null;
+                    }
+                  )),
                 ],
               ),
 
@@ -172,21 +281,23 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
                   Expanded(child: _buildTextField(_facilityController, 'Add Facility', Icons.add_box_outlined)),
                   const SizedBox(width: 10),
                   ElevatedButton(
-                    onPressed: _addFacility,
+                    onPressed: _isLoading ? null : _addFacility,
                     style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black),
                     child: const Text('Add'),
                   ),
                 ],
               ),
               const SizedBox(height: 15),
-              Wrap(
+              _facilities.isEmpty 
+                  ? const Text('Belum ada fasilitas ditambahkan.', style: TextStyle(color: Colors.white38, fontStyle: FontStyle.italic))
+                  : Wrap(
                 spacing: 8,
                 children: _facilities.map((f) => Chip(
                   label: Text(f),
                   backgroundColor: kDarkSurface,
                   labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
                   deleteIcon: const Icon(Icons.close, size: 14, color: Colors.redAccent),
-                  onDeleted: () => setState(() => _facilities.remove(f)),
+                  onDeleted: _isLoading ? null : () => setState(() => _facilities.remove(f)),
                 )).toList(),
               ),
 
@@ -236,6 +347,7 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
       controller: ctrl,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      enabled: !_isLoading, // Disable when loading
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,

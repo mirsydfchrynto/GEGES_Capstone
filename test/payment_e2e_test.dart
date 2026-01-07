@@ -5,6 +5,7 @@ import 'package:geges_smartbarber/services/booking_anti_duplicate_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'test_helpers.dart';
 
 void main() {
   group('Payment UI + service interactions (integration-like)', () {
@@ -55,8 +56,7 @@ void main() {
 
         // Pump PaymentScreen which should detect the uploaded proof
         await tester.pumpWidget(
-          MaterialApp(
-            home: PaymentScreen(
+          wrapWithLocalization(PaymentScreen(
               orderId: orderId,
               totalPrice: 45000,
               queueService: queueSvc,
@@ -64,10 +64,13 @@ void main() {
             ),
           ),
         );
-        await tester.pumpAndSettle();
+        
+        // Wait for stream
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500)); 
 
-        // The submit button should indicate proof uploaded (disabled state shows 'Bukti Terunggah')
-        expect(find.text('Bukti Terunggah'), findsOneWidget);
+        // The submit button should indicate proof uploaded (disabled state shows 'Menunggu Verifikasi Admin')
+        expect(find.text('Menunggu Verifikasi Admin'), findsOneWidget);
 
         // Admin accepts the payment verification
         await antiDup.acceptPaymentVerification(

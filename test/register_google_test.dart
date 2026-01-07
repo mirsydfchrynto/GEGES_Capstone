@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/screens/register_screen.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/models/user_data.dart';
+import 'test_helpers.dart';
 
 class FakeAuthServiceSuccess implements AuthServiceBase {
   FakeAuthServiceSuccess();
@@ -72,7 +73,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(home: RegisterScreen(authService: FakeAuthServiceSuccess())),
+      wrapWithLocalization(RegisterScreen(authService: FakeAuthServiceSuccess())),
     );
 
     expect(find.byKey(const Key('register_google_btn')), findsOneWidget);
@@ -83,7 +84,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // After success, RegisterScreen navigates to LoginScreen which contains "Sign In"
-    expect(find.text('Sign In'), findsOneWidget);
+    expect(find.widgetWithText(ElevatedButton, 'Masuk'), findsOneWidget);
   });
 
   testWidgets(
@@ -91,8 +92,7 @@ void main() {
     (WidgetTester tester) async {
       const failMessage = 'Recaptcha check failed';
       await tester.pumpWidget(
-        MaterialApp(
-          home: RegisterScreen(
+        wrapWithLocalization(RegisterScreen(
             authService: FakeAuthServiceFailure(failMessage),
           ),
         ),
@@ -106,8 +106,8 @@ void main() {
       // Error message should be set in the UI (either as _errorMessage or in snackbar)
       expect(find.textContaining('Recaptcha'), findsWidgets);
 
-      // Snackbar action 'Retry' should be present for this kind of error
-      expect(find.text('Retry'), findsOneWidget);
+      // Snackbar action 'Retry' should be present for this kind of error (localized)
+      expect(find.text('Coba Lagi'), findsOneWidget);
     },
   );
 }

@@ -1,11 +1,14 @@
 // lib/screens/customer/home_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/models/promo_banner.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/location_service.dart';
+import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/barbershop_detail_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/profile_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/chat_assistant_screen.dart';
@@ -16,7 +19,17 @@ import 'package:geolocator/geolocator.dart';
 class HomeScreen extends StatefulWidget {
   final BarbershopService? barbershopService;
   final LocationService? locationService;
-  const HomeScreen({super.key, this.barbershopService, this.locationService});
+  final QueueService? queueService;
+  final String? currentUserId; // For testing injection
+
+  const HomeScreen({
+    super.key, 
+    this.barbershopService, 
+    this.locationService, 
+    this.queueService,
+    this.currentUserId,
+  });
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -24,6 +37,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final BarbershopService _barbershopService;
   late final LocationService _locationService;
+  late final QueueService _queueService;
   final PageController _pageController = PageController();
   final TextEditingController _searchController = TextEditingController();
   static const Color kBrownAccent = Color(0xFFC3A47B);
@@ -42,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _barbershopService = widget.barbershopService ?? BarbershopService();
     _locationService = widget.locationService ?? LocationService();
+    _queueService = widget.queueService ?? QueueService();
     _barbershopFuture = _barbershopService.getAllBarbershops().then((shops) {
       if (_userPosition != null) _calculateAllDistances(shops);
       return shops;
@@ -63,18 +78,24 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final pos = await _locationService.getCurrentPosition();
       final address = await _locationService.getCurrentLocationAddress();
+      final l10n = AppLocalizations.of(context)!;
       
       if (mounted) {
         setState(() { 
           _userPosition = pos;
-          _currentAddress = address ?? 'Lokasi tidak ditemukan'; 
+          _currentAddress = address ?? l10n.locationNotFound; 
           _isLocating = false; 
         });
         
         // Recalculate for loaded shops
         _barbershopFuture.then((shops) => _calculateAllDistances(shops));
       }
-    } catch (e) { if (mounted) setState(() { _currentAddress = 'Error lokasi'; _isLocating = false; }); }
+    } catch (e) { 
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        setState(() { _currentAddress = l10n.locationError; _isLocating = false; }); 
+      }
+    }
   }
 
   Future<void> _calculateAllDistances(List<Barbershop> shops) async {
@@ -118,18 +139,55 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onItemTapped(int index) { setState(() => _selectedIndex = index); _pageController.jumpToPage(index); }
 
   Widget _buildHeader() {
+    final uid = widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid ?? '';
+    final l10n = AppLocalizations.of(context)!;
+    final addressText = _isLocating ? l10n.locating : _currentAddress;
+
     return Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      GestureDetector(onTap: _isLocating ? null : _updateLocation, child: Row(children: [const Icon(Icons.location_on, color: Colors.white, size: 20), const SizedBox(width: 8), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [const Text('Lokasi Saya', style: TextStyle(color: Colors.white70, fontSize: 12)), if (_isLocating) ...[const SizedBox(width: 8), const SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 2, color: kBrownAccent))] else ...[const SizedBox(width: 4), const Icon(Icons.refresh, color: Colors.white54, size: 12)]]), Text(_currentAddress, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold))])])),
-      IconButton(icon: const Icon(Icons.notifications_none_outlined, color: Colors.white, size: 28), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen())), tooltip: 'Notifikasi'),
+      GestureDetector(onTap: _isLocating ? null : _updateLocation, child: Row(children: [const Icon(Icons.location_on, color: Colors.white, size: 20), const SizedBox(width: 8), Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Text(l10n.myLocation, style: const TextStyle(color: Colors.white70, fontSize: 12)), if (_isLocating) ...[const SizedBox(width: 8), const SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 2, color: kBrownAccent))] else ...[const SizedBox(width: 4), const Icon(Icons.refresh, color: Colors.white54, size: 12)]]), Text(addressText, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold))])])),
+      StreamBuilder<int>(
+        stream: _queueService.streamUnreadNotificationCount(uid),
+        initialData: 0,
+        builder: (context, snapshot) {
+          final count = snapshot.data ?? 0;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(icon: const Icon(Icons.notifications_none_outlined, color: Colors.white, size: 28), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationsScreen())), tooltip: l10n.notifications),
+              if (count > 0)
+                Positioned(
+                  top: 5,
+                  right: 5,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Center(
+                      child: Text(
+                        count > 9 ? '9+' : count.toString(),
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }
+      ),
     ]));
   }
 
   Widget _buildSearchBar() {
-    return Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: TextField(controller: _searchController, onChanged: _onSearchChanged, style: const TextStyle(color: Colors.white), decoration: InputDecoration(hintText: 'Search Barbershop or Services', hintStyle: const TextStyle(color: Color(0xFF6B6B6B)), prefixIcon: const Icon(Icons.search, color: Color(0xFF6B6B6B)), suffixIcon: ValueListenableBuilder<TextEditingValue>(valueListenable: _searchController, builder: (context, value, _) => value.text.isNotEmpty ? IconButton(icon: const Icon(Icons.clear, color: Color(0xFF6B6B6B), size: 20), onPressed: () { _searchController.clear(); _onSearchChanged(''); }) : const SizedBox.shrink()), filled: true, fillColor: kDarkGrey, border: OutlineInputBorder(borderRadius: BorderRadius.circular(15.0), borderSide: BorderSide.none), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15.0), borderSide: BorderSide.none), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15.0), borderSide: const BorderSide(color: kBrownAccent, width: 1.5)))));
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: TextField(controller: _searchController, onChanged: _onSearchChanged, style: const TextStyle(color: Colors.white), decoration: InputDecoration(hintText: l10n.searchHintHome, hintStyle: const TextStyle(color: Color(0xFF6B6B6B)), prefixIcon: const Icon(Icons.search, color: Color(0xFF6B6B6B)), suffixIcon: ValueListenableBuilder<TextEditingValue>(valueListenable: _searchController, builder: (context, value, _) => value.text.isNotEmpty ? IconButton(icon: const Icon(Icons.clear, color: Color(0xFF6B6B6B), size: 20), onPressed: () { _searchController.clear(); _onSearchChanged(''); }) : const SizedBox.shrink()), filled: true, fillColor: kDarkGrey, border: OutlineInputBorder(borderRadius: BorderRadius.circular(15.0), borderSide: BorderSide.none), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15.0), borderSide: BorderSide.none), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15.0), borderSide: const BorderSide(color: kBrownAccent, width: 1.5)))));
   }
 
   Widget _buildRecommendedList() {
-    return Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: FutureBuilder<List<Barbershop>>(future: _barbershopFuture, builder: (context, snapshot) { if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: kBrownAccent)); if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) return Container(padding: const EdgeInsets.symmetric(vertical: 40), child: const Center(child: Text("Gagal memuat barbershop.", style: TextStyle(color: Colors.white70)))); return Column(children: snapshot.data!.map((shop) => _buildBarbershopCard(context, shop)).toList());
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: FutureBuilder<List<Barbershop>>(future: _barbershopFuture, builder: (context, snapshot) { if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: kBrownAccent)); if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) return Container(padding: const EdgeInsets.symmetric(vertical: 40), child: Center(child: Text(l10n.failedToLoadShops, style: const TextStyle(color: Colors.white70)))); return Column(children: snapshot.data!.map((shop) => _buildBarbershopCard(context, shop)).toList());
     }));
   }
 
@@ -137,6 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // FILTER LOGIC: Hanya tampilkan service yang ada di map _serviceNames (valid)
     final validServices = shop.services.where((id) => _serviceNames.containsKey(id)).toList();
     final distance = _shopDistances[shop.id];
+    final l10n = AppLocalizations.of(context)!;
 
     return GestureDetector(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => BarbershopDetailScreen(barbershop: shop))), child: Container(margin: const EdgeInsets.only(bottom: 20.0), decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(20)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(20)), child: SizedBox(height: 180, width: double.infinity, child: _buildImage(shop.imageUrl))),
@@ -188,8 +247,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                       shape: RoundedRectangleBorder(
                                           borderRadius:
                                               BorderRadius.circular(12))),
-                                  child: const Text('Book Now',
-                                      style: TextStyle(
+                                  child: Text(l10n.bookNow,
+                                      style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16)))
                               : ElevatedButton(
@@ -199,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       disabledBackgroundColor: kRedDanger,
                                       shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(12))),
-                                  child: const Text('TUTUP / CLOSED', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                                  child: Text(l10n.shopClosed, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))
                         )
                       ]))
             ])));
@@ -237,6 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomePageBody() {
+    final l10n = AppLocalizations.of(context)!;
     return SafeArea(
         bottom: false,
         child: ListView(padding: EdgeInsets.zero, children: [
@@ -252,7 +312,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                           PromoCarousel(barbershopService: _barbershopService),
                           const SizedBox(height: 21),
-                          _buildTitle("Barbershops\nnear you"),
+                          _buildTitle(l10n.barbershopsNearYou),
                           const SizedBox(height: 18),
                           _buildRecommendedList()
                         ])
@@ -262,14 +322,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearch(String q) {
+    final l10n = AppLocalizations.of(context)!;
     if (_searchResults == null) {
       return const Padding(padding: EdgeInsets.only(top: 40.0), child: Center(child: CircularProgressIndicator(color: kBrownAccent)));
     }
     if (_searchResults!.isEmpty) {
-      return Padding(padding: const EdgeInsets.only(top: 40.0), child: Center(child: Column(children: [const Icon(Icons.search_off, size: 64, color: Colors.white24), const SizedBox(height: 16), Text('Tidak ditemukan hasil untuk "$q"', style: const TextStyle(color: Colors.white54, fontSize: 16))])));
+      return Padding(padding: const EdgeInsets.only(top: 40.0), child: Center(child: Column(children: [const Icon(Icons.search_off, size: 64, color: Colors.white24), const SizedBox(height: 16), Text(l10n.noResultsFor(q), style: const TextStyle(color: Colors.white54, fontSize: 16))])));
     }
     final count = _searchResults!.length;
-    final resultText = count == 1 ? "Found 1 result" : "Found $count results";
+    final resultText = l10n.foundResults(count);
     return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -293,6 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final List<Widget> widgetOptions = <Widget>[
       _buildHomePageBody(),
       const StyleScanScreen(),
@@ -308,15 +370,15 @@ class _HomeScreenState extends State<HomeScreen> {
             physics: const NeverScrollableScrollPhysics(),
             children: widgetOptions),
         bottomNavigationBar: BottomNavigationBar(
-            items: const [
+            items: [
               BottomNavigationBarItem(
-                  icon: Icon(Icons.home_filled), label: 'Home'),
+                  icon: const Icon(Icons.home_filled), label: l10n.home),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.camera_alt), label: 'StyleScan'),
+                  icon: const Icon(Icons.camera_alt), label: l10n.styleScan),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.chat_bubble), label: 'Chatbot'),
+                  icon: const Icon(Icons.chat_bubble), label: l10n.chatbot),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.person_outline), label: 'Profile')
+                  icon: const Icon(Icons.person_outline), label: l10n.profileTab)
             ],
             type: BottomNavigationBarType.fixed,
             backgroundColor: kDarkGrey,
@@ -384,7 +446,7 @@ class _PromoCarouselState extends State<PromoCarousel>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (_banners.isEmpty)
+    if (_banners.isEmpty) {
       return Container(
           height: 160,
           margin: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -393,6 +455,7 @@ class _PromoCarouselState extends State<PromoCarousel>
               borderRadius: BorderRadius.circular(20)),
           child: const Center(
               child: CircularProgressIndicator(color: Color(0xFFC3A47B))));
+    }
     return Column(children: [
       SizedBox(
           height: 160,
@@ -460,11 +523,7 @@ class _PromoCarouselState extends State<PromoCarousel>
 
   
 
-  
-
     const _DistanceBadge({required this.distance});
-
-  
 
   
 

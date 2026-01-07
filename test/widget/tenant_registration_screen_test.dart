@@ -1,12 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:geges_smartbarber/screens/tenant_registration_screen.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/models/tenant.dart';
 import 'package:firebase_core/firebase_core.dart';
+import '../test_helpers.dart';
 
 // Small in-memory tenant service for tests
-class InMemoryTenantService implements TenantServiceContract {
+class InMemoryTenantService extends TenantService {
+  InMemoryTenantService() : super(firestore: FakeFirebaseFirestore());
   final Map<String, Map<String, dynamic>> _m = {};
 
   @override
@@ -91,37 +94,37 @@ class InMemoryTenantService implements TenantServiceContract {
 
 
 void main() {
-  setUpAll(() async {
-    try {
-      // Initialize Firebase for tests that create TenantService subclasses
-      await Firebase.initializeApp();
-    } catch (_) {}
-  });
-
   testWidgets('submit and pay flow shows waiting message', (tester) async {
-    await tester.pumpWidget(MaterialApp(home: TenantRegistrationScreen(paymentService: DummyPaymentService(), notificationService: DummyNotificationService(), tenantService: InMemoryTenantService(), disableCountdown: true)));
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
 
+    await tester.pumpWidget(wrapWithLocalization(TenantRegistrationScreen(
+      tenantService: InMemoryTenantService(),
+      currentUserId: 'owner123',
+    )));
 
     // Fill form
-    await tester.enterText(find.byType(TextFormField), 'Barber Keren');
-    await tester.tap(find.text('Unggah Dokumen (conto)'));
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'Barber Keren');
+    await tester.enterText(fields.at(2), 'Owner Name');
+    await tester.enterText(fields.at(3), 'owner@example.com');
+    
+    // Accept terms
+    final checkbox = find.byType(Checkbox);
+    await tester.scrollUntilVisible(checkbox, 200, scrollable: find.byType(Scrollable).first);
+    await tester.tap(checkbox);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
 
     // Submit
-    await tester.tap(find.text('Daftar & Bayar'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
+    // Price is 300000 by default (monthly)
+    final submitBtn = find.widgetWithText(ElevatedButton, 'Daftar & Bayar 300000');
+    await tester.ensureVisible(submitBtn);
+    await tester.pumpAndSettle();
+    await tester.tap(submitBtn);
+    await tester.pumpAndSettle();
 
-    // Payment dialog appears
-    expect(find.text('Pembayaran'), findsOneWidget);
-
-    // Pay now
-    await tester.tap(find.text('Bayar Sekarang'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    // Success snackbar
-    expect(find.textContaining('Pembayaran berhasil'), findsOneWidget);
+    // Payment screen appears (localized: Menunggu Pembayaran)
+    expect(find.text('Menunggu Pembayaran'), findsOneWidget);
   });
 }

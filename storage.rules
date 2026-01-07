@@ -2,38 +2,44 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Tenant documents: only tenant owner or admins may read/write files under tenants/{tenantId}/docs/**
-    match /tenants/{tenantId}/docs/{allPaths=**} {
-      // Allow listing for owner or admin so they can enumerate tenant documents
-      allow list: if isOwner() || isAdmin();
-
-      // Allow read for owner or admin
-      allow read: if isOwner() || isAdmin();
-
-      // Allow write only for owner or admin AND only for valid uploads
-      allow write: if (isOwner() || isAdmin()) && validUpload();
-
-      // Valid uploads: size < 5MB and contentType is image/*, application/pdf or text/*
-      function validUpload() {
-        return request.resource.size < 5 * 1024 * 1024 &&
-          (
-            (request.resource.contentType.matches('image/.*')) ||
-            (request.resource.contentType == 'application/pdf') ||
-            (request.resource.contentType.matches('text/.*'))
-          );
-      }
+    // --- HELPER FUNCTIONS ---
+    function isSuperAdmin() {
+      // Mengakses Firestore dari Storage Rules untuk cek role user
+      return request.auth != null &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
     }
 
-    // Helper to check admin role via Firestore users/{uid}.role == 'admin'
     function isAdmin() {
       return request.auth != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Helper to check tenant owner
-    function isOwner() {
+    function isOwner(tenantId) {
       return request.auth != null &&
-        get(/databases/$(database)/documents/tenants/$(tenantId)).data.owner_uid == request.auth.uid;
+        firestore.get(/databases/(default)/documents/tenants/$(tenantId)).data.owner_uid == request.auth.uid;
+    }
+
+    // --- GLOBAL BYPASS FOR SUPER ADMIN ---
+    // Super Admin bisa baca/tulis SEMUA file di storage
+    match /{allPaths=**} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // --- ATURAN SPESIFIK LAINNYA (Tetap dipertahankan) ---
+
+    // Tenant documents
+    match /tenants/{tenantId}/docs/{allPaths=**} {
+      allow list: if isOwner(tenantId) || isAdmin();
+      allow read: if isOwner(tenantId) || isAdmin();
+      
+      // Validasi upload untuk user biasa
+      allow write: if (isOwner(tenantId) || isAdmin()) && 
+        (request.resource.size < 5 * 1024 * 1024);
+    }
+    
+    // Public/User uploads
+    match /{allPaths=**} {
+       allow read, write: if request.auth != null;
     }
   }
 }

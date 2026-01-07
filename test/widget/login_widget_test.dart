@@ -4,6 +4,7 @@ import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/models/user_data.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../test_helpers.dart';
 
 // Simple fake AuthService for widget tests
 class FakeAuthService implements AuthService {
@@ -107,10 +108,10 @@ void main() {
     WidgetTester tester,
   ) async {
     final fake = FakeAuthService();
-    await tester.pumpWidget(MaterialApp(home: LoginScreen(authService: fake)));
+    await tester.pumpWidget(wrapWithLocalization(LoginScreen(authService: fake)));
 
     // Tap Sign In without entering credentials
-    await tester.tap(find.text('Sign In'));
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Masuk'));
     await tester.pumpAndSettle();
 
     expect(
@@ -124,11 +125,11 @@ void main() {
     WidgetTester tester,
   ) async {
     final fake = FakeAuthService();
-    await tester.pumpWidget(MaterialApp(home: LoginScreen(authService: fake)));
+    await tester.pumpWidget(wrapWithLocalization(LoginScreen(authService: fake)));
 
     await tester.enterText(find.byType(TextField).first, 'invalid-email');
     await tester.enterText(find.byType(TextField).at(1), 'password123');
-    await tester.tap(find.text('Sign In'));
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Masuk'));
     await tester.pumpAndSettle();
 
     expect(find.text('Format email salah.'), findsOneWidget);
@@ -142,18 +143,16 @@ void main() {
       response: {'success': true, 'role': 'customer'},
     );
     await tester.pumpWidget(
-      MaterialApp(
-        home: LoginScreen(
-          authService: fake,
-          homeBuilder: (_) => const Text('HOME-TEST'),
-          adminBuilder: (_) => const Text('ADMIN-TEST'),
-        ),
-      ),
+      wrapWithLocalization(LoginScreen(
+        authService: fake,
+        homeBuilder: (_) => const Text('HOME-TEST'),
+        adminBuilder: (_) => const Text('ADMIN-TEST'),
+      )),
     );
 
     await tester.enterText(find.byType(TextField).first, 'esa@gmail.com');
     await tester.enterText(find.byType(TextField).at(1), '123456789');
-    await tester.tap(find.text('Sign In'));
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Masuk'));
     await tester.pumpAndSettle();
 
     // Placeholder builder was used
@@ -167,18 +166,16 @@ void main() {
       response: {'success': true, 'role': 'admin_owner'},
     );
     await tester.pumpWidget(
-      MaterialApp(
-        home: LoginScreen(
-          authService: fake,
-          homeBuilder: (_) => const Text('HOME-TEST'),
-          adminBuilder: (_) => const Text('ADMIN-TEST'),
-        ),
-      ),
+      wrapWithLocalization(LoginScreen(
+        authService: fake,
+        homeBuilder: (_) => const Text('HOME-TEST'),
+        adminBuilder: (_) => const Text('ADMIN-TEST'),
+      )),
     );
 
     await tester.enterText(find.byType(TextField).first, 'admin@example.com');
     await tester.enterText(find.byType(TextField).at(1), 'adminpass');
-    await tester.tap(find.text('Sign In'));
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Masuk'));
     await tester.pumpAndSettle();
 
     // Placeholder builder was used

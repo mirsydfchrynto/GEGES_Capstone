@@ -1,10 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:geges_smartbarber/screens/tenant_registration_screen.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/models/tenant.dart';
+import '../test_helpers.dart';
 
-class StubTenantService implements TenantServiceContract {
+class StubTenantService extends TenantService {
+  StubTenantService() : super(firestore: FakeFirebaseFirestore());
+
   @override
   Future<void> attachInvoice(String tenantId, {required String invoiceId, required DateTime deadline}) async {}
 
@@ -35,11 +40,24 @@ class StubTenantService implements TenantServiceContract {
 void main() {
   testWidgets('Shows resume banner when active registration exists', (tester) async {
     final svc = StubTenantService();
-    await tester.pumpWidget(MaterialApp(home: TenantRegistrationScreen(tenantService: svc)));
+    final fs = svc.firestore;
+    
+    // Seed Firestore with a pending registration
+    await fs.collection('tenants').add({
+      'owner_uid': 'test_owner',
+      'business_name': 'Acme',
+      'status': 'awaiting_payment',
+      'created_at': Timestamp.now(),
+    });
+
+    await tester.pumpWidget(wrapWithLocalization(TenantRegistrationScreen(
+      tenantService: svc,
+      currentUserId: 'test_owner',
+    )));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Anda memiliki pendaftaran'), findsOneWidget);
-    expect(find.text('Lanjutkan Pendaftaran'), findsOneWidget);
-    expect(find.text('Batalkan'), findsOneWidget);
+    expect(find.text('Lanjutkan Bayar'), findsOneWidget);
+    expect(find.text('Buat Baru'), findsOneWidget);
   });
 }

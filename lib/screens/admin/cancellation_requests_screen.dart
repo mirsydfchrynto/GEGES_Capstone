@@ -390,6 +390,13 @@ class _CancellationDetailSheet extends StatefulWidget {
 
 class _CancellationDetailSheetState extends State<_CancellationDetailSheet> {
   bool _isLoading = false;
+  final TextEditingController _adminNotesCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _adminNotesCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -475,6 +482,24 @@ class _CancellationDetailSheetState extends State<_CancellationDetailSheet> {
                   _buildDataRow('Barbershop', widget.shopName),
                   _buildDataRow('Jadwal', DateFormat('EEEE, d MMM yyyy • HH:mm').format(widget.queue.bookingTime.toDate())),
                   
+                  const SizedBox(height: 24),
+
+                  const Text('Catatan Refund (Wajib)', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _adminNotesCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Misal: Refund disetujui, bukti transfer terlampir.',
+                      hintStyle: const TextStyle(color: Colors.white24),
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.all(16),
+                    ),
+                    maxLines: 2,
+                  ),
+
                   const SizedBox(height: 24),
 
                   // Refund Calculation Card
@@ -584,6 +609,11 @@ class _CancellationDetailSheetState extends State<_CancellationDetailSheet> {
   }
 
   Future<void> _handleAction(bool approve) async {
+    if (approve && _adminNotesCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Harap isi catatan refund'), backgroundColor: kOrangeWarning));
+      return;
+    }
+
     setState(() => _isLoading = true);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
@@ -601,7 +631,7 @@ class _CancellationDetailSheetState extends State<_CancellationDetailSheet> {
           widget.queue.id,
           refundProofBase64: base64Proof ?? '', 
           adminUid: widget.currentUserId,
-          adminNotes: 'Refund disetujui via Admin Dashboard.',
+          adminNotes: _adminNotesCtrl.text.trim(),
         );
         messenger.showSnackBar(const SnackBar(content: Text('Refund berhasil diproses'), backgroundColor: kGreenSuccess));
       } else {

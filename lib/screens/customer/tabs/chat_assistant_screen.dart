@@ -1,6 +1,12 @@
 // lib/screens/customer/tabs/chat_assistant_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:geges_smartbarber/services/barbershop_service.dart';
+import 'package:geges_smartbarber/models/queue.dart';
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 
 // --- THEME COLORS (Konsisten) ---
 const Color kBrownAccent = Color(0xFFC3A47B);
@@ -48,6 +54,9 @@ class ChatAssistantScreen extends StatefulWidget {
 class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final QueueService _queueService = QueueService();
+  final BarbershopService _barbershopService = BarbershopService();
+  final String? _uid = FirebaseAuth.instance.currentUser?.uid;
 
   // Data Dummy untuk Demo UI diperbarui
   final List<ChatMessage> _messages = [];
@@ -58,9 +67,10 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
     super.initState();
     // Start initial conversation
     Future.delayed(const Duration(milliseconds: 500), () {
-      _addGiaMessage(
-        "Halo! Saya GIA, asisten virtual GEGES. Ada yang bisa saya bantu?",
-      );
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        _addGiaMessage(l10n.giaGreeting);
+      }
     });
   }
 
@@ -68,6 +78,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
     String text, {
     List<HaircutRecommendation>? recommendations,
   }) {
+    if (!mounted) return;
     // Hapus indikator mengetik sebelum menambahkan pesan baru
     _messages.removeWhere((msg) => msg.text == "GIA is typing...");
     _isGiaTyping = false;
@@ -91,10 +102,13 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
     });
     _scrollToBottom();
     // Simulate GIA response logic
-    _simulateGiaResponse(text);
+    _handleGiaLogic(userText: text);
   }
 
-  void _simulateGiaResponse(String userText) {
+  Future<void> _handleGiaLogic({required String userText}) async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+
     // Tampilkan indikator mengetik
     setState(() {
       _isGiaTyping = true;
@@ -102,65 +116,74 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
     });
     _scrollToBottom();
 
-    // Logic balasan (simulasi)
     String lowerCaseText = userText.toLowerCase();
 
-    if (lowerCaseText.contains("rekomendasi") ||
-        lowerCaseText.contains("gaya rambut")) {
-      Future.delayed(const Duration(milliseconds: 2500), () {
-        _addGiaMessage(
-          "Tentu! Berikut beberapa gaya rambut populer yang cocok untuk Anda:",
-        );
-        _addGiaMessage(
-          "", // Pesan kosong untuk menampung bubble card
-          recommendations: [
-            HaircutRecommendation(
-              title: 'Side Part',
-              imageUrl:
-                  'https://images.unsplash.com/photo-1621607567117-91f7c006c9a3?q=80&w=300&h=300&fit=crop',
-              onTap: () {
-                /* Navigasi ke detail potongan */
-              },
-            ),
-            HaircutRecommendation(
-              title: 'Undercut Klasik',
-              imageUrl:
-                  'https://images.unsplash.com/photo-1600880292203-757bb62b2baf?q=80&w=300&h=300&fit=crop',
-              onTap: () {
-                /* Navigasi ke detail potongan */
-              },
-            ),
-            HaircutRecommendation(
-              title: 'French Crop',
-              imageUrl:
-                  'https://images.unsplash.com/photo-1596484196191-4d3e5b306e98?q=80&w=300&h=300&fit=crop',
-              onTap: () {
-                /* Navigasi ke detail potongan */
-              },
-            ),
-          ],
-        );
-      });
-    } else if (lowerCaseText.contains("antrian") ||
-        lowerCaseText.contains("booking")) {
-      Future.delayed(const Duration(milliseconds: 2000), () {
-        _addGiaMessage(
-          "Antrian Anda saat ini (Booking ID: #GGS001) dijadwalkan pada hari Selasa, 10 Nov 2025, pukul 15:00 di Barbershop Utama. Apakah Anda ingin mengubah jadwal atau melihat detail?",
-        );
-      });
-    } else if (lowerCaseText.contains("alamat")) {
-      Future.delayed(const Duration(milliseconds: 1800), () {
-        _addGiaMessage(
-          "GEGES Barbershop Utama berlokasi di Jl. Merdeka No. 45, Tegal. Kami buka setiap hari, 10:00 - 21:00.",
-        );
-      });
-    } else {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        _addGiaMessage(
-          "Maaf, saya belum mengerti pertanyaan Anda. Anda bisa mencoba tombol aksi di bawah untuk bantuan cepat.",
-        );
-      });
+    // LOGIKA NYATA (REAL LOGIC)
+    
+    // 1. CEK ANTRIAN
+    if (lowerCaseText.contains("antrian") || lowerCaseText.contains("booking") || lowerCaseText.contains("jadwal") || lowerCaseText.contains("queue")) {
+       if (_uid == null) {
+         _addGiaMessage(l10n.errMustLoginChat);
+         return;
+       }
+       
+       try {
+         // Ambil booking aktif
+         final queuesStream = _queueService.streamQueuesForCustomer(_uid, statusFilter: ['waiting', 'awaiting_payment', 'booked', 'ongoing']);
+         final queues = await queuesStream.first; // Ambil snapshot pertama
+
+         if (queues.isEmpty) {
+           _addGiaMessage(l10n.noActiveBookings);
+         } else {
+           final q = queues.first;
+           final locale = Localizations.localeOf(context).toString();
+           final dateStr = DateFormat('EEEE, d MMM HH:mm', locale).format(q.bookingTime.toDate());
+           final statusStr = q.status.value.toUpperCase();
+           _addGiaMessage(l10n.activeBookingDesc(dateStr, statusStr, q.barbershopId));
+         }
+       } catch (e) {
+         _addGiaMessage(l10n.errCheckQueueFailed);
+       }
+       return;
     }
+
+    // 2. REKOMENDASI GAYA (Ambil dari Services di DB)
+    if (lowerCaseText.contains("rekomendasi") || lowerCaseText.contains("gaya") || lowerCaseText.contains("potongan") || lowerCaseText.contains("style") || lowerCaseText.contains("recommendation")) {
+      try {
+        final services = await _barbershopService.getAllServices();
+        if (services.isEmpty) {
+           _addGiaMessage(l10n.errNoStylesAvailable);
+        } else {
+          // Ambil 3 acak
+          services.shuffle();
+          final top3 = services.take(3).toList();
+          
+          _addGiaMessage(l10n.popularServicesHeader);
+          _addGiaMessage("", recommendations: top3.map((s) => HaircutRecommendation(
+            title: s.name,
+            imageUrl: "https://via.placeholder.com/300?text=${s.name.replaceAll(' ', '+')}", // Placeholder jika tidak ada gambar
+            description: "${s.defaultDuration} ${l10n.chatMinutes} - Rp${s.price}",
+            onTap: () {}
+          )).toList());
+        }
+      } catch (e) {
+         _addGiaMessage(l10n.errLoadRecommendationFailed);
+      }
+      return;
+    }
+    
+    // 3. STATIC INFO (Alamat, Jam Buka)
+    if (lowerCaseText.contains("alamat") || lowerCaseText.contains("lokasi") || lowerCaseText.contains("address") || lowerCaseText.contains("location")) {
+       _addGiaMessage(l10n.branchInfo);
+       return;
+    }
+
+    // DEFAULT FALLBACK
+    Future.delayed(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          _addGiaMessage(l10n.giaFallback);
+        }
+    });
   }
 
   void _handleSend() {
@@ -185,15 +208,16 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: kSurface,
       appBar: AppBar(
         backgroundColor: kSurface,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'GIA - GEGES Intelligent Assistant',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: Text(
+          l10n.chatTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
           // Ganti placeholder asset dengan Ikon User (lebih elegan untuk desain gelap)
@@ -313,6 +337,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
   // ...
 
   Widget _buildTypingIndicator() {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -347,8 +372,8 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'GIA is typing',
-                  style: TextStyle(
+                  l10n.giaTyping,
+                  style: const TextStyle(
                     color: kTextGrey,
                     fontStyle: FontStyle.italic,
                   ),
@@ -399,6 +424,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
   }
 
   Widget _buildHaircutCard(HaircutRecommendation rec) {
+    final l10n = AppLocalizations.of(context)!;
     return GestureDetector(
       onTap: rec.onTap,
       child: Container(
@@ -451,8 +477,8 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
                       Icon(Icons.style, size: 14, color: kBrownAccent),
                       const SizedBox(width: 4),
                       Text(
-                        "Lihat Detail",
-                        style: TextStyle(color: kBrownAccent, fontSize: 12),
+                        l10n.seeDetail,
+                        style: const TextStyle(color: kBrownAccent, fontSize: 12),
                       ),
                     ],
                   ),
@@ -466,6 +492,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
   }
 
   Widget _buildActionButtons() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       color: kSurface, // Pastikan background konsisten
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -475,23 +502,23 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
         child: Row(
           children: [
             _buildActionButton(
-              'Cek antrian saya',
-              () => _addUserMessage('Cek antrian saya'),
+              l10n.btnCheckMyQueue,
+              () => _addUserMessage(l10n.btnCheckMyQueue),
             ),
             const SizedBox(width: 8),
             _buildActionButton(
-              'Rekomendasi gaya rambut',
-              () => _addUserMessage('Rekomendasi gaya rambut'),
+              l10n.btnHaircutRecommendation,
+              () => _addUserMessage(l10n.btnHaircutRecommendation),
             ),
             const SizedBox(width: 8),
             _buildActionButton(
-              'Tanyakan alamat',
-              () => _addUserMessage('Tanyakan alamat barbershop'),
+              l10n.btnAskAddress,
+              () => _addUserMessage(l10n.btnAskAddress),
             ),
             const SizedBox(width: 8),
             _buildActionButton(
-              'Buat Booking Baru',
-              () => _addUserMessage('Buatkan booking baru'),
+              l10n.btnCreateNewBooking,
+              () => _addUserMessage(l10n.btnCreateNewBooking),
             ),
           ],
         ),
@@ -520,6 +547,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
   }
 
   Widget _buildInputArea() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
       decoration: BoxDecoration(
@@ -550,7 +578,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
                   controller: _textController,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: 'Tulis pesan...',
+                    hintText: l10n.chatHint,
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 14,
                       horizontal: 12,

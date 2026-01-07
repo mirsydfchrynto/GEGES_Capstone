@@ -4,7 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
-import 'package:geges_smartbarber/screens/customer/tenant_order_detail_screen.dart'; // Import Detail Screen
+import 'package:geges_smartbarber/screens/customer/tenant_order_detail_screen.dart';
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
 const Color kDarkGrey = Color(0xFF1E1E1E);
@@ -35,15 +36,16 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (_customerId == null) {
       return Scaffold(
         backgroundColor: kSurface,
         appBar: AppBar(
           backgroundColor: kSurface,
-          title: const Text('Special Orders'),
+          title: Text(l10n.specialOrders),
         ),
-        body: const Center(
-          child: Text('Please login first', style: TextStyle(color: kTextGrey)),
+        body: Center(
+          child: Text(l10n.pleaseLoginFirst, style: const TextStyle(color: kTextGrey)),
         ),
       );
     }
@@ -52,7 +54,7 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
       backgroundColor: kSurface,
       appBar: AppBar(
         backgroundColor: kSurface,
-        title: const Text('Special Orders'),
+        title: Text(l10n.specialOrders),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1.0),
           child: Divider(color: Colors.white10, height: 1),
@@ -76,7 +78,7 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  'Error loading orders: ${snapshot.error}',
+                  l10n.errLoadingOrders(snapshot.error.toString()),
                   style: const TextStyle(color: Colors.red),
                   textAlign: TextAlign.center,
                 ),
@@ -90,16 +92,16 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(
+                children: [
+                  const Icon(
                     Icons.folder_open_outlined,
                     size: 64,
                     color: kTextGrey,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
-                    'Belum ada Special Order',
-                    style: TextStyle(color: kTextGrey),
+                    l10n.noSpecialOrders,
+                    style: const TextStyle(color: kTextGrey),
                   ),
                 ],
               ),
@@ -117,6 +119,7 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
   }
 
   Widget _buildOrderCard(QueryDocumentSnapshot doc) {
+    final l10n = AppLocalizations.of(context)!;
     final data = doc.data() as Map<String, dynamic>;
     final status = data['status'] as String? ?? 'draft';
     final businessName = data['business_name'] ?? 'Partnership Registration';
@@ -129,26 +132,26 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
         (payment?['proofUrl'] != null);
 
     // Determine UI State
-    String statusLabel = 'Menunggu Pembayaran';
+    String statusLabel = l10n.statusAwaitingPayment;
     Color statusColor = Colors.orange;
-    String description = 'Selesaikan pembayaran untuk memproses pendaftaran.';
+    String description = l10n.descAwaitingPayment;
     bool showPayButton = false;
 
     if (status == 'active') {
-      statusLabel = 'SUKSES / AKTIF';
+      statusLabel = l10n.statusActivePartnership;
       statusColor = Colors.green;
-      description = 'Selamat! Partnership Anda telah aktif.';
+      description = l10n.descActivePartnership;
     } else if (status == 'rejected' || status == 'cancelled') {
-      statusLabel = 'DIBATALKAN / DITOLAK';
+      statusLabel = l10n.statusCancelledRejected;
       statusColor = Colors.red;
-      description = 'Permintaan ini tidak dapat diproses.';
+      description = l10n.descCancelledRejected;
     } else if (hasProof || verificationStatus == 'pending') {
-      statusLabel = 'MENUNGGU VERIFIKASI';
+      statusLabel = l10n.statusWaitingVerification;
       statusColor = Colors.blue;
-      description = 'Bukti diterima. Admin sedang memverifikasi data Anda.';
+      description = l10n.descWaitingVerification;
     } else {
       // Default: Awaiting Payment
-      statusLabel = 'MENUNGGU PEMBAYARAN';
+      statusLabel = l10n.statusAwaitingPayment;
       statusColor = kBrownAccent;
       showPayButton = true;
     }
@@ -231,16 +234,17 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: statusColor.withValues(alpha: 0.2),
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(                          statusLabel,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          statusLabel,
                           style: TextStyle(
                             color: statusColor,
                             fontSize: 11,
@@ -323,7 +327,7 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
                             ),
                           );
                         },
-                        child: const Text('LANJUTKAN PEMBAYARAN'),
+                        child: Text(l10n.btnResumePayment),
                       ),
                     ),
                   ],

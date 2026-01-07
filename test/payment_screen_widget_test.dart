@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service_contract.dart';
+import 'test_helpers.dart';
 
 class FakeQueueService implements QueueServiceContract {
   final Queue? byId;
@@ -17,7 +18,6 @@ class FakeQueueService implements QueueServiceContract {
 
   @override
   Stream<Queue?> streamQueueById(String id) async* {
-    // Return the byId value immediately to simulate a single snapshot
     yield byId;
   }
 
@@ -64,7 +64,7 @@ void main() {
       customerId: 'user1',
       barbermanId: '',
       bookingTime: Timestamp.now(),
-      status: QueueStatus.waiting,
+      status: QueueStatus.awaitingPayment,
       requestStatus: RequestStatus.approved,
       paymentDeadline: Timestamp.fromDate(
         DateTime.now().add(const Duration(minutes: 10)),
@@ -75,8 +75,7 @@ void main() {
     final fake = FakeQueueService(byId: q, byResolve: q);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: PaymentScreen(
+      wrapWithLocalization(PaymentScreen(
           orderId: 'order-1',
           totalPrice: 50000,
           queueService: fake,
@@ -84,15 +83,20 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    
+    // Wait for stream to deliver data
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-    // The upload card should show 'Bukti pembayaran sudah diunggah'
-    expect(find.text('Bukti pembayaran sudah diunggah'), findsOneWidget);
+    // Verify UI shows "Sedang Diverifikasi" (Banner) and "Menunggu Verifikasi Admin" (Button)
+    expect(find.text('Sedang Diverifikasi'), findsOneWidget);
+    expect(find.text('Menunggu Verifikasi Admin'), findsOneWidget);
 
-    // The button label should indicate 'Bukti Terunggah' and be disabled
-    expect(find.text('Bukti Terunggah'), findsOneWidget);
-
-    final elevated = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
-    expect(elevated.onPressed, isNull);
+    // Verify button is present
+    final btnFinder = find.widgetWithText(ElevatedButton, 'Menunggu Verifikasi Admin');
+    expect(btnFinder, findsOneWidget);
+    
+    final btn = tester.widget<ElevatedButton>(btnFinder);
+    expect(btn.onPressed, isNull);
   });
 }

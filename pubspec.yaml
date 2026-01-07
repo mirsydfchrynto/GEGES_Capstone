@@ -25,7 +25,7 @@ dependencies:
 
   path: ^1.8.3
   provider: ^6.1.2
-  intl: ^0.19.0
+  intl: ^0.20.2
 
   # 🔍 plugin Google Sign-In yang stabil
   google_sign_in: ^6.2.1
@@ -39,6 +39,8 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   geolocator: ^13.0.0
   geocoding: ^4.0.0
+  flutter_localizations:
+    sdk: flutter
 
 
 dev_dependencies:
@@ -49,6 +51,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   mockito: ^5.4.4
   build_runner: ^2.4.8
+  plugin_platform_interface: ^2.1.8
   # Use a lightweight in-memory Firestore for unit tests to avoid fragile typed mocks
   fake_cloud_firestore: ^3.1.0
   firebase_auth_mocks: ^0.14.1
@@ -56,6 +59,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
   assets:
     - assets/images/
 

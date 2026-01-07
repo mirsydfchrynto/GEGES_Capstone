@@ -4,41 +4,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/screens/register_screen.dart';
+import 'test_helpers.dart';
 
 void main() {
   group('LoginScreen UI Tests', () {
     testWidgets('TC-LOGIN-UI-01: LoginScreen renders dengan elements utama', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
-      // Verify title text
-      expect(find.text('Welcome to GEGES'), findsOneWidget);
+      // Verify title text (id: Selamat Datang di GEGES)
+      expect(find.text('Selamat Datang di GEGES'), findsOneWidget);
 
       // Verify input fields exist
       expect(find.byType(TextField), findsWidgets);
 
-      // Verify login button
-      expect(find.text('Sign In'), findsOneWidget);
+      // Verify login button (id: Masuk) - Ambiguous because of tab
+      expect(find.widgetWithText(ElevatedButton, 'Masuk'), findsOneWidget);
 
       // Verify Google sign-in button
-      expect(find.text('Continue with Google'), findsOneWidget);
+      expect(find.text('Lanjutkan dengan Google'), findsOneWidget);
 
       // Verify forgot password link
-      expect(find.text('Forgot Password?'), findsOneWidget);
+      expect(find.text('Lupa Kata Sandi?'), findsOneWidget);
     });
 
     testWidgets('TC-LOGIN-UI-02: Email validation error saat format salah', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
       // Input invalid email
       await tester.enterText(find.byType(TextField).first, 'invalid-email');
       await tester.enterText(find.byType(TextField).last, 'password123');
 
-      // Tap Sign In
-      await tester.tap(find.text('Sign In'));
+      // Tap Sign In (id: Masuk)
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Masuk'));
       await tester.pump();
 
       // Should show validation error
@@ -48,20 +49,20 @@ void main() {
     testWidgets('TC-LOGIN-UI-03: Empty field validation', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
-      // Try to login with empty fields
-      await tester.tap(find.text('Sign In'));
+      // Try to login with empty fields (id: Masuk)
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Masuk'));
       await tester.pump();
 
       // Should show validation error
-      expect(find.text('email dan password wajib diisi.'), findsOneWidget);
+      expect(find.text('Email dan kata sandi wajib diisi.'), findsOneWidget);
     });
 
     testWidgets('TC-LOGIN-UI-04: Password visibility toggle', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
       // Find password field visibility toggles
       final visibilityButtons = find.byIcon(Icons.visibility);
@@ -78,14 +79,14 @@ void main() {
     testWidgets('TC-LOGIN-UI-05: Tab navigation to Sign Up', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
-      // Tap Sign Up tab
-      await tester.tap(find.text('Sign Up'));
+      // Tap Sign Up tab (localized: Daftar)
+      await tester.tap(find.text('Daftar'));
       await tester.pumpAndSettle();
 
       // RegisterScreen should be visible
-      expect(find.text('Create Account'), findsOneWidget);
+      expect(find.text('Buat Akun'), findsOneWidget);
     });
   });
 
@@ -93,29 +94,29 @@ void main() {
     testWidgets(
       'TC-REGISTER-UI-01: RegisterScreen renders dengan elements utama',
       (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
+        await tester.pumpWidget(wrapWithLocalization(const RegisterScreen()));
 
         // Verify all input fields exist (name, email, password, confirm)
         expect(find.byType(TextField), findsWidgets);
 
         // Verify Create Account button
-        expect(find.text('Create Account'), findsOneWidget);
+        expect(find.text('Buat Akun'), findsOneWidget);
 
         // Verify Google sign-up button
-        expect(find.text('Continue with Google'), findsOneWidget);
+        expect(find.text('Lanjutkan dengan Google'), findsOneWidget);
 
         // Verify password strength indicator text
-        expect(find.textContaining('Kekuatan Password'), findsOneWidget);
+        expect(find.textContaining('Kekuatan Kata Sandi'), findsOneWidget);
       },
     );
 
     testWidgets('TC-REGISTER-UI-02: Form validation - empty fields', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const RegisterScreen()));
 
       // Try to register with empty fields
-      final createBtn = find.text('Create Account');
+      final createBtn = find.text('Buat Akun');
       await tester.ensureVisible(createBtn);
       await tester.tap(createBtn);
       await tester.pump();
@@ -127,7 +128,7 @@ void main() {
     testWidgets('TC-REGISTER-UI-03: Form validation - invalid email', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const RegisterScreen()));
 
       // Fill in fields with invalid email
       final textFields = find.byType(TextField);
@@ -136,7 +137,7 @@ void main() {
       await tester.enterText(textFields.at(2), 'password123'); // password
       await tester.enterText(textFields.at(3), 'password123'); // confirm
 
-      final createBtn = find.text('Create Account');
+      final createBtn = find.text('Buat Akun');
       await tester.ensureVisible(createBtn);
       await tester.tap(createBtn);
       await tester.pump();
@@ -148,7 +149,7 @@ void main() {
     testWidgets('TC-REGISTER-UI-04: Form validation - password too short', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const RegisterScreen()));
 
       final textFields = find.byType(TextField);
       await tester.enterText(textFields.at(0), 'John Doe');
@@ -156,7 +157,7 @@ void main() {
       await tester.enterText(textFields.at(2), '123'); // Too short
       await tester.enterText(textFields.at(3), '123');
 
-      final createBtn = find.text('Create Account');
+      final createBtn = find.text('Buat Akun');
       await tester.ensureVisible(createBtn);
       await tester.tap(createBtn);
       await tester.pump();
@@ -167,7 +168,7 @@ void main() {
     testWidgets('TC-REGISTER-UI-05: Form validation - passwords don\'t match', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const RegisterScreen()));
 
       final textFields = find.byType(TextField);
       await tester.enterText(textFields.at(0), 'John Doe');
@@ -175,7 +176,7 @@ void main() {
       await tester.enterText(textFields.at(2), 'password123');
       await tester.enterText(textFields.at(3), 'different123');
 
-      final createBtn = find.text('Create Account');
+      final createBtn = find.text('Buat Akun');
       await tester.ensureVisible(createBtn);
       await tester.tap(createBtn);
       await tester.pump();
@@ -186,15 +187,16 @@ void main() {
     testWidgets('TC-REGISTER-UI-06: Form validation - name too short', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const RegisterScreen()));
 
       final textFields = find.byType(TextField);
-      await tester.enterText(textFields.at(0), 'Jo'); // Too short
+      await tester.enterText(textFields.at(0), 'John'); // Changed Jo to John to trigger MIN 3 logic correctly if needed, but test expects 'Nama minimal 3 karakter.'
+      await tester.enterText(textFields.at(0), 'Jo'); // Actually Jo is 2 chars, so it should trigger.
       await tester.enterText(textFields.at(1), 'test@example.com');
       await tester.enterText(textFields.at(2), 'password123');
       await tester.enterText(textFields.at(3), 'password123');
 
-      final createBtn = find.text('Create Account');
+      final createBtn = find.text('Buat Akun');
       await tester.ensureVisible(createBtn);
       await tester.tap(createBtn);
       await tester.pump();
@@ -205,7 +207,7 @@ void main() {
     testWidgets('TC-REGISTER-UI-07: Password visibility toggle works', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const RegisterScreen()));
 
       // Find password field visibility toggles
       final visibilityButtons = find.byIcon(Icons.visibility);
@@ -222,14 +224,14 @@ void main() {
     testWidgets('TC-REGISTER-UI-08: Tab navigation to Login', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const RegisterScreen()));
 
-      // Find and tap Log in tab
-      await tester.tap(find.text('Log in'));
+      // Find and tap Masuk tab
+      await tester.tap(find.text('Masuk').first);
       await tester.pumpAndSettle();
 
       // LoginScreen should be visible
-      expect(find.text('Sign In'), findsOneWidget);
+      expect(find.widgetWithText(ElevatedButton, 'Masuk'), findsOneWidget);
     });
   });
 
@@ -237,23 +239,23 @@ void main() {
     testWidgets('TC-NAV-01: Login to Register navigation', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const LoginScreen()));
 
-      // Tap Sign Up tab
-      await tester.tap(find.text('Sign Up'));
+      // Tap Daftar tab
+      await tester.tap(find.text('Daftar'));
       await tester.pumpAndSettle();
 
       // RegisterScreen should be visible
-      expect(find.text('Create Account'), findsOneWidget);
+      expect(find.text('Buat Akun'), findsOneWidget);
     });
 
     testWidgets('TC-NAV-02: Register to Login presence of Log in tab', (
       WidgetTester tester,
     ) async {
-      await tester.pumpWidget(const MaterialApp(home: RegisterScreen()));
+      await tester.pumpWidget(wrapWithLocalization(const RegisterScreen()));
 
-      // Verify Log in tab exists
-      expect(find.text('Log in'), findsOneWidget);
+      // Verify Masuk tab exists
+      expect(find.text('Masuk'), findsWidgets);
     });
   });
 }

@@ -8,6 +8,7 @@ import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:network_image_mock/network_image_mock.dart';
+import 'test_helpers.dart';
 
 void main() {
   setUpAll(() async {
@@ -40,7 +41,6 @@ void main() {
         id: 'shop123',
         name: 'Toko',
         addres: 'Jl Test',
-        rating: 5.0,
         imageUrl: '',
         services: ['s1'],
         openHour: 9,
@@ -54,8 +54,7 @@ void main() {
 
       // 2. Pump Widget
       await tester.pumpWidget(
-        MaterialApp(
-          home: AppointmentScreen(
+        wrapWithLocalization(AppointmentScreen(
             barbershop: shop,
             barbershopService: svc,
             queueService: queueSvc,

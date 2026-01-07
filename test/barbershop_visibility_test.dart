@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
-import 'package:geges_smartbarber/models/barbershop.dart';
 
 void main() {
   group('Barbershop Visibility (isActive) Tests', () {

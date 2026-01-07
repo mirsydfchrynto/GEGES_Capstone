@@ -5,7 +5,6 @@ class Barbershop {
   final String name;
   final String addres;
   final String? googleMapsUrl; // Link ke Google Maps
-  final double rating;
   final String imageUrl; // Utama
   final List<String> services;
   final List<String> facilities; // Fasilitas (AC, Wifi, etc)
@@ -32,7 +31,6 @@ class Barbershop {
     required this.name,
     required this.addres,
     this.googleMapsUrl,
-    required this.rating,
     required this.imageUrl,
     required this.services,
     this.facilities = const [],
@@ -71,7 +69,6 @@ class Barbershop {
       name: data['name'] ?? 'Nama Barbershop',
       addres: (data['address'] ?? data['addres'] ?? 'Alamat Tidak Diketahui') as String,
       googleMapsUrl: data['google_maps_url'],
-      rating: (data['rating'] as num?)?.toDouble() ?? 0.0, // Default 0.0 jika rating dihapus
       imageUrl: data['imageUrl'] ?? 'https://cdn-icons-png.flaticon.com/512/706/706830.png',
       services: List<String>.from(data['services'] ?? []),
       facilities: List<String>.from(data['facilities'] ?? []),
@@ -98,7 +95,6 @@ class Barbershop {
       'name': name,
       'address': addres, // Standardize to 'address' for new writes
       'google_maps_url': googleMapsUrl,
-      // 'rating': rating, // Don't write rating back to Firestore
       'imageUrl': imageUrl,
       'services': services,
       'facilities': facilities,

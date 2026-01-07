@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/screens/customer/special_orders_screen.dart';
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 import '../booking_detail_screen.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
@@ -62,13 +63,14 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: kSurface,
       appBar: AppBar(
         backgroundColor: kSurface,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('My Orders', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+        title: Text(l10n.myOrders, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
         actions: [
           IconButton(
             onPressed: () {
@@ -84,12 +86,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           labelColor: kBrownAccent,
           unselectedLabelColor: kTextGrey,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          tabs: const [
-            Tab(text: 'Belum Bayar'), 
-            Tab(text: 'Terjadwal'),   
-            Tab(text: 'Sedang Proses'),
-            Tab(text: 'Selesai'),
-            Tab(text: 'Dibatalkan'),
+          tabs: [
+            Tab(text: l10n.tabUnpaid), 
+            Tab(text: l10n.tabScheduled),   
+            Tab(text: l10n.tabProcessing),
+            Tab(text: l10n.tabCompleted),
+            Tab(text: l10n.tabCancelled),
           ],
         ),
       ),
@@ -144,7 +146,8 @@ class _BookingTabContentState extends State<_BookingTabContent> with AutomaticKe
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (widget.customerId == null) return const Center(child: Text('Login required'));
+    final l10n = AppLocalizations.of(context)!;
+    if (widget.customerId == null) return Center(child: Text(l10n.loginRequired));
 
     return StreamBuilder<List<Queue>>(
       stream: widget.services.queueService.streamQueuesForCustomer(widget.customerId!, statusFilter: widget.statuses),
@@ -154,7 +157,7 @@ class _BookingTabContentState extends State<_BookingTabContent> with AutomaticKe
         var list = snapshot.data ?? [];
         list.sort((a, b) => b.bookingTime.compareTo(a.bookingTime));
 
-        if (list.isEmpty) return const Center(child: Text('Tidak ada pesanan', style: TextStyle(color: kTextGrey)));
+        if (list.isEmpty) return Center(child: Text(l10n.noOrders, style: const TextStyle(color: kTextGrey)));
 
         return ListView.builder(
           padding: const EdgeInsets.all(16),
@@ -173,29 +176,30 @@ class _BookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final bool hasPaid = (queue.paymentProofBase64 != null && queue.paymentProofBase64!.isNotEmpty) ||
                          (queue.paymentProofUrl != null && queue.paymentProofUrl!.isNotEmpty);
     
     // Status Logic
-    String label = 'BELUM BAYAR';
+    String label = l10n.statusUnpaid;
     Color color = Colors.orange;
 
     if (queue.status == QueueStatus.cancelled || queue.status.value == 'cancelled') {
-      label = 'DIBATALKAN'; color = Colors.red;
+      label = l10n.statusCancelled; color = Colors.red;
     } else if (queue.status == QueueStatus.cancellationRequested || queue.status.value == 'cancellation_requested') {
-      label = 'PERMOHONAN PEMBATALAN'; color = Colors.orange;
+      label = l10n.statusCancelRequested; color = Colors.orange;
     } else if (queue.status == QueueStatus.served || queue.status.value == 'served') {
-      label = 'SELESAI'; color = Colors.green;
+      label = l10n.statusCompleted; color = Colors.green;
     } else if (queue.status == QueueStatus.ongoing || queue.status.value == 'ongoing') {
-      label = 'SEDANG DIPROSES'; color = Colors.blue;
+      label = l10n.statusProcessing; color = Colors.blue;
     } else if (queue.status == QueueStatus.booked || queue.status.value == 'booked') {
-      label = 'TERJADWAL'; color = Colors.green;
+      label = l10n.statusScheduled; color = Colors.green;
     } else if (hasPaid) {
       // If none of the above (so likely 'waiting' or 'awaiting_payment') AND has paid:
-      label = 'MENUNGGU VERIFIKASI'; color = Colors.amber;
+      label = l10n.statusPendingVerification; color = Colors.amber;
     } else {
       // Default fallback
-      label = 'BELUM BAYAR'; color = Colors.orange;
+      label = l10n.statusUnpaid; color = Colors.orange;
     }
 
     return GestureDetector(

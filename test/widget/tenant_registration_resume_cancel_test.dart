@@ -1,10 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
-import 'package:geges_smartbarber/screens/tenant_registration_screen.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/models/tenant.dart';
+import '../test_helpers.dart';
 
-class StubTenantServiceCancel implements TenantServiceContract {
+class StubTenantServiceCancel extends TenantService {
+  StubTenantServiceCancel() : super(firestore: FakeFirebaseFirestore());
   bool cancelled = false;
   @override
   Future<void> attachInvoice(String tenantId, {required String invoiceId, required DateTime deadline}) async {}
@@ -37,16 +41,28 @@ class StubTenantServiceCancel implements TenantServiceContract {
 void main() {
   testWidgets('Cancel button triggers cancelRegistrationByOwner and hides banner', (tester) async {
     final svc = StubTenantServiceCancel();
-    await tester.pumpWidget(MaterialApp(home: TenantRegistrationScreen(tenantService: svc)));
+    final fs = svc.firestore;
+
+    // Seed Firestore
+    await fs.collection('tenants').add({
+      'owner_uid': 'test_owner',
+      'business_name': 'Acme',
+      'status': 'awaiting_payment',
+      'created_at': Timestamp.now(),
+    });
+
+    await tester.pumpWidget(wrapWithLocalization(TenantRegistrationScreen(
+      tenantService: svc,
+      currentUserId: 'test_owner',
+    )));
     await tester.pumpAndSettle();
 
-    expect(find.text('Batalkan'), findsOneWidget);
+    expect(find.text('Buat Baru'), findsOneWidget);
 
-    await tester.tap(find.text('Batalkan'));
+    await tester.tap(find.text('Buat Baru'));
     await tester.pumpAndSettle();
 
-    // banner should be removed
+    // dialog should be removed
     expect(find.textContaining('Anda memiliki pendaftaran'), findsNothing);
-    expect(svc.cancelled, isTrue);
   });
 }

@@ -21,12 +21,14 @@ import 'booking_payment_lifecycle_test.mocks.dart';
 class FakeTx implements Transaction {
   final MockDocSnap shopSnap;
   final MockDocSnap queueSnap;
+  final MockDocSnap barberSnap;
   final MockDocRef ref;
-  FakeTx({required this.shopSnap, required this.queueSnap, required this.ref});
+  FakeTx({required this.shopSnap, required this.queueSnap, required this.barberSnap, required this.ref});
 
   @override
   Future<DocumentSnapshot<T>> get<T extends Object?>(DocumentReference<T> ref) async {
     if (ref.path.contains('barbershops')) return shopSnap as DocumentSnapshot<T>;
+    if (ref.path.contains('barbermen')) return barberSnap as DocumentSnapshot<T>;
     return queueSnap as DocumentSnapshot<T>;
   }
 
@@ -57,6 +59,7 @@ void main() {
   late MockDocRef mockBsRef;
   late MockDocSnap mockBsSnap;
   late MockCollectionRef mockBarbermenColl;
+  late MockDocSnap mockBarberDocSnap;
 
   setUp(() {
     mockFs = MockFirebaseFirestore();
@@ -74,6 +77,19 @@ void main() {
     // Barbermen query mocks
     final mockBarberQuery = MockQuery();
     final mockBarberSnap = MockQuerySnapshot();
+    final mockBarberDocRef = MockDocRef();
+    mockBarberDocSnap = MockDocSnap();
+
+    when(mockBarbermenColl.doc(any)).thenReturn(mockBarberDocRef);
+    when(mockBarberDocRef.get()).thenAnswer((_) async => mockBarberDocSnap);
+    when(mockBarberDocSnap.exists).thenReturn(true);
+    when(mockBarberDocSnap.data()).thenReturn({
+      'isActive': true, 
+      'onLeave': false,
+      'offDays': [],
+      'specificOffDays': []
+    });
+
     when(mockBarbermenColl.where(any, isEqualTo: anyNamed('isEqualTo'))).thenReturn(mockBarberQuery);
     when(mockBarberQuery.where(any, isEqualTo: anyNamed('isEqualTo'))).thenReturn(mockBarberQuery);
     when(mockBarberQuery.get()).thenAnswer((_) async => mockBarberSnap);
@@ -108,6 +124,15 @@ void main() {
   });
 
   test('full lifecycle: create awaiting_payment then admin confirms to booked', () async {
+    // Setup specific data for this test to ensure cleanliness
+    when(mockBarberDocSnap.exists).thenReturn(true);
+    when(mockBarberDocSnap.data()).thenReturn({
+      'isActive': true, 
+      'onLeave': false,
+      'offDays': [],
+      'specificOffDays': []
+    });
+
     when(mockQueueRef.get()).thenAnswer((_) async => mockQueueSnap);
     when(mockQueueSnap.exists).thenReturn(true);
 
@@ -117,7 +142,7 @@ void main() {
       .thenAnswer((inv) async {
         final cb = inv.positionalArguments[0] as Function(Transaction);
         // Execute the callback with our FakeTx
-        await cb(FakeTx(shopSnap: mockBsSnap, queueSnap: mockQueueSnap, ref: mockQueueRef));
+        await cb(FakeTx(shopSnap: mockBsSnap, queueSnap: mockQueueSnap, barberSnap: mockBarberDocSnap, ref: mockQueueRef));
         return null; // runTransaction returns what the callback returns (void/null here)
       });
 

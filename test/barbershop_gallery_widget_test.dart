@@ -14,7 +14,6 @@ void main() {
       id: 'shop1',
       name: 'Test Shop',
       addres: 'Address',
-      rating: 4.5,
       imageUrl: '',
       services: [],
       openHour: 9,

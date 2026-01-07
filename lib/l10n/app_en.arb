@@ -1,0 +1,344 @@
+{
+  "@@locale": "en",
+  "appTitle": "Geges Smart Barber",
+  "welcome": "Welcome to GEGES",
+  "login": "Sign In",
+  "signUp": "Sign Up",
+  "email": "Email",
+  "password": "Password",
+  "forgotPassword": "Forgot Password?",
+  "continueWithGoogle": "Continue with Google",
+  "home": "Home",
+  "profile": "Profile",
+  "settings": "Settings",
+  "notifications": "Notifications",
+  "searchHint": "Search Barbershop or Services",
+  "bookNow": "Book Now",
+  "waitingForPayment": "Waiting for Payment",
+  "verificationPending": "Verification Pending",
+  "bookingSuccess": "Booking Successful",
+  "cancel": "Cancel",
+  "saveChanges": "Save Changes",
+  "registerErrAllFields": "All fields are required.",
+  "registerErrNameMin": "Name must be at least 3 characters.",
+  "registerErrEmailFormat": "Invalid email format.",
+  "registerErrPasswordMismatch": "Passwords do not match.",
+  "registerErrPasswordMin": "Password must be at least 6 characters.",
+  "registerMsgSuccess": "Registration Successful!",
+  "registerMsgGoogleSuccess": "Google Sign-in Successful!",
+  "myLocation": "My Location",
+  "locating": "Determining location...",
+  "locationNotFound": "Location not found",
+  "locationError": "Location error",
+  "barbershopsNearYou": "Barbershops\nnear you",
+  "failedToLoadShops": "Failed to load barbershops.",
+  "foundResults": "Found {count} results",
+  "@foundResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "styleScan": "StyleScan",
+  "chatbot": "Chatbot",
+  "profileTab": "Profile",
+  "signOut": "Sign Out",
+  "language": "Language",
+  "changeLanguage": "Change Language",
+  "paymentTitle": "Waiting for Payment",
+  "totalBill": "Total Bill",
+  "transferTo": "Transfer To",
+  "paymentProof": "Payment Proof",
+  "tapToUpload": "Tap to upload photo",
+  "uploadLocked": "Upload Locked",
+  "sendProof": "Send Payment Proof",
+  "sending": "Sending...",
+  "verifying": "Verifying",
+  "paymentRejected": "Proof Rejected",
+  "timeOut": "Timed Out",
+  "paymentAccepted": "Payment Accepted!",
+  "paymentSuccessDesc": "Thank you, your booking has been confirmed. Please arrive on time.",
+  "backToHome": "Back to Home",
+  "welcomeSubtitle": "Sign in or create an account to get started.",
+  "signInTab": "Log in",
+  "orSplit": "or",
+  "termFooterPre": "By continuing, you agree to our\n",
+  "termFooterService": "Terms of Services",
+  "termFooterAnd": " and ",
+  "termFooterPrivacy": "Privacy Policy",
+  "errLoginEmpty": "Email and password are required.",
+  "errEmailFormat": "Invalid email format.",
+  "errLoginFailed": "Login failed.",
+  "errGeneric": "An error occurred: {error}",
+  "@errGeneric": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errRoleInvalid": "Invalid user role: {role}",
+  "@errRoleInvalid": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "msgResetSent": "Password reset link has been sent to {email}.",
+  "@msgResetSent": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "msgResetFail": "Failed to send password reset link.",
+  "dialogResetTitle": "Reset Password",
+  "dialogResetHint": "Enter your email",
+  "dialogResetCancel": "Cancel",
+  "btnSend": "Send",
+  "btnRetry": "Retry",
+  "troubleshootTitle": "Troubleshoot Sign-in",
+  "strengthWeak": "Weak",
+  "strengthMedium": "Medium",
+  "strengthStrong": "Strong",
+  "strengthLabel": "Password Strength: ",
+  "username": "Username",
+  "confirmPassword": "Confirm Password",
+  "createAccount": "Create Account",
+  "troubleshootContent": "If you see a reCAPTCHA or Developer Error message, check the following steps:\n- Ensure SHA-1 debug/release is added to Firebase Console\n- Replace google-services.json if necessary and rebuild the app\n- For reCAPTCHA issues, try logging in with email/password as fallback\n- App Check can be ignored in development or configured for production",
+  "btnClose": "Close",
+  "shopClosed": "CLOSED",
+  "noResultsFor": "No results found for \"{query}\"",
+  "@noResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "history": "History",
+  "favoriteBarbers": "Favorite Barbers",
+  "appRating": "App Rating",
+  "termsOfService": "Terms of Service",
+  "promoGrowTitle": "Grow Your Barbershop with us",
+  "promoGrowSubtitle": "Join our network of Professional Barbers",
+  "registerMyBarbershop": "Register my Barbershop",
+  "copiedToClipboard": "Copied to clipboard",
+  "loading": "Loading...",
+  "searchHintHome": "Search Barbershop or Services",
+  "editProfile": "Edit Profile",
+  "fullName": "Full Name",
+  "phoneNumber": "Phone Number",
+  "requiredField": "Required field",
+  "invalidEmail": "Invalid email",
+  "saveChangesBtn": "SAVE CHANGES",
+  "errPickImage": "Failed to pick image: {error}",
+  "@errPickImage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmPasswordTitle": "Confirm Password",
+  "enterPasswordHint": "Enter your password",
+  "continueBtn": "Continue",
+  "errReauthFailed": "Re-authentication failed.",
+  "errUpdateProfile": "Failed to update profile.",
+  "verifyNewEmailTitle": "Verify New Email",
+  "verifyNewEmailMsg": "We have sent a verification link to:\n\n{email}\n\nPlease check your email.",
+  "@verifyNewEmailMsg": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "ok": "Ok",
+  "styleScanTitle": "AI Haircut Scan",
+  "takePhoto": "Take Photo",
+  "uploadImage": "Upload Image",
+  "scanResultTitle": "Style Scan Result",
+  "aiAnalysis": "AI Analysis:",
+  "detectedStyle": "Detected Style:",
+  "confidence": "Confidence:",
+  "faceShape": "Face Shape:",
+  "descriptionLabel": "Description:",
+  "bookWithThisStyle": "Book Barbershop with This Style",
+  "rescan": "Rescan / Take New Picture",
+  "errScanFailed": "Scan failed: {error}",
+  "@errScanFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cameraAccessDenied": "Camera access denied.",
+  "galleryAccessDenied": "Gallery access denied.",
+  "chatTitle": "GIA - GEGES Intelligent Assistant",
+  "giaGreeting": "Hello! I am GIA, GEGES virtual assistant. How can I help you?",
+  "errMustLoginChat": "Please login first to check your queue.",
+  "noActiveBookings": "You don't have any active bookings. Let's make a new one!",
+  "activeBookingDesc": "Your active booking:\n📅 {date}\n🔖 Status: {status}\n📍 Barbershop ID: {shopId}",
+  "@activeBookingDesc": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      },
+      "shopId": {
+        "type": "String"
+      }
+    }
+  },
+  "errCheckQueueFailed": "Sorry, I failed to check your queue. Please try again later.",
+  "errNoStylesAvailable": "Sorry, hair style data is currently unavailable.",
+  "popularServicesHeader": "Here are some of our popular services:",
+  "errLoadRecommendationFailed": "Failed to load recommendations.",
+  "branchInfo": "We have many branches! Use 'My Location' on the Home page to find the nearest one.",
+  "giaFallback": "Sorry, I don't understand yet. Try keywords: 'my queue', 'style recommendation', or 'address'.",
+  "giaTyping": "GIA is typing...",
+  "chatMinutes": "mins",
+  "seeDetail": "See Detail",
+  "btnCheckMyQueue": "Check my queue",
+  "btnHaircutRecommendation": "Style recommendation",
+  "btnAskAddress": "Ask for address",
+  "btnCreateNewBooking": "New Booking",
+  "chatHint": "Type a message...",
+  "stepService": "Service",
+  "stepBarber": "Barber",
+  "stepSchedule": "Schedule",
+  "selectServiceTitle": "Select Service",
+  "selectServiceSubtitle": "You can select more than one service",
+  "whoCutsTitle": "Who will cut?",
+  "barberChoiceSystem": "System Choice (Fair & Fast)",
+  "barberChoiceSystemDesc": "The system will find the best available barber for you.",
+  "barberChoiceFavorite": "Pick Favorite Barber",
+  "barberChoiceFavoriteDesc": "Choose a specific barber you know (+ Rp {fee})",
+  "@barberChoiceFavoriteDesc": {
+    "placeholders": {
+      "fee": {
+        "type": "String"
+      }
+    }
+  },
+  "specialistList": "Specialist List",
+  "scheduleTitle": "Set Schedule",
+  "pickDay": "Pick Day",
+  "pickTime": "Pick Time",
+  "shopHoliday": "CLOSED",
+  "totalEst": "Total Estimate",
+  "btnNext": "NEXT",
+  "btnBookNow": "BOOK NOW",
+  "confirmBookingTitle": "Confirm Booking",
+  "labelDate": "Date",
+  "labelTime": "Time",
+  "labelBarber": "Barber",
+  "labelTotalCost": "Total Cost",
+  "btnCancel": "Cancel",
+  "btnConfirmBook": "Book Now",
+  "errPickService": "Select at least one service",
+  "errPickBarber": "Please select your favorite barber",
+  "errPickBarberFirst": "Select a barber first",
+  "errBarberBusy": "The barber is already booked at this time",
+  "errNoFairBarber": "No hairstylist available at this time. Try another slot.",
+  "errShopClosed": "{shopName} is Closed",
+  "@errShopClosed": {
+    "placeholders": {
+      "shopName": {
+        "type": "String"
+      }
+    }
+  },
+  "errShopClosedDesc": "Sorry, this barbershop is not accepting orders right now.\nPlease check back later.",
+  "barberOffDay": "{name} is off on this date.",
+  "@barberOffDay": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "barberOffDayDesc": "Please choose another date or another barber.",
+  "randomSystem": "Random System",
+  "myOrders": "My Orders",
+  "tabUnpaid": "Unpaid",
+  "tabScheduled": "Scheduled",
+  "tabProcessing": "Processing",
+  "tabCompleted": "Completed",
+  "tabCancelled": "Cancelled",
+  "loginRequired": "Login required",
+  "noOrders": "No orders yet",
+  "statusUnpaid": "UNPAID",
+  "statusCancelled": "CANCELLED",
+  "statusCancelRequested": "CANCEL REQUESTED",
+  "statusCompleted": "COMPLETED",
+  "statusProcessing": "PROCESSING",
+  "statusScheduled": "SCHEDULED",
+  "statusPendingVerification": "PENDING VERIFICATION",
+  "specialOrders": "Special Orders",
+  "pleaseLoginFirst": "Please login first",
+  "errLoadingOrders": "Error loading orders: {error}",
+  "@errLoadingOrders": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noSpecialOrders": "No Special Orders yet",
+  "statusAwaitingPayment": "Waiting for Payment",
+  "descAwaitingPayment": "Complete payment to process registration.",
+  "statusActivePartnership": "SUCCESS / ACTIVE",
+  "descActivePartnership": "Congratulations! Your partnership is now active.",
+  "statusCancelledRejected": "CANCELLED / REJECTED",
+  "descCancelledRejected": "This request cannot be processed.",
+  "statusWaitingVerification": "WAITING VERIFICATION",
+  "descWaitingVerification": "Proof received. Admin is verifying your data.",
+  "btnResumePayment": "RESUME PAYMENT",
+  "registrationIncompleteTitle": "Registration Incomplete",
+  "registrationIncompleteMsg": "You haven't uploaded payment proof. Your registration is saved as 'Waiting for Payment' and can be continued later.",
+  "btnCancelExit": "Cancel Exit",
+  "btnExitSaveDraft": "Exit (Save Draft)",
+  "btnCancelRegistration": "Cancel Registration",
+  "registrationDetail": "Registration Detail",
+  "cancelRegistrationTitle": "Cancel Registration?",
+  "cancelRegistrationWarning": "If you cancel a registration that is ALREADY PAID, the funds will be returned with a 10% DEDUCTION (admin fee).\n\nAre you sure?",
+  "btnBack": "Back",
+  "btnYesCancel": "Yes, Cancel",
+  "msgCancelSent": "Cancellation request sent.",
+  "errCancelFailed": "Failed to cancel: {error}",
+  "@errCancelFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errOpenWhatsApp": "Failed to open WhatsApp support",
+  "statusActiveCompleted": "ACTIVE / COMPLETED",
+  "statusRefundProcessing": "REFUND PROCESSING",
+  "businessInfo": "Business Information",
+  "barbershopName": "Barbershop Name",
+  "subscriptionPlan": "Subscription Plan",
+  "registrationFee": "Registration Fee",
+  "address": "Address",
+  "adminAccountTitle": "Barbershop Admin Account",
+  "adminAccountDesc": "Use this account to log in to the Admin App:",
+  "btnLogoutLoginAdmin": "LOGOUT & LOGIN AS ADMIN",
+  "contactAdmin": "Contact Admin",
+  "loginAsAdminTitle": "Login as Admin?",
+  "loginAsAdminMsg": "You will be logged out of this Customer account.\n\nPlease use the Email & Password listed above to log back in as a Barbershop Owner.",
+  "btnYesLogout": "Yes, Logout",
+  "cancelDetail": "Cancellation Detail",
+  "reason": "Reason",
+  "viewRefundProof": "View Refund Proof",
+  "btnPayNow": "PAY NOW",
+  "contactSupport": "Contact Help / Complaint"
+}

@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
-import 'package:url_launcher/url_launcher.dart'; // Pastikan package ini ada, jika tidak saya pakai print dulu
+import 'package:geges_smartbarber/screens/auth_gate.dart';
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
 const Color kDarkGrey = Color(0xFF1E1E1E);
@@ -40,23 +43,22 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
   }
 
   Future<void> _handleCancellation() async {
+    final l10n = AppLocalizations.of(context)!;
     // Tampilkan dialog konfirmasi dengan warning refund
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Batalkan Pendaftaran?'),
-        content: const Text(
-          'Jika Anda membatalkan pendaftaran yang SUDAH DIBAYAR, dana akan dikembalikan dengan POTONGAN 10% (biaya admin).\n\nApakah Anda yakin?',
-        ),
+        title: Text(l10n.cancelRegistrationTitle),
+        content: Text(l10n.cancelRegistrationWarning),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Kembali'),
+            child: Text(l10n.btnBack),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: kDanger),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Ya, Batalkan'),
+            child: Text(l10n.btnYesCancel),
           ),
         ],
       ),
@@ -72,13 +74,13 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
         );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permintaan pembatalan dikirim.')),
+          SnackBar(content: Text(l10n.msgCancelSent)),
         );
         Navigator.pop(context); // Kembali ke list
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal membatalkan: $e')),
+          SnackBar(content: Text(l10n.errCancelFailed(e.toString()))),
         );
       } finally {
         if (mounted) setState(() => _isLoading = false);
@@ -87,17 +89,19 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
   }
 
   void _contactSupport() async {
+    final l10n = AppLocalizations.of(context)!;
     final Uri whatsappUrl = Uri.parse("https://wa.me/6281234567890"); // Ganti nomor support
     if (!await launchUrl(whatsappUrl)) {
        if (!mounted) return;
        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal membuka WhatsApp support')),
+          SnackBar(content: Text(l10n.errOpenWhatsApp)),
         );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // Parsing Data
     final status = widget.data['status'] as String? ?? 'draft';
     final businessName = widget.data['business_name'] ?? '-';
@@ -113,23 +117,23 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
 
     // Credential Info (Only if active)
     final adminEmail = widget.data['admin_email'] ?? widget.data['owner_email'];
-    final tempPassword = widget.data['temp_password'] ?? 'Hubungi Admin';
+    final tempPassword = widget.data['temp_password'] ?? l10n.contactAdmin;
 
     // Status Logic
-    String statusText = 'MENUNGGU PEMBAYARAN';
+    String statusText = l10n.statusAwaitingPayment;
     Color statusColor = kBrownAccent;
     
     if (status == 'active') {
-      statusText = 'AKTIF / SELESAI';
+      statusText = l10n.statusActiveCompleted;
       statusColor = Colors.green;
     } else if (status == 'rejected' || status == 'cancelled' || invStatus == 'cancelled_by_owner') {
-      statusText = 'DIBATALKAN';
+      statusText = l10n.statusCancelledRejected;
       statusColor = kDanger;
     } else if (hasProof || verificationStatus == 'pending') {
-      statusText = 'MENUNGGU VERIFIKASI';
+      statusText = l10n.statusWaitingVerification;
       statusColor = Colors.blue;
     } else if (status == 'cancellation_requested') {
-      statusText = 'REFUND DIPROSES';
+      statusText = l10n.statusRefundProcessing;
       statusColor = Colors.orange;
     }
 
@@ -137,7 +141,7 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
       backgroundColor: kSurface,
       appBar: AppBar(
         backgroundColor: kSurface,
-        title: const Text('Detail Pendaftaran'),
+        title: Text(l10n.registrationDetail),
         elevation: 0,
       ),
       body: _isLoading 
@@ -173,16 +177,16 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
                   const SizedBox(height: 24),
 
                   // 2. Info Bisnis
-                  _buildSectionTitle('Informasi Bisnis'),
-                  _buildInfoTile('Nama Barbershop', businessName),
-                  _buildInfoTile('Paket Langganan', plan.toString().toUpperCase()),
-                  _buildInfoTile('Biaya Pendaftaran', _formatCurrency(fee)),
-                  _buildInfoTile('Alamat', widget.data['address'] ?? '-'),
+                  _buildSectionTitle(l10n.businessInfo),
+                  _buildInfoTile(l10n.barbershopName, businessName),
+                  _buildInfoTile(l10n.subscriptionPlan, plan.toString().toUpperCase()),
+                  _buildInfoTile(l10n.registrationFee, _formatCurrency(fee)),
+                  _buildInfoTile(l10n.address, widget.data['address'] ?? '-'),
                   const SizedBox(height: 24),
 
                   // 3. Credential (Jika Aktif)
                   if (status == 'active') ...[
-                    _buildSectionTitle('Akun Admin Barbershop'),
+                    _buildSectionTitle(l10n.adminAccountTitle),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -192,11 +196,52 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Text('Gunakan akun ini untuk login ke Aplikasi Admin:', style: TextStyle(color: Colors.white70)),
+                          Text(l10n.adminAccountDesc, style: const TextStyle(color: Colors.white70)),
                           const SizedBox(height: 12),
-                          _buildCopyableRow('Email', adminEmail),
+                          _buildCopyableRow(l10n.email, adminEmail),
                           const Divider(color: Colors.white24),
-                          _buildCopyableRow('Password', tempPassword),
+                          _buildCopyableRow(l10n.password, tempPassword),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: kBrownAccent,
+                                foregroundColor: Colors.black,
+                              ),
+                              icon: const Icon(Icons.login),
+                              label: Text(l10n.btnLogoutLoginAdmin),
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: Text(l10n.loginAsAdminTitle),
+                                    content: Text(l10n.loginAsAdminMsg),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx, false),
+                                        child: Text(l10n.cancel),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.pop(ctx, true),
+                                        child: Text(l10n.btnYesLogout),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                
+                                if (confirm == true) {
+                                  await FirebaseAuth.instance.signOut();
+                                  if (!mounted) return;
+                                  // Navigate to AuthGate to restart the auth flow
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                    MaterialPageRoute(builder: (_) => const AuthGate()),
+                                    (route) => false,
+                                  );
+                                }
+                              },
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -205,14 +250,14 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
 
                   // 4. Info Refund/Batal (Jika Batal)
                   if (status == 'cancelled' || status == 'rejected') ...[
-                    _buildSectionTitle('Detail Pembatalan'),
-                    _buildInfoTile('Alasan', invoice?['cancel_reason'] ?? widget.data['rejection_reason'] ?? '-'),
+                    _buildSectionTitle(l10n.cancelDetail),
+                    _buildInfoTile(l10n.reason, invoice?['cancel_reason'] ?? widget.data['rejection_reason'] ?? '-'),
                     if (widget.data['refund_proof_url'] != null)
                        Padding(
                          padding: const EdgeInsets.only(top: 8.0),
                          child: ElevatedButton.icon(
                            icon: const Icon(Icons.download),
-                           label: const Text('Lihat Bukti Refund'),
+                           label: Text(l10n.viewRefundProof),
                            onPressed: () {
                              // Implementasi view image/url
                              launchUrl(Uri.parse(widget.data['refund_proof_url']));
@@ -256,7 +301,7 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
                            ),
                          );
                       },
-                      child: const Text('BAYAR SEKARANG'),
+                      child: Text(l10n.btnPayNow),
                     ),
 
                   if (status != 'active' && status != 'cancelled' && status != 'rejected' && status != 'cancellation_requested')
@@ -269,14 +314,14 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
                         onPressed: _handleCancellation,
-                        child: const Text('BATALKAN PENDAFTARAN'),
+                        child: Text(l10n.btnCancelRegistration),
                       ),
                     ),
 
                   const SizedBox(height: 12),
                   TextButton.icon(
                     icon: const Icon(Icons.support_agent, color: kTextGrey),
-                    label: const Text('Hubungi Bantuan / Komplain', style: TextStyle(color: kTextGrey)),
+                    label: Text(l10n.contactSupport, style: const TextStyle(color: kTextGrey)),
                     onPressed: _contactSupport,
                   ),
                 ],
@@ -314,6 +359,7 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
   }
 
   Widget _buildCopyableRow(String label, String value) {
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -329,7 +375,7 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
           onPressed: () {
             Clipboard.setData(ClipboardData(text: value));
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Disalin ke clipboard')),
+              SnackBar(content: Text(l10n.copiedToClipboard)),
             );
           },
         ),

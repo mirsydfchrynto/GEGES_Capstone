@@ -36,7 +36,13 @@ class ManualBookingFormState extends State<ManualBookingForm> {
   @override void initState() { super.initState(); _selectedDate = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day); _initData(); }
 
   Future<void> _initData() async {
-    try { final all = await _bs.getAllServices(); final shopSet = widget.barbershop.services.toSet(); setState(() => _availableServices = all.where((s) => shopSet.contains(s.id)).toList()); } catch (_) {}
+        try {
+          final all = await _bs.getAllServices();
+          final shopSet = widget.barbershop.services.toSet();
+          if (mounted) {
+            setState(() => _availableServices = all.where((s) => shopSet.contains(s.id)).toList());
+          }
+        } catch (_) {}
   }
 
   void _nextStep() {

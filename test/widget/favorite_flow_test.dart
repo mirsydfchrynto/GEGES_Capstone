@@ -5,6 +5,7 @@ import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/barbershop_detail_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/favorite_barbershops_screen.dart';
 import 'package:network_image_mock/network_image_mock.dart';
+import '../test_helpers.dart';
 
 // Mock CachedNetworkImage to avoid network calls
 class MockCachedNetworkImage extends StatelessWidget {
@@ -28,11 +29,10 @@ void main() {
       name: 'Geges Test Shop',
       addres: 'Jalan Test No 1',
       imageUrl: 'http://test.com/img.jpg',
-      rating: 4.5,
+      services: ['s1'],
       openHour: 9,
       closeHour: 21,
       isOpen: true,
-      services: ['cut'],
     );
 
     // Seed shop data
@@ -47,8 +47,8 @@ void main() {
   testWidgets('Favorite Flow: Toggle Favorite in Detail Screen', (tester) async {
     mockNetworkImagesFor(() async {
       // 1. Pump Detail Screen
-      await tester.pumpWidget(MaterialApp(
-        home: BarbershopDetailScreen(
+      await tester.pumpWidget(wrapWithLocalization(
+        BarbershopDetailScreen(
           barbershop: testShop,
           firestore: fakeFs,
           testUserId: 'user1',
@@ -84,8 +84,8 @@ void main() {
       });
 
       // 2. Pump Favorite Screen
-      await tester.pumpWidget(MaterialApp(
-        home: FavoriteBarbershopsScreen(
+      await tester.pumpWidget(wrapWithLocalization(
+        FavoriteBarbershopsScreen(
           firestore: fakeFs,
           testUserId: 'user1',
         ),

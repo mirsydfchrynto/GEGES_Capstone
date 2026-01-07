@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geges_smartbarber/services/style_scan_service.dart';
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 
 class StyleScanScreen extends StatefulWidget {
   const StyleScanScreen({super.key});
@@ -41,6 +42,7 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
 
   // --- Image Pickers ---
   Future<void> _pickImage(ImageSource source) async {
+    final l10n = AppLocalizations.of(context)!;
     Permission permission;
     if (source == ImageSource.camera) {
       permission = Permission.camera;
@@ -51,7 +53,7 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
 
     if (!(await _ensurePermission(permission))) {
       _showSnack(
-        'Akses ${source == ImageSource.camera ? 'Kamera' : 'Galeri'} ditolak.',
+        source == ImageSource.camera ? l10n.cameraAccessDenied : l10n.galleryAccessDenied,
       );
       return;
     }
@@ -72,12 +74,13 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
         _performScan();
       }
     } catch (e) {
-      _showSnack('Gagal mengambil gambar: $e');
+      _showSnack(l10n.errPickImage(e.toString()));
     }
   }
 
   Future<void> _performScan() async {
     if (_pickedImage == null) return;
+    final l10n = AppLocalizations.of(context)!;
     setState(() {
       _loading = true;
       _scanResult = null;
@@ -88,7 +91,7 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
       if (mounted) setState(() => _scanResult = resp);
     } catch (e) {
       if (mounted) {
-        _showSnack('Gagal scan: $e');
+        _showSnack(l10n.errScanFailed(e.toString()));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -139,15 +142,16 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
   }
 
   Widget _buildEmptyState() {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.style, color: kBrownAccent, size: 80),
           const SizedBox(height: 20),
-          const Text(
-            'Scan Gaya Rambut AI',
-            style: TextStyle(
+          Text(
+            l10n.styleScanTitle,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -162,14 +166,14 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
             children: [
               _buildActionButton(
                 icon: Icons.camera_alt,
-                label: 'Ambil Foto',
+                label: l10n.takePhoto,
                 onTap: () => _pickImage(ImageSource.camera),
                 color: kBrownAccent,
               ),
               const SizedBox(width: 30),
               _buildActionButton(
                 icon: Icons.photo_library,
-                label: 'Unggah Gambar',
+                label: l10n.uploadImage,
                 onTap: () => _pickImage(ImageSource.gallery),
                 color: Colors.blueGrey,
               ),
@@ -181,6 +185,7 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
   }
 
   Widget _buildResultView() {
+    final l10n = AppLocalizations.of(context)!;
     // Tampilan hasil setelah gambar dipilih
     // Use API results when available, otherwise fall back to previous placeholders
     final detections =
@@ -220,9 +225,9 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Hasil Scan Gaya',
-                style: TextStyle(
+              Text(
+                l10n.scanResultTitle,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -272,9 +277,9 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Analisis AI:',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    Text(
+                      l10n.aiAnalysis,
+                      style: const TextStyle(color: Colors.white70, fontSize: 16),
                     ),
                     const SizedBox(height: 10),
                     Container(
@@ -288,23 +293,23 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
                         children: [
                           _buildAnalysisRow(
                             Icons.cut,
-                            'Gaya Terdeteksi:',
+                            l10n.detectedStyle,
                             detectedName,
                           ),
                           _buildAnalysisRow(
                             Icons.local_offer,
-                            'Kecocokan:',
+                            l10n.confidence,
                             detectedConfidence,
                           ),
                           _buildAnalysisRow(
                             Icons.face,
-                            'Bentuk Wajah:',
+                            l10n.faceShape,
                             faceShape,
                           ),
                           const Divider(color: Colors.white12, height: 25),
-                          const Text(
-                            'Deskripsi:',
-                            style: TextStyle(
+                          Text(
+                            l10n.descriptionLabel,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                             ),
@@ -330,9 +335,9 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
                           borderRadius: BorderRadius.circular(15),
                         ),
                       ),
-                      child: const Text(
-                        'Book Barbershop dengan Gaya Ini',
-                        style: TextStyle(
+                      child: Text(
+                        l10n.bookWithThisStyle,
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -341,9 +346,9 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
                     const SizedBox(height: 10),
                     TextButton(
                       onPressed: () => _pickImage(ImageSource.camera),
-                      child: const Text(
-                        'Scan Ulang / Ambil Gambar Baru',
-                        style: TextStyle(color: kBrownAccent),
+                      child: Text(
+                        l10n.rescan,
+                        style: const TextStyle(color: kBrownAccent),
                       ),
                     ),
                   ],

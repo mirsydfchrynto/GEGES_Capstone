@@ -143,7 +143,7 @@ class Queue {
 
   factory Queue.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
-    String readString(dynamic v) => (v == null) ? '' : v.toString();
+    String? readString(dynamic v) => (v == null || v.toString().isEmpty) ? null : v.toString();
     List<String>? readStringList(dynamic v) {
       if (v == null) return null;
       if (v is List) return v.map((e) => e.toString()).toList();
@@ -152,9 +152,9 @@ class Queue {
 
     return Queue(
       id: doc.id,
-      barbershopId: readString(data['barbershop_id'] ?? data['barbershopId']),
-      customerId: readString(data['customer_id'] ?? data['customerId']),
-      barbermanId: readString(data['barberman_id'] ?? data['barbermanId']),
+      barbershopId: data['barbershop_id'] ?? data['barbershopId'] ?? '',
+      customerId: data['customer_id'] ?? data['customerId'] ?? '',
+      barbermanId: data['barberman_id'] ?? data['barbermanId'] ?? '',
       bookingTime: (data['booking_time'] ?? data['bookingTime']) as Timestamp? ?? Timestamp.now(),
       startTime: (data['start_time'] ?? data['startTime']) as Timestamp?,
       finishTime: (data['finish_time'] ?? data['finishTime']) as Timestamp?,
@@ -166,8 +166,8 @@ class Queue {
       barberSelectionFee: (data['barber_selection_fee'] ?? data['barberSelectionFee'])?.toInt(),
       paidBarberSelection: data['paid_barber_selection'] ?? data['paidBarberSelection'] ?? false,
       isAutoAssigned: data['is_auto_assigned'] ?? data['isAutoAssigned'] ?? false,
-      status: QueueStatusExtension.fromString(readString(data['status'])),
-      requestStatus: RequestStatusExtension.fromString(readString(data['request_status'] ?? data['requestStatus'] ?? 'pending')),
+      status: QueueStatusExtension.fromString(data['status']?.toString() ?? 'waiting'),
+      requestStatus: RequestStatusExtension.fromString(data['request_status'] ?? data['requestStatus'] ?? 'pending'),
       paymentDeadline: (data['payment_deadline'] ?? data['paymentDeadline']) as Timestamp?,
       paymentMethod: readString(data['payment_method'] ?? data['paymentMethod']),
       rejectionReason: readString(data['rejection_reason'] ?? data['rejectionReason']),

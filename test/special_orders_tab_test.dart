@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/my_bookings_screen.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'test_helpers.dart';
 
 void main() {
   testWidgets('Navigates to SpecialOrdersScreen and shows orders', (tester) async {
@@ -24,8 +25,7 @@ void main() {
     });
 
     // 3. Pump MyBookingsScreen
-    await tester.pumpWidget(MaterialApp(
-      home: MyBookingsScreen(
+    await tester.pumpWidget(wrapWithLocalization(MyBookingsScreen(
         firestore: fakeFs,
         queueService: queueSvc,
         currentUserId: userId,
@@ -40,8 +40,8 @@ void main() {
     await tester.tap(specialOrderBtn);
     await tester.pumpAndSettle();
 
-    // 5. Verify SpecialOrdersScreen content
-    expect(find.text('Special Orders'), findsOneWidget); // AppBar title
+    // 5. Verify SpecialOrdersScreen content (localized: Pesanan Khusus)
+    expect(find.text('Pesanan Khusus'), findsOneWidget); // AppBar title
     expect(find.text('Special Barber Shop'), findsOneWidget); // Business Name
     expect(find.text('SUKSES / AKTIF'), findsOneWidget); // Status
   });

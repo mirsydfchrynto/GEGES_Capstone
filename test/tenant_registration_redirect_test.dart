@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
+import 'test_helpers.dart';
 
 void main() {
   testWidgets('Auto-detects pending registration and offers resume', (
@@ -23,8 +24,7 @@ void main() {
     final fakeService = TenantService(firestore: fs, storage: null);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: TenantRegistrationScreen(
+      wrapWithLocalization(TenantRegistrationScreen(
           tenantService: fakeService,
           currentUserId: 'user-1',
           initialAcceptedTerms: true,
@@ -45,7 +45,7 @@ void main() {
     // Should be navigated to PaymentScreen (upload button visible)
     final uploadButton = find.widgetWithText(
       ElevatedButton,
-      'Unggah Bukti Pembayaran',
+      'Kirim Bukti Pembayaran',
     );
     expect(uploadButton, findsOneWidget);
   });

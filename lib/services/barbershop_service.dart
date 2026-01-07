@@ -298,6 +298,31 @@ class BarbershopService {
     }
   }
 
+  Future<List<Service>> getServicesByIds(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    try {
+      // Chunking for Firestore limit (max 10 items per 'whereIn')
+      List<Service> results = [];
+      for (var i = 0; i < ids.length; i += 10) {
+        final chunk = ids.sublist(
+          i,
+          i + 10 > ids.length ? ids.length : i + 10,
+        );
+        final snapshot = await _firestore
+            .collection('services')
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+        results.addAll(
+          snapshot.docs.map((doc) => Service.fromFirestore(doc)),
+        );
+      }
+      return results;
+    } catch (e) {
+      debugPrint('Error getServicesByIds: $e');
+      return [];
+    }
+  }
+
   // -----------------------
   // PROMO / BANNER FUNCTIONS
   // -----------------------

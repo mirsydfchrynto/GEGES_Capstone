@@ -6,6 +6,7 @@ import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:mockito/mockito.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
+import '../test_helpers.dart';
 
 class MockAuthService extends Mock implements AuthService {
   @override
@@ -27,8 +28,7 @@ void main() {
       phoneNumber: '08123456789',
     );
 
-    await tester.pumpWidget(MaterialApp(
-      home: EditProfileScreen(
+    await tester.pumpWidget(wrapWithLocalization(EditProfileScreen(
         currentUser: userData,
         authService: mockAuth,
       ),

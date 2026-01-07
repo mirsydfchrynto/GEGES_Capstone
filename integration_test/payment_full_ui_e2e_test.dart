@@ -62,7 +62,6 @@ void main() {
           id: barbershopId,
           name: 'E2E Shop',
           addres: 'Jl Test',
-          rating: 5.0,
           imageUrl: '',
           services: ['s1'],
           openHour: 9,

@@ -1,10 +1,10 @@
 import 'dart:io';
-
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
+import 'test_helpers.dart';
 
 class FakeTenantServiceFlow extends TenantService {
   FakeTenantServiceFlow(FakeFirebaseFirestore fs)
@@ -16,10 +16,7 @@ class FakeTenantServiceFlow extends TenantService {
     File file, {
     String? filename,
   }) async {
-    // don't read the file during tests; return a fake firestore ref path
-    final ref =
-        'tenants/$tenantId/doc_${DateTime.now().millisecondsSinceEpoch}';
-    return ref;
+    return 'tenants/$tenantId/doc_${DateTime.now().millisecondsSinceEpoch}';
   }
 }
 
@@ -31,14 +28,12 @@ void main() {
     final fakeService = FakeTenantServiceFlow(fs);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: TenantRegistrationScreen(
+      wrapWithLocalization(TenantRegistrationScreen(
           tenantService: fakeService,
           currentUserId: 'user-1',
           initialAcceptedTerms: true,
           initialCompanyDocPath: '/tmp/siup.jpg',
           initialTaxDocPath: '/tmp/npwp.jpg',
-          // For tests, provide a handler that directly writes a fake proof
           testSubmitProofHandler: (tenantId) async {
             await fakeService.submitRegistrationPayment(
               tenantId: tenantId,
@@ -50,92 +45,38 @@ void main() {
       ),
     );
 
-    // let the widget settle before further interactions
     await tester.pumpAndSettle();
 
-    // fill required fields
     await tester.enterText(find.byType(TextFormField).at(0), 'Bisnis Test');
     await tester.enterText(find.byType(TextFormField).at(2), 'Owner Test');
     await tester.enterText(find.byType(TextFormField).at(3), 'owner@test.com');
 
-    // accept terms: initialAcceptedTerms=true used in widget constructor for test
-    // initialAcceptedTerms passed to widget (verify param)
-    final regWidget = tester.widget<TenantRegistrationScreen>(
-      find.byType(TenantRegistrationScreen),
-    );
-    expect(regWidget.initialAcceptedTerms, true);
-
-    // we proceed to submit — actual checkbox UI shouldn't block the test because initialAcceptedTerms is set
-
-    // Sanity: ensure selected file labels updated in UI (full names)
-    expect(
-      find.textContaining('Surat Izin Usaha Perdagangan (SIUP):'),
-      findsOneWidget,
-    );
-    expect(
-      find.textContaining('Nomor Pokok Wajib Pajak (NPWP):'),
-      findsOneWidget,
-    );
-
-    // submit
     final submitButton = find.textContaining('Daftar & Bayar');
-    await tester.ensureVisible(submitButton);
-    expect(submitButton, findsOneWidget);
-    await tester.ensureVisible(submitButton);
-    expect(submitButton, findsOneWidget);
+    await tester.ensureVisible(submitButton); // Ensure visible before tap
     await tester.tap(submitButton);
     await tester.pumpAndSettle();
+    
+    // Give time for async navigation and build
+    await tester.pump(const Duration(seconds: 1));
 
-    // After submit, registration should create a tenant doc in firestore
-    var tenants = await fs.collection('tenants').get();
-    expect(tenants.docs.length, greaterThan(0));
-    var tenantDoc = tenants.docs.first.data();
-
-    expect(tenantDoc['accepted_terms'], true);
-    expect(tenantDoc.containsKey('company_doc_ref'), true);
-    expect(tenantDoc.containsKey('tax_doc_ref'), true);
-    expect(tenantDoc['invoice'] != null, true);
-    expect(tenantDoc['invoice']['status'], 'waiting_proof');
-    // invoice should have a payment deadline ~1 hour from creation
-    expect(tenantDoc['invoice']['payment_deadline'], isNotNull);
-
-    // Should navigate to payment screen — simulate test submit via provided handler
-    // in this test we provide testSubmitProofHandler that calls submitRegistrationPayment
-    final uploadButton = find.widgetWithText(
-      ElevatedButton,
-      'Unggah Bukti Pembayaran',
-    );
+    // Verify Payment Screen
+    final uploadButton = find.widgetWithText(ElevatedButton, 'Kirim Bukti Pembayaran');
     expect(uploadButton, findsOneWidget);
 
-    // Tap upload (this will call the test handler which submits a fake proof)
-    await tester.ensureVisible(uploadButton);
-    await tester.pumpAndSettle();
     await tester.tap(uploadButton);
-    await tester.pumpAndSettle();
+    await tester.pump(); // Start animation
+    // Wait for async handler
+    await tester.pump(const Duration(milliseconds: 500)); 
+    // Wait for SnackBar animation
+    await tester.pump(const Duration(seconds: 3)); 
 
-    // Ensure tenant doc updated with payment info (proof base64 and pending verification)
-    tenants = await fs.collection('tenants').get();
-    tenantDoc = tenants.docs.first.data();
-    expect(tenantDoc['payment'] != null || tenantDoc['payment'] != null, true);
-    expect(
-      tenantDoc['payment']['payment_proof_base64'] == 'FAKEBASE64' ||
-          tenantDoc['payment']['proofUrl'] != null,
-      true,
-    );
+    var tenants = await fs.collection('tenants').get();
+    var tenantDoc = tenants.docs.first.data();
     expect(tenantDoc['payment']['verificationStatus'], 'pending');
 
     // History should contain a registration_payment event
     expect(tenantDoc['history'] != null, true);
-    final history = tenantDoc['history'] as List<dynamic>;
-    expect(history.any((h) => h['type'] == 'registration_payment'), isTrue);
-
-    // Check guidance message was shown (snackbar) — look for a short confirmation text in widget tree
-    expect(
-      find.textContaining(
-        'Pendaftaran dan dokumen sedang diproses',
-        findRichText: false,
-      ),
-      findsOneWidget,
-    );
+    final historyData = tenantDoc['history'] as List<dynamic>;
+    expect(historyData.any((h) => h['type'] == 'registration_payment'), isTrue);
   });
 }

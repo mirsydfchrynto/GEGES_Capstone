@@ -70,8 +70,14 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
   }
 
   Future<void> _checkPendingRegistration() async {
-    final userId =
-        widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    String? userId = widget.currentUserId;
+    if (userId == null) {
+      try {
+        userId = FirebaseAuth.instance.currentUser?.uid;
+      } catch (_) {
+        return;
+      }
+    }
     if (userId == null) return;
 
     try {
@@ -104,36 +110,33 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
         final data = doc.data();
         final status = data['status'] as String?;
         
-        // Cek data pembayaran di dalam map 'payment'
         final paymentData = data['payment'] as Map<String, dynamic>?;
         final verificationStatus = paymentData?['verificationStatus'] as String?;
         final hasProof = (paymentData?['payment_proof_base64'] != null && paymentData!['payment_proof_base64'].toString().isNotEmpty) ||
                          (paymentData?['proofUrl'] != null && paymentData!['proofUrl'].toString().isNotEmpty);
 
-        // KONDISI 1: Sudah Bayar, Menunggu Verifikasi Admin
-        // Jangan suruh bayar lagi!
         if (status == 'waiting_proof' || status == 'payment_submitted' || hasProof || verificationStatus == 'pending') {
           await showDialog(
             context: context,
             barrierDismissible: false,
             builder: (ctx) => AlertDialog(
               title: const Text('Pendaftaran Sedang Diproses'),
-              content: Column(
+              content: const Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Anda sudah mengirimkan bukti pembayaran.'),
-                  const SizedBox(height: 8),
-                  const Text('Status: Menunggu Verifikasi Admin'),
-                  const SizedBox(height: 8),
-                  const Text('Mohon cek berkala di menu My Orders, untuk update status.'),
+                  Text('Anda sudah mengirimkan bukti pembayaran.'),
+                  SizedBox(height: 8),
+                  Text('Status: Menunggu Verifikasi Admin'),
+                  SizedBox(height: 8),
+                  Text('Mohon cek berkala di menu My Orders, untuk update status.'),
                 ],
               ),
               actions: [
                 TextButton(
                   onPressed: () {
-                    Navigator.of(ctx).pop(); // Tutup dialog
-                    Navigator.of(context).pop(); // Keluar dari screen registrasi
+                    Navigator.of(ctx).pop();
+                    Navigator.of(context).pop();
                   }, 
                   child: const Text('Tutup'),
                 ),
@@ -143,8 +146,7 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
           return;
         }
 
-        // KONDISI 2: Belum Bayar (Resume)
-        // Ask user to resume
+        // Resume flow
         final resume = await showDialog<bool>(
           context: context,
           barrierDismissible: false,
@@ -177,7 +179,7 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
               (invoice?['payment_deadline'] as Timestamp?)?.toDate() ??
               DateTime.now().add(const Duration(hours: 1));
 
-          Navigator.of(context).pushReplacement(
+          Navigator.of(context).push(
             MaterialPageRoute(
               builder:
                   (_) => PaymentScreen(
@@ -255,7 +257,12 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
       return;
     }
 
-    final userId = widget.currentUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    String? userId = widget.currentUserId;
+    if (userId == null) {
+      try {
+        userId = FirebaseAuth.instance.currentUser?.uid;
+      } catch (_) {}
+    }
     if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -268,9 +275,6 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
     setState(() => _submitting = true);
 
     try {
-      // Before creating a new tenant, check if a pending registration already exists for this user
-      // If found, we must cancel it or reuse it. Since the user chose to "Buat Baru" (implied by passing the dialog check),
-      // we should effectively archive/cancel the old one to avoid clutter.
       final fs = _tenantService.firestore;
       final existingQ = await fs
           .collection('tenants')
@@ -281,16 +285,9 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
           )
           .get();
 
-      for (var doc in existingQ.docs) {
-        // Auto-cancel old pending ones so we don't have duplicates
-        await _tenantService.cancelRegistrationByOwner(
-          tenantId: doc.id,
-          userId: userId,
-          reason: 'User started a new registration',
-        );
-      }
+      String? tenantId;
 
-      final data = {
+      final baseData = {
         'business_name': _businessNameCtrl.text.trim(),
         'legal_name': _legalNameCtrl.text.trim(),
         'owner_name': _ownerNameCtrl.text.trim(),
@@ -301,13 +298,17 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
         'plan': _plan,
         'registration_fee': _price,
         'owner_uid': userId,
-        'status': 'awaiting_payment', // Fix: match MyBookingsScreen filter
+        'status': 'awaiting_payment',
         'accepted_terms': accepted,
       };
 
-      final tenantId = await _tenantService.createTenantApplication(data);
+      if (existingQ.docs.isNotEmpty) {
+        tenantId = existingQ.docs.first.id;
+        await _tenantService.updateTenantApplication(tenantId, baseData);
+      } else {
+        tenantId = await _tenantService.createTenantApplication(baseData);
+      }
 
-      // If user selected files earlier, upload them now and attach references to tenant doc
       if (_companyDocFile != null) {
         final ref = await _tenantService.uploadTenantDocument(
           tenantId,
@@ -329,7 +330,6 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
         });
       }
 
-      // Create a registration invoice entry (simple structure) using the tenant service so tests' firestore is used
       await _tenantService.updateTenantApplication(tenantId, {
         'invoice_id': 'REG-${DateTime.now().millisecondsSinceEpoch}',
         'invoice': {
@@ -343,14 +343,11 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
         },
       });
 
-      // Navigate directly to Payment screen so user sees detailed payment instructions
-      // and can upload proof in one flow (professional UX).
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => PaymentScreen(
-            orderId:
-                tenantId, // using tenantId as identifier; PaymentScreen checks tenantId to switch mode
+            orderId: tenantId!, 
             totalPrice: _price,
             tenantId: tenantId,
             tenantPaymentHandler:
@@ -377,12 +374,11 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                     reason: reason,
                   );
                 },
-            // For registration flow we enable the countdown (1 hour window)
             disableTimer: false,
             paymentDeadline: DateTime.now().add(const Duration(hours: 1)),
             testUserId: widget.currentUserId,
             submitProofHandler: widget.testSubmitProofHandler != null
-                ? () => widget.testSubmitProofHandler!(tenantId)
+                ? () => widget.testSubmitProofHandler!(tenantId!)
                 : null,
           ),
         ),
@@ -436,6 +432,8 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                 controller: _ownerEmailCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Email Pemilik (Google account)',
+                  helperText: 'Email ini akan menjadi Username Login Admin Barbershop Anda',
+                  helperStyle: TextStyle(color: Colors.amber),
                 ),
                 validator: (v) => (v == null || !v.contains('@'))
                     ? 'Email tidak valid'
@@ -461,9 +459,8 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                 ),
               ),
 
-              // --- New: Terms acceptance & document selections placed at the top ---
               Card(
-                color: const Color(0xFF1B1B1B), // dark card to match app theme
+                color: const Color(0xFF1B1B1B),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
@@ -620,13 +617,9 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
 class TenantContinueScreen extends StatefulWidget {
   final String tenantId;
   final int amount;
-
-  /// Optional overrides for testing and dependency injection
   final TenantService? tenantService;
   final FirebaseFirestore? firestore;
   final Future<String?> Function()? filePicker;
-
-  /// Optional handler used in tests to bypass file pickers and directly submit proof.
   final Future<void> Function()? submitProofHandler;
 
   const TenantContinueScreen({
@@ -651,7 +644,6 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
   Future<void> _submitPaymentProof(File proofFile) async {
     setState(() => _isSubmitting = true);
     try {
-      // Convert to base64 and validate size (same safety limits as booking payment)
       debugPrint(
         'TenantContinueScreen: starting submitPaymentProof for ${widget.tenantId}',
       );
@@ -669,7 +661,7 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
       try {
         userId = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
       } catch (_) {
-        // In tests FirebaseAuth may not be initialized; fallback to 'unknown'
+        
       }
 
       debugPrint('TenantContinueScreen: calling submitRegistrationPayment');
@@ -680,7 +672,6 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
       );
       debugPrint('TenantContinueScreen: submitRegistrationPayment returned');
 
-      // update invoice status
       await _fs.collection('tenants').doc(widget.tenantId).set({
         'invoice': {
           'status': 'payment_submitted',

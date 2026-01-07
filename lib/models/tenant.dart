@@ -4,8 +4,22 @@ class Tenant {
   final String documentBase64;
   final String packageId;
   final String? status;
+  
+  // Provisioning Results
+  final String? adminEmail;
+  final String? tempPassword;
+  final String? shopId;
 
-  Tenant({required this.id, required this.businessName, required this.documentBase64, required this.packageId, this.status});
+  Tenant({
+    required this.id, 
+    required this.businessName, 
+    required this.documentBase64, 
+    required this.packageId, 
+    this.status,
+    this.adminEmail,
+    this.tempPassword,
+    this.shopId,
+  });
 
   factory Tenant.fromMap(String id, Map<String, dynamic> data) => Tenant(
         id: id,
@@ -13,6 +27,9 @@ class Tenant {
         documentBase64: data['document_base64'] as String? ?? '',
         packageId: data['package_id'] as String? ?? '',
         status: data['status'] as String?,
+        adminEmail: data['admin_email'] as String?,
+        tempPassword: data['temp_password'] as String?,
+        shopId: data['shop_id'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -20,6 +37,9 @@ class Tenant {
         'document_base64': documentBase64,
         'package_id': packageId,
         'status': status,
+        'admin_email': adminEmail,
+        'temp_password': tempPassword,
+        'shop_id': shopId,
       };
 }
 

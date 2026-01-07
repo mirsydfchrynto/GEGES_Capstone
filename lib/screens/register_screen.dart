@@ -11,10 +11,9 @@
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 import 'package:geges_smartbarber/screens/login_screen.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
-import 'package:geges_smartbarber/l10n/app_strings.dart';
 
 // penjelasan statefulwidget:
 // - registerscreen adalah statefulwidget karena ada state yang berubah (error message, loading)
@@ -120,18 +119,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final password = _passwordController.text.trim();
     final confirm = _confirmPasswordController.text.trim();
 
+    final l10n = AppLocalizations.of(context)!;
+
     // penjelasan validasi input:
     // - cek apakah ada field yang kosong
     // - jika ada, tampilkan error message & return
     if (name.isEmpty || email.isEmpty || password.isEmpty || confirm.isEmpty) {
-      setState(() => _errorMessage = AppStrings.registerErrAllFields);
+      setState(() => _errorMessage = l10n.registerErrAllFields);
       return;
     }
 
     // penjelasan validasi nama:
     // - minimal 3 karakter untuk nama valid
     if (name.length < 3) {
-      setState(() => _errorMessage = AppStrings.registerErrNameMin);
+      setState(() => _errorMessage = l10n.registerErrNameMin);
       return;
     }
 
@@ -139,7 +140,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - cek format email dengan regex
     final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
     if (!emailRegex.hasMatch(email)) {
-      setState(() => _errorMessage = AppStrings.registerErrEmailFormat);
+      setState(() => _errorMessage = l10n.registerErrEmailFormat);
       return;
     }
 
@@ -147,7 +148,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - cek apakah password dan konfirmasi sama
     // - jika tidak cocok, tampilkan error message
     if (password != confirm) {
-      setState(() => _errorMessage = AppStrings.registerErrPasswordMismatch);
+      setState(() => _errorMessage = l10n.registerErrPasswordMismatch);
       return;
     }
 
@@ -155,7 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - cek apakah password minimal 6 karakter
     // - ini adalah minimal requirement dari firebase
     if (password.length < 6) {
-      setState(() => _errorMessage = AppStrings.registerErrPasswordMin);
+      setState(() => _errorMessage = l10n.registerErrPasswordMin);
       return;
     }
 
@@ -182,7 +183,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Tampilkan snackbar sukses & navigasi ke login
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? AppStrings.registerMsgSuccess),
+            content: Text(result['message'] ?? l10n.registerMsgSuccess),
             backgroundColor: const Color(0xFF4CAF50),
           ),
         );
@@ -190,12 +191,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else {
         // Tampilkan error message
         setState(
-          () => _errorMessage = result['message'] ?? 'Registrasi gagal.',
+          () => _errorMessage = result['message'] ?? l10n.errGeneric('Registrasi gagal.'),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _errorMessage = 'Terjadi kesalahan: $e');
+      setState(() => _errorMessage = l10n.errGeneric(e.toString()));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -230,6 +231,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // - jika user sudah terdaftar, akan login langsung
     // - navigasi ke login screen untuk menunjukkan sukses
 
+    final l10n = AppLocalizations.of(context)!;
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -246,7 +249,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Sukses registrasi/login dengan Google
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppStrings.registerMsgGoogleSuccess),
+            content: Text(l10n.registerMsgGoogleSuccess),
             backgroundColor: const Color(0xFF4CAF50),
           ),
         );
@@ -254,7 +257,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _goToLogin();
       } else {
         // Tampilkan error
-        final message = result['message'] ?? 'Google sign-up gagal.';
+        final message = result['message'] ?? l10n.errGeneric('Google sign-up gagal.');
         setState(() => _errorMessage = message);
 
         // Jika error related to recaptcha atau credential, tawarkan retry
@@ -272,7 +275,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               content: Text(message),
               backgroundColor: const Color(0xFFD32F2F),
               action: SnackBarAction(
-                label: 'Retry',
+                label: l10n.btnRetry,
                 textColor: Colors.white,
                 onPressed: _signInWithGoogle,
               ),
@@ -284,7 +287,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Terjadi kesalahan: $e';
+        _errorMessage = l10n.errGeneric(e.toString());
       });
 
       // Tawarkan retry untuk error tertentu
@@ -294,10 +297,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           msg.contains('developer_error')) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Terjadi kesalahan autentikasi: $e'),
+            content: Text(l10n.errGeneric(e.toString())),
             backgroundColor: const Color(0xFFD32F2F),
             action: SnackBarAction(
-              label: 'Retry',
+              label: l10n.btnRetry,
               textColor: Colors.white,
               onPressed: _signInWithGoogle,
             ),
@@ -308,8 +311,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   // Helper function to check password strength
-  String _getPasswordStrength(String password) {
-    if (password.length < 6) return 'Lemah';
+  String _getPasswordStrength(String password, AppLocalizations l10n) {
+    if (password.length < 6) return l10n.strengthWeak;
     final hasUpper = password.contains(RegExp(r'[A-Z]'));
     final hasLower = password.contains(RegExp(r'[a-z]'));
     final hasDigit = password.contains(RegExp(r'[0-9]'));
@@ -320,13 +323,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       hasDigit,
       hasSpecial,
     ].where((b) => b).length;
-    if (score <= 2) return 'Sedang';
-    if (score >= 3) return 'Kuat';
-    return 'Lemah';
+    if (score <= 2) return l10n.strengthMedium;
+    if (score >= 3) return l10n.strengthStrong;
+    return l10n.strengthWeak;
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // penjelasan build():
     // - method ini menampilkan ui layar register
     // - scaffold = layout dasar dengan appbar, body, dll
@@ -359,10 +363,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // - text untuk menampilkan teks statis
               // - textalign center untuk meratakan ke tengah
               // - fontsize & fontweight untuk mengatur ukuran & tebal
-              const Text(
-                'Welcome to GEGES',
+              Text(
+                l10n.welcome,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -370,10 +374,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 8),
               // subtitle
-              const Text(
-                'Sign in or create an account to get started.',
+              Text(
+                l10n.welcomeSubtitle,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontSize: 16),
+                style: const TextStyle(color: Colors.white70, fontSize: 16),
               ),
               const SizedBox(height: 32),
 
@@ -381,7 +385,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // - _buildAuthTabs() adalah custom widget untuk tombol tab login/signup
               // - isLogin false karena ini halaman signup
               // - onLoginTap callback dipanggil saat user tekan tab "log in"
-              _buildAuthTabs(isLogin: false, onLoginTap: _goToLogin),
+              _buildAuthTabs(
+                  isLogin: false,
+                  onLoginTap: _goToLogin,
+                  loginLabel: l10n.signInTab,
+                  signUpLabel: l10n.signUp),
               const SizedBox(height: 32),
 
               // penjelasan input fields:
@@ -391,7 +399,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // username field
               _buildTextField(
                 _nameController,
-                'Username',
+                l10n.username,
                 Icons.person_outline,
                 key: const Key('register_name'),
                 focusNode: _nameFocusNode,
@@ -400,7 +408,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // email field
               _buildTextField(
                 _emailController,
-                'Email',
+                l10n.email,
                 Icons.email_outlined,
                 key: const Key('register_email'),
                 keyboardType: TextInputType.emailAddress,
@@ -410,7 +418,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // password field (hidden)
               _buildTextField(
                 _passwordController,
-                'Password',
+                l10n.password,
                 Icons.lock_outline,
                 key: const Key('register_password'),
                 isObscure: !_passwordVisible,
@@ -422,7 +430,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // confirm password field (hidden)
               _buildTextField(
                 _confirmPasswordController,
-                'Confirm Password',
+                l10n.confirmPassword,
                 Icons.lock_outline,
                 key: const Key('register_confirm_password'),
                 isObscure: !_confirmPasswordVisible,
@@ -440,13 +448,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Padding(
                 padding: const EdgeInsets.only(left: 8.0, top: 4.0),
                 child: Text(
-                  'Kekuatan Password: ${_getPasswordStrength(_passwordController.text)}',
+                  '${l10n.strengthLabel}${_getPasswordStrength(_passwordController.text, l10n)}',
                   style: TextStyle(
                     color:
-                        _getPasswordStrength(_passwordController.text) == 'Kuat'
+                        _getPasswordStrength(_passwordController.text, l10n) == l10n.strengthStrong
                         ? Colors.green
-                        : (_getPasswordStrength(_passwordController.text) ==
-                                  'Sedang'
+                        : (_getPasswordStrength(_passwordController.text, l10n) ==
+                                  l10n.strengthMedium
                               ? Colors.orange
                               : Colors.red),
                     fontWeight: FontWeight.bold,
@@ -495,9 +503,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Create Account',
-                          style: TextStyle(
+                        child: Text(
+                          l10n.createAccount,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
@@ -530,9 +538,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       size: 24,
                     ),
                   ),
-                  label: const Text(
-                    'Continue with Google',
-                    style: TextStyle(fontSize: 16),
+                  label: Text(
+                    l10n.continueWithGoogle,
+                    style: const TextStyle(fontSize: 16),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kDarkGrey,
@@ -550,7 +558,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               // - richtext untuk membuat text dengan style berbeda di bagian yang berbeda
               // - textspan untuk mendefinisikan style per bagian
               // - tapgesturerecognizer untuk membuat teks clickable
-              _buildFooterTerms(),
+              _buildFooterTerms(l10n),
             ],
           ),
         ),
@@ -564,6 +572,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildAuthTabs({
     required bool isLogin,
     required VoidCallback onLoginTap,
+    required String loginLabel,
+    required String signUpLabel,
   }) {
     // penjelasan:
     // - widget ini menampilkan 2 tab: "log in" dan "sign up"
@@ -592,7 +602,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Log in',
+                  loginLabel,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isLogin ? Colors.black : Colors.white,
@@ -614,10 +624,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 color: !isLogin ? kBrownAccent : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
-                'Sign Up',
+              child: Text(
+                signUpLabel,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.black,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -728,8 +738,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ========================================
   // custom widget: footer dengan terms & privacy policy
   // ========================================
-  Widget _buildFooterTerms() {
-    // penjelasan:
+  Widget _buildFooterTerms(AppLocalizations l10n) {
+    // penjelasan footer terms:
     // - richtext untuk membuat text dengan style berbeda di bagian yang berbeda
     // - textspan untuk mendefinisikan style per bagian
     // - tapgesturerecognizer untuk membuat teks clickable
@@ -739,9 +749,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       text: TextSpan(
         style: const TextStyle(color: Colors.white54, fontSize: 12),
         children: [
-          const TextSpan(text: 'By continuing, you agree to our\n'),
+          TextSpan(text: l10n.termFooterPre),
           TextSpan(
-            text: 'Terms of Services',
+            text: l10n.termFooterService,
             style: const TextStyle(
               color: kBrownAccent,
               decoration: TextDecoration.underline,
@@ -751,9 +761,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Navigator.of(context).pushNamed('/legal/terms');
               },
           ),
-          const TextSpan(text: ' and '),
+          TextSpan(text: l10n.termFooterAnd),
           TextSpan(
-            text: 'Privacy Policy',
+            text: l10n.termFooterPrivacy,
             style: const TextStyle(
               color: kBrownAccent,
               decoration: TextDecoration.underline,

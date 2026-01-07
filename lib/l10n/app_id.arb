@@ -1,0 +1,344 @@
+{
+  "@@locale": "id",
+  "appTitle": "Geges Smart Barber",
+  "welcome": "Selamat Datang di GEGES",
+  "login": "Masuk",
+  "signUp": "Daftar",
+  "email": "Email",
+  "password": "Kata Sandi",
+  "forgotPassword": "Lupa Kata Sandi?",
+  "continueWithGoogle": "Lanjutkan dengan Google",
+  "home": "Beranda",
+  "profile": "Profil",
+  "settings": "Pengaturan",
+  "notifications": "Notifikasi",
+  "searchHint": "Cari Barbershop atau Layanan",
+  "bookNow": "Pesan Sekarang",
+  "waitingForPayment": "Menunggu Pembayaran",
+  "verificationPending": "Menunggu Verifikasi Admin",
+  "bookingSuccess": "Booking Berhasil",
+  "cancel": "Batal",
+  "saveChanges": "Simpan Perubahan",
+  "registerErrAllFields": "Semua field wajib diisi.",
+  "registerErrNameMin": "Nama minimal 3 karakter.",
+  "registerErrEmailFormat": "Format email tidak valid.",
+  "registerErrPasswordMismatch": "Password dan konfirmasi tidak cocok.",
+  "registerErrPasswordMin": "Password minimal 6 karakter.",
+  "registerMsgSuccess": "Registrasi Berhasil!",
+  "registerMsgGoogleSuccess": "Login Google Berhasil!",
+  "myLocation": "Lokasi Saya",
+  "locating": "Menentukan lokasi...",
+  "locationNotFound": "Lokasi tidak ditemukan",
+  "locationError": "Error lokasi",
+  "barbershopsNearYou": "Barbershop\ndi dekatmu",
+  "failedToLoadShops": "Gagal memuat barbershop.",
+  "foundResults": "Ditemukan {count} hasil",
+  "@foundResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "styleScan": "StyleScan",
+  "chatbot": "Chatbot",
+  "profileTab": "Profil",
+  "signOut": "Keluar",
+  "language": "Bahasa",
+  "changeLanguage": "Ganti Bahasa",
+  "paymentTitle": "Menunggu Pembayaran",
+  "totalBill": "Total Tagihan",
+  "transferTo": "Transfer Ke",
+  "paymentProof": "Bukti Transfer",
+  "tapToUpload": "Tap untuk upload foto",
+  "uploadLocked": "Upload Terkunci",
+  "sendProof": "Kirim Bukti Pembayaran",
+  "sending": "Mengirim...",
+  "verifying": "Sedang Diverifikasi",
+  "paymentRejected": "Bukti Ditolak",
+  "timeOut": "Waktu Habis",
+  "paymentAccepted": "Pembayaran Diterima!",
+  "paymentSuccessDesc": "Terima kasih, booking Anda telah dikonfirmasi. Silakan datang tepat waktu.",
+  "backToHome": "Kembali ke Beranda",
+  "welcomeSubtitle": "Masuk atau buat akun untuk memulai.",
+  "signInTab": "Masuk",
+  "orSplit": "atau",
+  "termFooterPre": "Dengan melanjutkan, Anda setuju dengan",
+  "termFooterService": "Syarat Layanan",
+  "termFooterAnd": " dan ",
+  "termFooterPrivacy": "Kebijakan Privasi",
+  "errLoginEmpty": "Email dan kata sandi wajib diisi.",
+  "errEmailFormat": "Format email salah.",
+  "errLoginFailed": "Login gagal.",
+  "errGeneric": "Terjadi kesalahan: {error}",
+  "@errGeneric": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errRoleInvalid": "Peran pengguna tidak valid: {role}",
+  "@errRoleInvalid": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "msgResetSent": "Link reset kata sandi telah dikirim ke {email}.",
+  "@msgResetSent": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "msgResetFail": "Gagal mengirim link reset kata sandi.",
+  "dialogResetTitle": "Reset Kata Sandi",
+  "dialogResetHint": "Masukkan email Anda",
+  "dialogResetCancel": "Batal",
+  "btnSend": "Kirim",
+  "btnRetry": "Coba Lagi",
+  "troubleshootTitle": "Pemecahan Masalah Masuk",
+  "strengthWeak": "Lemah",
+  "strengthMedium": "Sedang",
+  "strengthStrong": "Kuat",
+  "strengthLabel": "Kekuatan Kata Sandi: ",
+  "username": "Nama Pengguna",
+  "confirmPassword": "Konfirmasi Kata Sandi",
+  "createAccount": "Buat Akun",
+  "troubleshootContent": "Jika Anda melihat pesan reCAPTCHA atau Developer Error, periksa langkah-langkah berikut:\n- Pastikan SHA-1 debug/release ditambahkan ke Firebase Console\n- Ganti google-services.json bila diperlukan dan rebuild aplikasi\n- Untuk masalah reCAPTCHA, coba login dengan email/password sebagai fallback\n- App Check dapat diabaikan pada development atau dikonfigurasi untuk production",
+  "btnClose": "Tutup",
+  "shopClosed": "TUTUP / CLOSED",
+  "noResultsFor": "Tidak ditemukan hasil untuk \"{query}\"",
+  "@noResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "history": "Riwayat",
+  "favoriteBarbers": "Barber Favorit",
+  "appRating": "Rating Aplikasi",
+  "termsOfService": "Syarat Layanan",
+  "promoGrowTitle": "Kembangkan Barbershop Anda bersama kami",
+  "promoGrowSubtitle": "Bergabunglah dengan jaringan Barber Profesional kami",
+  "registerMyBarbershop": "Daftarkan Barbershop Saya",
+  "copiedToClipboard": "Disalin ke clipboard",
+  "loading": "Memuat...",
+  "searchHintHome": "Cari Barbershop atau Layanan",
+  "editProfile": "Edit Profil",
+  "fullName": "Nama Lengkap",
+  "phoneNumber": "Nomor Telepon",
+  "requiredField": "Wajib diisi",
+  "invalidEmail": "Email tidak valid",
+  "saveChangesBtn": "SIMPAN PERUBAHAN",
+  "errPickImage": "Gagal mengambil gambar: {error}",
+  "@errPickImage": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmPasswordTitle": "Konfirmasi Kata Sandi",
+  "enterPasswordHint": "Masukkan kata sandi Anda",
+  "continueBtn": "Lanjut",
+  "errReauthFailed": "Autentikasi ulang gagal.",
+  "errUpdateProfile": "Gagal memperbarui profil.",
+  "verifyNewEmailTitle": "Verifikasi Email Baru",
+  "verifyNewEmailMsg": "Kami telah mengirimkan link verifikasi ke:\n\n{email}\n\nSilakan buka email tersebut.",
+  "@verifyNewEmailMsg": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "ok": "Oke",
+  "styleScanTitle": "Scan Gaya Rambut AI",
+  "takePhoto": "Ambil Foto",
+  "uploadImage": "Unggah Gambar",
+  "scanResultTitle": "Hasil Scan Gaya",
+  "aiAnalysis": "Analisis AI:",
+  "detectedStyle": "Gaya Terdeteksi:",
+  "confidence": "Kecocokan:",
+  "faceShape": "Bentuk Wajah:",
+  "descriptionLabel": "Deskripsi:",
+  "bookWithThisStyle": "Book Barbershop dengan Gaya Ini",
+  "rescan": "Scan Ulang / Ambil Gambar Baru",
+  "errScanFailed": "Gagal scan: {error}",
+  "@errScanFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cameraAccessDenied": "Akses Kamera ditolak.",
+  "galleryAccessDenied": "Akses Galeri ditolak.",
+  "chatTitle": "GIA - GEGES Intelligent Assistant",
+  "giaGreeting": "Halo! Saya GIA, asisten virtual GEGES. Ada yang bisa saya bantu?",
+  "errMustLoginChat": "Silakan login terlebih dahulu untuk mengecek antrian.",
+  "noActiveBookings": "Anda belum memiliki booking aktif saat ini. Yuk buat booking baru!",
+  "activeBookingDesc": "Booking aktif Anda:\n📅 {date}\n🔖 Status: {status}\n📍 Barbershop ID: {shopId}",
+  "@activeBookingDesc": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      },
+      "shopId": {
+        "type": "String"
+      }
+    }
+  },
+  "errCheckQueueFailed": "Maaf, saya gagal mengecek data antrian Anda. Coba lagi nanti.",
+  "errNoStylesAvailable": "Maaf, data gaya rambut sedang tidak tersedia.",
+  "popularServicesHeader": "Berikut beberapa layanan populer kami:",
+  "errLoadRecommendationFailed": "Gagal memuat rekomendasi.",
+  "branchInfo": "Kami memiliki banyak cabang! Gunakan fitur 'Lokasi Saya' di halaman Home untuk menemukan yang terdekat.",
+  "giaFallback": "Maaf, saya belum mengerti. Coba kata kunci: 'antrian saya', 'rekomendasi gaya', atau 'alamat'.",
+  "giaTyping": "GIA sedang mengetik...",
+  "chatMinutes": "menit",
+  "seeDetail": "Lihat Detail",
+  "btnCheckMyQueue": "Cek antrian saya",
+  "btnHaircutRecommendation": "Rekomendasi gaya rambut",
+  "btnAskAddress": "Tanyakan alamat",
+  "btnCreateNewBooking": "Buat Booking Baru",
+  "chatHint": "Tulis pesan...",
+  "stepService": "Layanan",
+  "stepBarber": "Barber",
+  "stepSchedule": "Jadwal",
+  "selectServiceTitle": "Pilih Layanan",
+  "selectServiceSubtitle": "Anda bisa memilih lebih dari satu layanan",
+  "whoCutsTitle": "Siapa yang mencukur?",
+  "barberChoiceSystem": "Dipilihkan Sistem (Adil & Cepat)",
+  "barberChoiceSystemDesc": "Sistem akan mencarikan barber terbaik yang tersedia untuk Anda.",
+  "barberChoiceFavorite": "Pilih Barber Favorit",
+  "barberChoiceFavoriteDesc": "Pilih barber tertentu yang sudah Anda kenal (+ Rp {fee})",
+  "@barberChoiceFavoriteDesc": {
+    "placeholders": {
+      "fee": {
+        "type": "String"
+      }
+    }
+  },
+  "specialistList": "Daftar Specialist",
+  "scheduleTitle": "Tentukan Jadwal",
+  "pickDay": "Pilih Hari",
+  "pickTime": "Pilih Jam",
+  "shopHoliday": "LIBUR",
+  "totalEst": "Total Estimasi",
+  "btnNext": "LANJUT",
+  "btnBookNow": "BOOK NOW",
+  "confirmBookingTitle": "Konfirmasi Booking",
+  "labelDate": "Tanggal",
+  "labelTime": "Jam",
+  "labelBarber": "Barber",
+  "labelTotalCost": "Total Biaya",
+  "btnCancel": "Batal",
+  "btnConfirmBook": "Booking Sekarang",
+  "errPickService": "Pilih minimal satu layanan",
+  "errPickBarber": "Silakan pilih barber favorit Anda",
+  "errPickBarberFirst": "Pilih barber terlebih dahulu",
+  "errBarberBusy": "Barber tersebut sudah ada jadwal di jam ini",
+  "errNoFairBarber": "Tidak ada hairstylist tersedia jam ini. Coba jam lain.",
+  "errShopClosed": "{shopName} Sedang Tutup",
+  "@errShopClosed": {
+    "placeholders": {
+      "shopName": {
+        "type": "String"
+      }
+    }
+  },
+  "errShopClosedDesc": "Maaf, barbershop ini sedang tidak menerima pesanan.\nSilakan cek kembali nanti.",
+  "barberOffDay": "{name} libur pada tanggal ini.",
+  "@barberOffDay": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "barberOffDayDesc": "Silakan pilih tanggal lain atau barber lain.",
+  "randomSystem": "Sistem Acak",
+  "myOrders": "Pesanan Saya",
+  "tabUnpaid": "Belum Bayar",
+  "tabScheduled": "Terjadwal",
+  "tabProcessing": "Sedang Proses",
+  "tabCompleted": "Selesai",
+  "tabCancelled": "Dibatalkan",
+  "loginRequired": "Wajib login",
+  "noOrders": "Tidak ada pesanan",
+  "statusUnpaid": "BELUM BAYAR",
+  "statusCancelled": "DIBATALKAN",
+  "statusCancelRequested": "PERMOHONAN PEMBATALAN",
+  "statusCompleted": "SELESAI",
+  "statusProcessing": "SEDANG DIPROSES",
+  "statusScheduled": "TERJADWAL",
+  "statusPendingVerification": "MENUNGGU VERIFIKASI",
+  "specialOrders": "Pesanan Khusus",
+  "pleaseLoginFirst": "Silakan login terlebih dahulu",
+  "errLoadingOrders": "Gagal memuat pesanan: {error}",
+  "@errLoadingOrders": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noSpecialOrders": "Belum ada Pesanan Khusus",
+  "statusAwaitingPayment": "Menunggu Pembayaran",
+  "descAwaitingPayment": "Selesaikan pembayaran untuk memproses pendaftaran.",
+  "statusActivePartnership": "SUKSES / AKTIF",
+  "descActivePartnership": "Selamat! Partnership Anda telah aktif.",
+  "statusCancelledRejected": "DIBATALKAN / DITOLAK",
+  "descCancelledRejected": "Permintaan ini tidak dapat diproses.",
+  "statusWaitingVerification": "MENUNGGU VERIFIKASI",
+  "descWaitingVerification": "Bukti diterima. Admin sedang memverifikasi data Anda.",
+  "btnResumePayment": "LANJUTKAN PEMBAYARAN",
+  "registrationIncompleteTitle": "Pendaftaran Belum Selesai",
+  "registrationIncompleteMsg": "Anda belum mengunggah bukti pembayaran. Data pendaftaran Anda tersimpan sebagai 'Menunggu Pembayaran' dan bisa dilanjutkan nanti.",
+  "btnCancelExit": "Batal Keluar",
+  "btnExitSaveDraft": "Keluar (Simpan Draft)",
+  "btnCancelRegistration": "Batalkan Pendaftaran",
+  "registrationDetail": "Detail Pendaftaran",
+  "cancelRegistrationTitle": "Batalkan Pendaftaran?",
+  "cancelRegistrationWarning": "Jika Anda membatalkan pendaftaran yang SUDAH DIBAYAR, dana akan dikembalikan dengan POTONGAN 10% (biaya admin).\n\nApakah Anda yakin?",
+  "btnBack": "Kembali",
+  "btnYesCancel": "Ya, Batalkan",
+  "msgCancelSent": "Permintaan pembatalan dikirim.",
+  "errCancelFailed": "Gagal membatalkan: {error}",
+  "@errCancelFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errOpenWhatsApp": "Gagal membuka WhatsApp support",
+  "statusActiveCompleted": "AKTIF / SELESAI",
+  "statusRefundProcessing": "REFUND DIPROSES",
+  "businessInfo": "Informasi Bisnis",
+  "barbershopName": "Nama Barbershop",
+  "subscriptionPlan": "Paket Langganan",
+  "registrationFee": "Biaya Pendaftaran",
+  "address": "Alamat",
+  "adminAccountTitle": "Akun Admin Barbershop",
+  "adminAccountDesc": "Gunakan akun ini untuk login ke Aplikasi Admin:",
+  "btnLogoutLoginAdmin": "LOGOUT & LOGIN SEBAGAI ADMIN",
+  "contactAdmin": "Hubungi Admin",
+  "loginAsAdminTitle": "Login sebagai Admin?",
+  "loginAsAdminMsg": "Anda akan keluar dari akun Customer ini.\n\nSilakan gunakan Email & Password yang tertera di atas untuk login kembali sebagai Owner Barbershop.",
+  "btnYesLogout": "Ya, Logout",
+  "cancelDetail": "Detail Pembatalan",
+  "reason": "Alasan",
+  "viewRefundProof": "Lihat Bukti Refund",
+  "btnPayNow": "BAYAR SEKARANG",
+  "contactSupport": "Hubungi Bantuan / Komplain"
+}

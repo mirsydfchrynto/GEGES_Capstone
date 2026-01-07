@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geges_smartbarber/models/user_data.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
 const Color kDarkGrey = Color(0xFF1E1E1E);
@@ -53,6 +54,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickImage() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
@@ -68,11 +70,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         });
       }
     } catch (e) {
-      _showSnackbar('Gagal mengambil gambar: $e', const Color(0xFFD32F2F));
+      _showSnackbar(l10n.errPickImage(e.toString()), const Color(0xFFD32F2F));
     }
   }
 
   Future<String?> _askForPassword() async {
+    final l10n = AppLocalizations.of(context)!;
     String password = '';
     return showDialog<String>(
       context: context,
@@ -80,23 +83,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: kDarkGrey,
-          title: const Text(
-            'Konfirmasi Password',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            l10n.confirmPasswordTitle,
+            style: const TextStyle(color: Colors.white),
           ),
           content: TextField(
             autofocus: true,
             obscureText: true,
             style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
-              hintText: 'Masukkan password Anda',
+            decoration: InputDecoration(
+              hintText: l10n.enterPasswordHint,
             ),
             onChanged: (v) => password = v,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(null),
-              child: const Text('Batal'),
+              child: Text(l10n.cancel),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -104,7 +107,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 foregroundColor: Colors.black,
               ),
               onPressed: () => Navigator.of(context).pop(password),
-              child: const Text('Lanjut'),
+              child: Text(l10n.continueBtn),
             ),
           ],
         );
@@ -115,6 +118,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
+    final l10n = AppLocalizations.of(context)!;
 
     final newName = _nameController.text.trim();
     final newEmail = _emailController.text.trim();
@@ -139,7 +143,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             phoneNumber: newPhone,
             photoBase64: _newPhotoBase64,
           );
-          _showSnackbar(result['message'], const Color(0xFF4CAF50));
+          _showSnackbar(result['message'] ?? '', const Color(0xFF4CAF50));
           if (mounted) Navigator.pop(context, updatedData);
         }
       } else {
@@ -170,32 +174,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   phoneNumber: newPhone,
                   photoBase64: _newPhotoBase64,
                 );
-                _showSnackbar(retry['message'], const Color(0xFF4CAF50));
+                _showSnackbar(retry['message'] ?? '', const Color(0xFF4CAF50));
                 if (mounted) Navigator.pop(context, updatedData);
               }
             } else {
-              _showSnackbar(retry['message'] ?? 'Re-auth gagal.', const Color(0xFFD32F2F));
+              _showSnackbar(retry['message'] ?? l10n.errReauthFailed, const Color(0xFFD32F2F));
             }
           }
         } else {
-          _showSnackbar(result['message'] ?? 'Gagal memperbarui profil.', const Color(0xFFD32F2F));
+          _showSnackbar(result['message'] ?? l10n.errUpdateProfile, const Color(0xFFD32F2F));
         }
       }
     } catch (e) {
-      _showSnackbar('Terjadi kesalahan: $e', const Color(0xFFD32F2F));
+      _showSnackbar(l10n.errGeneric(e.toString()), const Color(0xFFD32F2F));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _showEmailVerificationDialog(String newEmail) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: kDarkGrey,
-        title: const Text('Verifikasi Email Baru', style: TextStyle(color: Colors.white)),
+        title: Text(l10n.verifyNewEmailTitle, style: const TextStyle(color: Colors.white)),
         content: Text(
-          'Kami telah mengirimkan link verifikasi ke:\n\n$newEmail\n\nSilakan buka email tersebut.',
+          l10n.verifyNewEmailMsg(newEmail),
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -205,7 +210,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Navigator.of(context).pop();
               Navigator.pop(context);
             },
-            child: const Text('Oke'),
+            child: Text(l10n.ok),
           ),
         ],
       ),
@@ -218,13 +223,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: kSurface,
       appBar: AppBar(
         backgroundColor: kSurface,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Edit Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(l10n.editProfile, style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -236,22 +242,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 40),
               _buildTextField(
                 controller: _nameController,
-                label: 'Nama Lengkap',
+                label: l10n.fullName,
                 icon: Icons.person_outline,
-                validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+                validator: (v) => v == null || v.isEmpty ? l10n.requiredField : null,
               ),
               const SizedBox(height: 20),
               _buildTextField(
                 controller: _emailController,
-                label: 'Email',
+                label: l10n.email,
                 icon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
-                validator: (v) => v == null || !v.contains('@') ? 'Email tidak valid' : null,
+                validator: (v) => v == null || !v.contains('@') ? l10n.invalidEmail : null,
               ),
               const SizedBox(height: 20),
               _buildTextField(
                 controller: _phoneController,
-                label: 'Nomor Telepon',
+                label: l10n.phoneNumber,
                 icon: Icons.phone_android_outlined,
                 keyboardType: TextInputType.phone,
               ),
@@ -268,7 +274,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.black)
-                      : const Text('SIMPAN PERUBAHAN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      : Text(l10n.saveChangesBtn, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
             ],

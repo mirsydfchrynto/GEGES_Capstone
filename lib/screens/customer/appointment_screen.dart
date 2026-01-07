@@ -4,12 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:geges_smartbarber/models/barbershop.dart';
-import 'package:geges_smartbarber/models/barberman.dart';
 import 'package:geges_smartbarber/models/service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
+import 'package:geges_smartbarber/models/barbershop.dart';
+import 'package:geges_smartbarber/models/barberman.dart';
+import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 
 class AppointmentScreen extends StatefulWidget {
   final Barbershop barbershop;
@@ -68,16 +69,17 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
   Future<void> _checkBarberAvailability() async {
     if (_selectedTime == null) return;
+    final l10n = AppLocalizations.of(context)!;
     setState(() { _isCheckingAvailability = true; _availabilityError = null; });
     final bookingDateTime = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _selectedTime!.hour, _selectedTime!.minute);
     try {
       if (_isPremiumChoice) {
-        if (_selectedBarberman == null) throw "Pilih barber terlebih dahulu";
+        if (_selectedBarberman == null) throw l10n.errPickBarberFirst;
         final isAvailable = await _queueService.isSlotAvailable(barbershopId: widget.barbershop.id, barbermanId: _selectedBarberman!.id, bookingTime: bookingDateTime, serviceIds: _selectedServices.map((s) => s.id).toList());
-        if (!isAvailable) throw "Barber tersebut sudah ada jadwal di jam ini";
+        if (!isAvailable) throw l10n.errBarberBusy;
       } else {
         final fairId = await _queueService.getFairAvailableBarberman(barbershopId: widget.barbershop.id, bookingTime: bookingDateTime, serviceIds: _selectedServices.map((s) => s.id).toList());
-        if (fairId == null) throw "Tidak ada hairstylist tersedia jam ini. Coba jam lain.";
+        if (fairId == null) throw l10n.errNoFairBarber;
         final b = await _barbershopService.getBarbermanById(fairId);
         setState(() => _autoBarberman = b);
       }
@@ -85,13 +87,14 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   }
 
   void _nextStep() {
+    final l10n = AppLocalizations.of(context)!;
     if (_currentStep < 2) {
       if (_currentStep == 0 && _selectedServices.isEmpty) {
-        _showSnack("Pilih minimal satu layanan");
+        _showSnack(l10n.errPickService);
         return;
       }
       if (_currentStep == 1 && _isPremiumChoice && _selectedBarberman == null) {
-        _showSnack("Silakan pilih barber favorit Anda");
+        _showSnack(l10n.errPickBarber);
         return;
       }
       setState(() => _currentStep++);
@@ -109,6 +112,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   void _showSnack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   @override Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // 1. BLOCKING LOGIC: If shop is closed, show "Shop Closed" screen
     if (!widget.barbershop.isOpen) {
       return Scaffold(
@@ -135,15 +139,15 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                "${widget.barbershop.name} Sedang Tutup",
+                l10n.errShopClosed(widget.barbershop.name),
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
-                "Maaf, barbershop ini sedang tidak menerima pesanan.\nSilakan cek kembali nanti.",
+              Text(
+                l10n.errShopClosedDesc,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white54, fontSize: 14),
+                style: const TextStyle(color: Colors.white54, fontSize: 14),
               ),
               const SizedBox(height: 32),
               OutlinedButton(
@@ -153,7 +157,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                 ),
-                child: const Text("Kembali ke Home", style: TextStyle(color: Colors.white)),
+                child: Text(l10n.backToHome, style: const TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -171,16 +175,20 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
         body: Column(children: [_buildProgressHeader(), Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: _buildCurrentStepView())), _buildBottomSummary()])));
   }
 
-  Widget _buildProgressHeader() { return Container(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 40), child: Row(children: [_stepDot(0, "Layanan"), _stepLine(0), _stepDot(1, "Barber"), _stepLine(1), _stepDot(2, "Jadwal")])); }
+  Widget _buildProgressHeader() {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 40), child: Row(children: [_stepDot(0, l10n.stepService), _stepLine(0), _stepDot(1, l10n.stepBarber), _stepLine(1), _stepDot(2, l10n.stepSchedule)])); 
+  }
   Widget _stepDot(int index, String label) { bool active = _currentStep >= index; return Column(children: [CircleAvatar(radius: 12, backgroundColor: active ? kBrownAccent : Colors.grey[800], child: Text("${index + 1}", style: TextStyle(color: active ? Colors.black : Colors.white54, fontSize: 12, fontWeight: FontWeight.bold))), const SizedBox(height: 4), Text(label, style: TextStyle(color: active ? kBrownAccent : Colors.white24, fontSize: 10))]); }
   Widget _stepLine(int index) { bool active = _currentStep > index; return Expanded(child: Divider(color: active ? kBrownAccent : Colors.grey[800], thickness: 2, indent: 8, endIndent: 8)); }
   Widget _buildCurrentStepView() { switch (_currentStep) { case 0: return _buildServiceStep(); case 1: return _buildBarberStep(); case 2: return _buildScheduleStep(); default: return const SizedBox(); } }
 
   Widget _buildServiceStep() {
+    final l10n = AppLocalizations.of(context)!;
     return FutureBuilder<List<Service>>(future: _barbershopService.getAllServices(), builder: (context, snap) {
       if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: kBrownAccent));
       final shopServices = snap.data!.where((s) => widget.barbershop.services.contains(s.id)).toList();
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("Pilih Layanan", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)), const SizedBox(height: 8), const Text("Anda bisa memilih lebih dari satu layanan", style: TextStyle(color: Colors.white54)), const SizedBox(height: 24), ...shopServices.map((s) => _serviceCard(s))]);
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(l10n.selectServiceTitle, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)), const SizedBox(height: 8), Text(l10n.selectServiceSubtitle, style: const TextStyle(color: Colors.white54)), const SizedBox(height: 24), ...shopServices.map((s) => _serviceCard(s))]);
     });
   }
 
@@ -190,11 +198,12 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   }
 
   Widget _buildBarberStep() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text("Siapa yang mencukur?", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)), const SizedBox(height: 24),
-      _choiceCard(icon: Icons.auto_awesome, title: "Dipilihkan Sistem (Adil & Cepat)", subtitle: "Sistem akan mencarikan barber terbaik yang tersedia untuk Anda.", isSelected: !_isPremiumChoice, onTap: () { setState(() { _isPremiumChoice = false; _selectedBarberman = null; _availabilityError = null; }); _fetchBusySlots(); }), const SizedBox(height: 16),
-      _choiceCard(icon: Icons.stars, title: "Pilih Barber Favorit", subtitle: "Pilih barber tertentu yang sudah Anda kenal (+ Rp ${widget.barbershop.barberSelectionFee})", isSelected: _isPremiumChoice, onTap: () { setState(() { _isPremiumChoice = true; _availabilityError = null; }); _fetchBusySlots(); }),
-      if (_isPremiumChoice) ...[const SizedBox(height: 32), const Text("Daftar Specialist", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)), const SizedBox(height: 16), _buildBarberList()]
+      Text(l10n.whoCutsTitle, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)), const SizedBox(height: 24),
+      _choiceCard(icon: Icons.auto_awesome, title: l10n.barberChoiceSystem, subtitle: l10n.barberChoiceSystemDesc, isSelected: !_isPremiumChoice, onTap: () { setState(() { _isPremiumChoice = false; _selectedBarberman = null; _availabilityError = null; }); _fetchBusySlots(); }), const SizedBox(height: 16),
+      _choiceCard(icon: Icons.stars, title: l10n.barberChoiceFavorite, subtitle: l10n.barberChoiceFavoriteDesc(widget.barbershop.barberSelectionFee.toString()), isSelected: _isPremiumChoice, onTap: () { setState(() { _isPremiumChoice = true; _availabilityError = null; }); _fetchBusySlots(); }),
+      if (_isPremiumChoice) ...[const SizedBox(height: 32), Text(l10n.specialistList, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)), const SizedBox(height: 16), _buildBarberList()]
     ]);
   }
 
@@ -211,10 +220,11 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   }
 
   Widget _buildScheduleStep() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text("Tentukan Jadwal", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)), const SizedBox(height: 24),
-      const Text("Pilih Hari", style: TextStyle(color: Colors.white70, fontSize: 14)), const SizedBox(height: 12), _buildDateRow(), const SizedBox(height: 32),
-      const Text("Pilih Jam", style: TextStyle(color: Colors.white70, fontSize: 14)), const SizedBox(height: 12), _buildTimeGrid(),
+      Text(l10n.scheduleTitle, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)), const SizedBox(height: 24),
+      Text(l10n.pickDay, style: const TextStyle(color: Colors.white70, fontSize: 14)), const SizedBox(height: 12), _buildDateRow(), const SizedBox(height: 32),
+      Text(l10n.pickTime, style: const TextStyle(color: Colors.white70, fontSize: 14)), const SizedBox(height: 12), _buildTimeGrid(),
       if (_availabilityError != null) ...[const SizedBox(height: 24), Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)), child: Row(children: [const Icon(Icons.error_outline, color: Colors.redAccent), const SizedBox(width: 12), Expanded(child: Text(_availabilityError!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)))]))]
     ]);
   }
@@ -230,11 +240,43 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
         if (b.specificOffDays.contains(DateFormat('yyyy-MM-dd').format(date))) isOpen = false; 
       }
       bool isSelected = _selectedDate.day == date.day && _selectedDate.month == date.month;
-      return Padding(padding: const EdgeInsets.only(right: 10), child: InkWell(onTap: isOpen ? () { setState(() { _selectedDate = date; _selectedTime = null; _availabilityError = null; }); _fetchBusySlots(); } : null, child: Container(width: 65, decoration: BoxDecoration(color: isSelected ? kBrownAccent : (isOpen ? kCardBg : Colors.black26), borderRadius: BorderRadius.circular(16)), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(DateFormat('EEE').format(date), style: TextStyle(color: isSelected ? Colors.black : Colors.white54, fontSize: 12)), const SizedBox(height: 4), Text("${date.day}", style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), if (!isOpen) const Text("LIBUR", style: TextStyle(color: Colors.redAccent, fontSize: 8, fontWeight: FontWeight.bold))]))));
+      return Padding(padding: const EdgeInsets.only(right: 10), child: InkWell(onTap: isOpen ? () { setState(() { _selectedDate = date; _selectedTime = null; _availabilityError = null; }); _fetchBusySlots(); } : null, child: Container(width: 65, decoration: BoxDecoration(color: isSelected ? kBrownAccent : (isOpen ? kCardBg : Colors.black26), borderRadius: BorderRadius.circular(16)), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(DateFormat('EEE').format(date), style: TextStyle(color: isSelected ? Colors.black : Colors.white54, fontSize: 12)), const SizedBox(height: 4), Text("${date.day}", style: TextStyle(color: isSelected ? Colors.black : Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), if (!isOpen) Text(AppLocalizations.of(context)!.shopHoliday, style: const TextStyle(color: Colors.redAccent, fontSize: 8, fontWeight: FontWeight.bold))]))));
     }));
   }
 
   Widget _buildTimeGrid() {
+    // Safety check for off-days when switching barbers but keeping same date
+    if (_isPremiumChoice && _selectedBarberman != null) {
+       final b = _selectedBarberman!;
+       final dayName = DateFormat('EEEE', 'en_US').format(_selectedDate).toLowerCase();
+       
+       bool isOff = false;
+       if (b.offDays != null && b.offDays!.any((d) => d.name == dayName)) isOff = true;
+       if (b.specificOffDays.contains(DateFormat('yyyy-MM-dd').format(_selectedDate))) isOff = true;
+       if (b.onLeave) isOff = true;
+
+       if (isOff) {
+         final l10n = AppLocalizations.of(context)!;
+         return Center(
+           child: Padding(
+             padding: const EdgeInsets.symmetric(vertical: 32),
+             child: Column(
+               children: [
+                 const Icon(Icons.event_busy, size: 48, color: Colors.redAccent),
+                 const SizedBox(height: 16),
+                 Text(
+                   l10n.barberOffDay(b.name),
+                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                 ),
+                 const SizedBox(height: 8),
+                 Text(l10n.barberOffDayDesc, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+               ],
+             ),
+           ),
+         );
+       }
+    }
+
     final List<TimeOfDay> times = [];
     for (int h = widget.barbershop.openHour; h < widget.barbershop.closeHour; h++) { times.add(TimeOfDay(hour: h, minute: 0)); times.add(TimeOfDay(hour: h, minute: 30)); }
     return GridView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.2), itemCount: times.length, itemBuilder: (context, i) {
@@ -291,23 +333,29 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   }
 
   Widget _buildBottomSummary() {
-    bool canProceed = false; String btnText = "LANJUT";
+    final l10n = AppLocalizations.of(context)!;
+    bool canProceed = false; String btnText = l10n.btnNext;
     if (_currentStep == 0 && _selectedServices.isNotEmpty) canProceed = true;
     if (_currentStep == 1) { if (!_isPremiumChoice) canProceed = true; if (_isPremiumChoice && _selectedBarberman != null) canProceed = true; }
-    if (_currentStep == 2) { if (_selectedTime != null && _availabilityError == null && !_isCheckingAvailability) { canProceed = true; btnText = "BOOK NOW"; } }
-    return Container(padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + MediaQuery.of(context).padding.bottom), decoration: BoxDecoration(color: kCardBg, border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05)))), child: Row(children: [Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("Total Estimasi", style: TextStyle(color: Colors.white54, fontSize: 12)), Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_totalPrice), style: const TextStyle(color: kBrownAccent, fontSize: 20, fontWeight: FontWeight.bold))])), SizedBox(width: 140, height: 50, child: ElevatedButton(onPressed: (canProceed && !_isLoading) ? (_currentStep == 2 ? _processBooking : _nextStep) : null, style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, disabledBackgroundColor: Colors.white10, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: _isLoading ? const CircularProgressIndicator(color: Colors.black) : Text(btnText, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold))))]));
+    if (_currentStep == 2) { if (_selectedTime != null && _availabilityError == null && !_isCheckingAvailability) { canProceed = true; btnText = l10n.btnBookNow; } }
+    return Container(padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + MediaQuery.of(context).padding.bottom), decoration: BoxDecoration(color: kCardBg, border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05)))), child: Row(children: [Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Text(l10n.totalEst, style: const TextStyle(color: Colors.white54, fontSize: 12)), Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_totalPrice), style: const TextStyle(color: kBrownAccent, fontSize: 20, fontWeight: FontWeight.bold))])), SizedBox(width: 140, height: 50, child: ElevatedButton(onPressed: (canProceed && !_isLoading) ? (_currentStep == 2 ? _processBooking : _nextStep) : null, style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, disabledBackgroundColor: Colors.white10, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: _isLoading ? const CircularProgressIndicator(color: Colors.black) : Text(btnText, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold))))]));
   }
 
   Future<void> _processBooking() async {
+    final l10n = AppLocalizations.of(context)!;
     final bdt = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _selectedTime!.hour, _selectedTime!.minute);
-    final confirm = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(backgroundColor: kCardBg, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), title: const Text('Konfirmasi Booking', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [_confirmRow("Tanggal", DateFormat('dd MMM yyyy').format(bdt)), _confirmRow("Jam", DateFormat('HH:mm').format(bdt)), _confirmRow("Barber", _isPremiumChoice ? _selectedBarberman?.name ?? '-' : 'Sistem Acak'), const SizedBox(height: 8), const Divider(color: Colors.white24), const SizedBox(height: 8), _confirmRow("Total Biaya", NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_totalPrice), isBold: true, color: kBrownAccent)]), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal', style: TextStyle(color: Colors.white54))), ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent), child: const Text('Booking Sekarang', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)))]));
+    final confirm = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(backgroundColor: kCardBg, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), title: Text(l10n.confirmBookingTitle, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [_confirmRow(l10n.labelDate, DateFormat('dd MMM yyyy').format(bdt)), _confirmRow(l10n.labelTime, DateFormat('HH:mm').format(bdt)), _confirmRow(l10n.labelBarber, _isPremiumChoice ? _selectedBarberman?.name ?? '-' : l10n.randomSystem), const SizedBox(height: 8), const Divider(color: Colors.white24), const SizedBox(height: 8), _confirmRow(l10n.labelTotalCost, NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_totalPrice), isBold: true, color: kBrownAccent)]), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.btnCancel, style: const TextStyle(color: Colors.white54))), ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent), child: Text(l10n.btnConfirmBook, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)))]));
     if (confirm != true) return;
     setState(() => _isLoading = true);
     final customerId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid;
     final barberId = _isPremiumChoice ? _selectedBarberman!.id : _autoBarberman!.id;
     final orderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
     final payload = {'barbershop_id': widget.barbershop.id, 'customer_id': customerId, 'barberman_id': barberId, 'service_ids': _selectedServices.map((s) => s.id).toList(), 'total_price': _totalPrice, 'barber_selection_fee': _selectionFee, 'paid_barber_selection': _isPremiumChoice, 'is_auto_assigned': !_isPremiumChoice, 'estimated_duration': _totalDuration, 'booking_time': Timestamp.fromDate(bdt), 'status': 'awaiting_payment', 'request_status': 'approved', 'payment_deadline': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 15))), 'order_id': orderId};
-    try { await _queueService.createQueue(payload); if (!mounted) return; Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (c) => PaymentScreen(orderId: orderId, totalPrice: _totalPrice, barbershopId: widget.barbershop.id, barbermanId: barberId, bookingTime: bdt, paymentDeadline: DateTime.now().add(const Duration(minutes: 15))))); } catch (e) { _showSnack("Gagal: $e"); } finally { setState(() => _isLoading = false); }
+    try { await _queueService.createQueue(payload); if (!mounted) return; Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (c) => PaymentScreen(orderId: orderId, totalPrice: _totalPrice, barbershopId: widget.barbershop.id, barbermanId: barberId, bookingTime: bdt, paymentDeadline: DateTime.now().add(const Duration(minutes: 15)))));     } catch (e) {
+      if (mounted) _showSnack("Gagal: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
   Widget _confirmRow(String l, String v, {bool isBold = false, Color color = Colors.white}) => Padding(padding: const EdgeInsets.only(bottom: 4.0), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l, style: const TextStyle(color: Colors.white70)), Text(v, style: TextStyle(color: color, fontWeight: isBold ? FontWeight.bold : FontWeight.normal))]));
 }

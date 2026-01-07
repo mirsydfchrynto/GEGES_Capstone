@@ -58,8 +58,6 @@ class LocationService {
         }
       }
 
-      if (position == null) return 'Lokasi Null';
-
       debugPrint('LocationService: Position found (${position.latitude}, ${position.longitude}). Geocoding...');
 
       try {

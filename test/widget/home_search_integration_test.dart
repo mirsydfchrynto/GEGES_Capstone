@@ -4,12 +4,22 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/screens/customer/home_screen.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/location_service.dart';
+import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:network_image_mock/network_image_mock.dart';
+import 'package:mockito/mockito.dart';
+import '../test_helpers.dart';
 
 class MockLocationService extends LocationService {
   @override
   Future<String?> getCurrentLocationAddress() async {
     return 'Test Location, Indonesia';
+  }
+}
+
+class MockQueueService extends Mock implements QueueService {
+  @override
+  Stream<int> streamUnreadNotificationCount(String userId) {
+    return Stream.value(0);
   }
 }
 
@@ -26,7 +36,6 @@ void main() {
       'isOpen': true,
       'isActive': true,
       'services': ['Haircut'],
-      'rating': 4.8,
       'imageUrl': 'http://test.com/img.jpg',
     });
 
@@ -36,7 +45,6 @@ void main() {
       'isOpen': true,
       'isActive': true,
       'services': ['Shave'],
-      'rating': 4.5,
       'imageUrl': 'http://test.com/img2.jpg',
     });
   });
@@ -46,11 +54,13 @@ void main() {
       // Inject real service with fake firestore to test logic flow
       final service = BarbershopService(firestore: fakeFs);
       final mockLoc = MockLocationService();
+      final mockQueue = MockQueueService();
       
-      await tester.pumpWidget(MaterialApp(
-        home: HomeScreen(
+      await tester.pumpWidget(wrapWithLocalization(HomeScreen(
           barbershopService: service,
           locationService: mockLoc,
+          queueService: mockQueue,
+          currentUserId: 'test-user',
         ),
       ));
       
@@ -72,7 +82,7 @@ void main() {
       }
 
       // 3. Verify Result
-      expect(find.text('Found 1 result'), findsOneWidget);
+      expect(find.text('Ditemukan 1 hasil'), findsOneWidget);
       expect(find.text('Febrian Barbershop'), findsOneWidget);
       expect(find.text('Doels Barbershop'), findsNothing);
 
@@ -83,7 +93,7 @@ void main() {
       }
 
       // 5. Verify Result
-      expect(find.text('Found 1 result'), findsOneWidget);
+      expect(find.text('Ditemukan 1 hasil'), findsOneWidget);
       expect(find.text('Doels Barbershop'), findsOneWidget);
       expect(find.text('Febrian Barbershop'), findsNothing);
 
@@ -93,7 +103,7 @@ void main() {
       await tester.pump();
 
       // Verify Back to Home
-      expect(find.text('Barbershops\nnear you'), findsOneWidget);
+      expect(find.text('Barbershop\ndi dekatmu'), findsOneWidget);
       expect(find.text('Febrian Barbershop'), findsOneWidget);
     });
   });

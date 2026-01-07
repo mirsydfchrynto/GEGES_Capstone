@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/screens/register_screen.dart';
 import 'utils/fakes.dart';
+import 'test_helpers.dart';
 
 void main() {
   testWidgets('TC-REGISTER-01: Successful registration navigates to Login', (
@@ -15,7 +16,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: RegisterScreen(authService: fakeSuccess)),
+      wrapWithLocalization(RegisterScreen(authService: fakeSuccess)),
     );
 
     // Fill form
@@ -42,7 +43,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // After success, RegisterScreen navigates to LoginScreen which contains "Sign In"
-    expect(find.text('Sign In'), findsOneWidget);
+    expect(find.widgetWithText(ElevatedButton, 'Masuk'), findsOneWidget);
   });
 
   testWidgets('TC-REGISTER-02: Failed registration shows error message', (
@@ -56,7 +57,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: RegisterScreen(authService: fakeFail)),
+      wrapWithLocalization(RegisterScreen(authService: fakeFail)),
     );
 
     // Fill form
@@ -68,7 +69,7 @@ void main() {
     await tester.enterText(find.byType(TextField).at(2), 'Password1!');
     await tester.enterText(find.byType(TextField).at(3), 'Password1!');
 
-    final createBtn = find.text('Create Account');
+    final createBtn = find.widgetWithText(ElevatedButton, 'Buat Akun');
     await tester.ensureVisible(createBtn);
     await tester.tap(createBtn);
 
