@@ -76,7 +76,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   void _logout(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
+    await _authService.signOut();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const LoginScreen()), (Route<dynamic> route) => false);
   }
