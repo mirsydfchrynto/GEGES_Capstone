@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/models/user_data.dart';
 import 'package:geges_smartbarber/screens/customer/edit_profile_screen.dart';

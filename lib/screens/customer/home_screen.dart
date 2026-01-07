@@ -78,6 +78,8 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final pos = await _locationService.getCurrentPosition();
       final address = await _locationService.getCurrentLocationAddress();
+      
+      if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       
       if (mounted) {

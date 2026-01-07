@@ -227,11 +227,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 title: const Text('Bahasa Indonesia', style: TextStyle(color: Colors.white)),
                 leading: Radio<Locale>(
                   value: const Locale('id'),
+                  // ignore: deprecated_member_use
                   groupValue: provider.locale,
+                  // ignore: deprecated_member_use
                   onChanged: (Locale? v) {
                     if (v != null) provider.setLocale(v);
                     Navigator.pop(context);
                   },
+                  activeColor: kBrownAccent,
                 ),
                 onTap: () {
                   provider.setLocale(const Locale('id'));
@@ -241,11 +244,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ListTile(
                 title: const Text('English', style: TextStyle(color: Colors.white)),
                 leading: Radio<Locale>(
-                  value: const Locale('en'), groupValue: provider.locale,
+                  value: const Locale('en'),
+                  // ignore: deprecated_member_use
+                  groupValue: provider.locale,
+                  // ignore: deprecated_member_use
                   onChanged: (Locale? v) {
                     if (v != null) provider.setLocale(v);
                     Navigator.pop(context);
                   },
+                  activeColor: kBrownAccent,
                 ),
                 onTap: () {
                   provider.setLocale(const Locale('en'));

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 
 Widget wrapWithLocalization(Widget widget, {Locale locale = const Locale('id')}) {

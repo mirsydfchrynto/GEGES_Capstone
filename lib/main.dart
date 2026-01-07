@@ -4,7 +4,6 @@ import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 import 'package:geges_smartbarber/utils/locale_provider.dart';
 import 'firebase_options.dart';

@@ -3,7 +3,6 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
 import 'package:geges_smartbarber/services/booking_anti_duplicate_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'test_helpers.dart';
 

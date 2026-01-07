@@ -132,6 +132,8 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
          final queuesStream = _queueService.streamQueuesForCustomer(_uid, statusFilter: ['waiting', 'awaiting_payment', 'booked', 'ongoing']);
          final queues = await queuesStream.first; // Ambil snapshot pertama
 
+         if (!mounted) return; // FIX: Async gap check
+
          if (queues.isEmpty) {
            _addGiaMessage(l10n.noActiveBookings);
          } else {
