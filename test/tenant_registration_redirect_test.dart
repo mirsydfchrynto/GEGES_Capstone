@@ -45,7 +45,7 @@ void main() {
     // Should be navigated to PaymentScreen (upload button visible)
     final uploadButton = find.widgetWithText(
       ElevatedButton,
-      'Kirim Bukti Pembayaran',
+      'Kirim Konfirmasi',
     );
     expect(uploadButton, findsOneWidget);
   });

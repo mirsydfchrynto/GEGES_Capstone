@@ -64,6 +64,25 @@ class BarbershopService {
     }
   }
 
+  // -----------------------
+  // REAL-TIME STREAMS
+  // -----------------------
+  Stream<List<Barbershop>> streamAllBarbershops() {
+    return _firestore.collection('barbershops')
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => Barbershop.fromFirestore(doc)).toList();
+        });
+  }
+
+  Stream<Barbershop?> streamBarbershopById(String id) {
+    return _firestore.collection('barbershops').doc(id).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return Barbershop.fromFirestore(doc);
+    });
+  }
+
   /// Super Admin Only: Toggle active status (Soft Delete)
   Future<void> setBarbershopActiveStatus(String id, bool isActive) async {
     try {

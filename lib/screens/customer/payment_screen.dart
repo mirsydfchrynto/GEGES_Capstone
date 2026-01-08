@@ -33,28 +33,22 @@ class _NoOpQueueService implements QueueServiceContract {
 }
 
 class PaymentScreen extends StatefulWidget {
-  // Core Data
   final String orderId;
   final int totalPrice;
-  
-  // Context Data (Booking vs Tenant)
   final String? barbershopId;
   final String? barbermanId;
   final DateTime? bookingTime;
   final List<String>? serviceIds;
   final DateTime? paymentDeadline;
-  
-  // Tenant Specific
   final String? tenantId;
   final Future<void> Function({required String tenantId, required String base64, required String userId})? tenantPaymentHandler;
   final Future<void> Function({required String tenantId, required String userId, String? reason})? cancelTenantHandler;
-
-  // Injection / Testing
   final QueueServiceContract? queueService;
   final String? testUserId;
   final ImagePicker? imagePicker;
   final bool disableTimer;
   final Future<void> Function()? submitProofHandler;
+  final VoidCallback? onFinish;
 
   const PaymentScreen({
     super.key,
@@ -73,6 +67,7 @@ class PaymentScreen extends StatefulWidget {
     this.imagePicker,
     this.disableTimer = false,
     this.submitProofHandler,
+    this.onFinish,
   });
 
   @override
@@ -80,19 +75,17 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  // Theme Constants
   static const Color kBrownAccent = Color(0xFFC3A47B);
   static const Color kSurface = Color(0xFF0F0F0F);
   static const Color kCardBg = Color(0xFF1A1A1A);
   static const Color kTextSecondary = Colors.white54;
+  static const Color kSuccess = Color(0xFF4CAF50);
 
-  // Logic Controllers
   late final QueueServiceContract _queueService;
   late final ImagePicker _picker;
   Timer? _timer;
   StreamSubscription<Queue?>? _queueSub;
 
-  // State
   Duration _timeRemaining = const Duration(minutes: 15);
   bool _isLoading = true;
   bool _isSubmitting = false;
@@ -101,8 +94,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _hasUploadedProof = false;
   String? _paymentStatus; // 'awaiting', 'pending_verification', 'success', 'expired', 'rejected'
 
-  // Dynamic Data
-  Map<String, int> _itemizedBill = {}; // Service name -> Price
+  Map<String, int> _itemizedBill = {};
 
   @override
   void initState() {
@@ -143,12 +135,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
     
-    // 1. Load Bill Details
     if (widget.tenantId != null) {
-      _itemizedBill = {'Registration Fee': widget.totalPrice};
+      _itemizedBill = {'Biaya Pendaftaran Tenant': widget.totalPrice};
       _paymentStatus = 'awaiting';
     } else {
-      // Logic for Booking Flow
       if (widget.serviceIds != null && widget.serviceIds!.isNotEmpty) {
         try {
           final shopService = BarbershopService();
@@ -162,7 +152,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
             servicesTotal += s.price.toInt();
           }
 
-          // Check for extra fees (Selection Fee / Admin Fee)
           if (widget.totalPrice > servicesTotal) {
              final diff = widget.totalPrice - servicesTotal;
              tempBill['Biaya Reservasi / Barber'] = diff;
@@ -172,16 +161,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
             setState(() => _itemizedBill = tempBill);
           }
         } catch (e) {
-          debugPrint("Error fetching services: $e");
-          // Fallback if fetch fails
            _itemizedBill = {'Total Layanan': widget.totalPrice};
         }
       } else {
-        _itemizedBill = {'Barber Service': widget.totalPrice};
+        _itemizedBill = {'Layanan Barbershop': widget.totalPrice};
       }
     }
 
-    // 2. Resolve Queue Status (Real-time)
     final userId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid;
     if (userId != null && widget.tenantId == null) {
       try {
@@ -189,8 +175,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
         if (q != null) {
           _resolvedQueueId = q.id;
           _listenToQueue(q.id);
-        } else {
-           debugPrint("PaymentScreen: Queue not found for order ${widget.orderId}");
         }
       } catch (e) {
         debugPrint("PaymentScreen Error: $e");
@@ -209,22 +193,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
       bool proofExists = (q.paymentProofBase64 != null && q.paymentProofBase64!.isNotEmpty) ||
                          (q.paymentProofUrl != null && q.paymentProofUrl!.isNotEmpty);
 
-      if (q.status == QueueStatus.booked || q.status == QueueStatus.ongoing) {
+      if (q.status == QueueStatus.booked || q.status == QueueStatus.ongoing || q.status == QueueStatus.served) {
         newStatus = 'success';
       } else if (q.status == QueueStatus.cancelled) {
-        if (q.rejectionReason != null) {
-          newStatus = 'rejected';
-        } else {
-          newStatus = 'expired';
-        }
+        newStatus = q.rejectionReason != null ? 'rejected' : 'expired';
       } else if (proofExists) {
         newStatus = 'pending_verification';
-      }
-
-      // Update timer from server truth
-      if (q.paymentDeadline != null && newStatus == 'awaiting') {
-         final diff = q.paymentDeadline!.toDate().difference(DateTime.now());
-         _timeRemaining = diff.isNegative ? Duration.zero : diff;
       }
 
       setState(() {
@@ -232,24 +206,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _paymentStatus = newStatus;
       });
 
-      if (newStatus == 'success') {
-        _timer?.cancel();
-      }
+      if (newStatus == 'success') _timer?.cancel();
     });
   }
 
-  // --- ACTIONS ---
-
   Future<void> _pickImage() async {
     if (_hasUploadedProof || _isSubmitting) return;
-    
-    // Permission handling for real devices
-    if (widget.imagePicker == null) {
-      if (Platform.isAndroid || Platform.isIOS) {
-         // Simple check, in production use permission_handler properly
-      }
-    }
-
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
       if (image != null) {
@@ -269,20 +231,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      // Test Handler
       if (widget.submitProofHandler != null) {
         await widget.submitProofHandler!();
-        if (mounted) {
-           _showSnack("Bukti terkirim! Admin akan memverifikasi pendaftaran Anda.", success: true);
-           // Do not pop here if we want to show 'pending_verification' state
-           // But since there's no stream for tenant mode, we might want to stay or pop
-           if (widget.tenantId != null) {
-             // For tenant, we stay and show pending status or pop? 
-             // Logic in TenantContinueScreen pops. Here we should probably pop or update UI.
-             // Let's pop to be consistent with TenantContinueScreen logic.
-             Navigator.pop(context);
-           }
-        }
+        if (mounted) Navigator.pop(context);
         return;
       }
 
@@ -293,26 +244,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final base64Img = base64Encode(bytes);
 
       if (widget.tenantId != null && widget.tenantPaymentHandler != null) {
-        await widget.tenantPaymentHandler!(
-          tenantId: widget.tenantId!,
-          base64: base64Img,
-          userId: userId
-        );
-         _showSnack("Bukti terkirim! Admin akan memverifikasi pendaftaran Anda.", success: true);
-         // For tenant, navigate back or update state?
-         // Usually we pop back to dashboard or show success.
-         // Let's just pop to avoid stuck state.
-         if (mounted) Navigator.pop(context);
+        await widget.tenantPaymentHandler!(tenantId: widget.tenantId!, base64: base64Img, userId: userId);
+        if (mounted) Navigator.pop(context);
       } else if (_resolvedQueueId != null) {
-        await _queueService.submitPaymentProofForQueue(
-          queueId: _resolvedQueueId!, 
-          userId: userId, 
-          base64Proof: base64Img
-        );
+        await _queueService.submitPaymentProofForQueue(queueId: _resolvedQueueId!, userId: userId, base64Proof: base64Img);
         _showSnack("Bukti terkirim! Mohon tunggu verifikasi admin.", success: true);
-        // Do NOT pop here, let the stream update the UI to 'pending_verification'
       }
-
     } catch (e) {
       _showSnack("Gagal upload: $e", isError: true);
     } finally {
@@ -323,338 +260,311 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void _showSnack(String msg, {bool isError = false, bool success = false}) {
     if(!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: TextStyle(color: success || isError ? Colors.white : Colors.black)),
-      backgroundColor: isError ? Colors.redAccent : (success ? Colors.green : Colors.white),
+      content: Text(msg),
+      backgroundColor: isError ? Colors.redAccent : (success ? kSuccess : Colors.grey[800]),
       behavior: SnackBarBehavior.floating,
     ));
   }
 
-  void _handleBack(BuildContext context) {
-    if (_isSubmitting) {
-      _showSnack("Mohon tunggu proses selesai.", isError: true);
-      return;
-    }
-    
-    final l10n = AppLocalizations.of(context)!;
-    if (widget.tenantId != null && _paymentStatus == 'awaiting') {
-      showDialog(
-        context: context,
-        builder: (c) => AlertDialog(
-          title: Text(l10n.registrationIncompleteTitle),
-          content: Text(l10n.registrationIncompleteMsg),
-          actions: [
-            TextButton(child: Text(l10n.btnCancelExit), onPressed: () => Navigator.pop(c)),
-            TextButton(child: Text(l10n.btnExitSaveDraft), onPressed: () {
-              Navigator.pop(c);
-              Navigator.pop(context);
-            }),
-          ],
-        ),
-      );
-    } else {
-      Navigator.pop(context);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(backgroundColor: kSurface, body: Center(child: CircularProgressIndicator(color: kBrownAccent)));
-    }
-
-    if (_paymentStatus == 'success') {
-      return _buildSuccessScreen();
-    }
+    if (_isLoading) return const Scaffold(backgroundColor: kSurface, body: Center(child: CircularProgressIndicator(color: kBrownAccent)));
+    if (_paymentStatus == 'success') return _buildSuccessScreen();
 
     final l10n = AppLocalizations.of(context)!;
-
-    return PopScope(
-      canPop: !_isSubmitting,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        if (_isSubmitting) {
-          _showSnack("Mohon tunggu proses selesai.", isError: true);
-        }
-      },
-      child: Scaffold(
+    return Scaffold(
+      backgroundColor: kSurface,
+      appBar: AppBar(
         backgroundColor: kSurface,
-        appBar: AppBar(
-          backgroundColor: kSurface,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.close, color: Colors.white), 
-            onPressed: () => _handleBack(context)
-          ),
-          title: Text(l10n.paymentTitle, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          centerTitle: true,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20), 
+          onPressed: () {
+            if (widget.onFinish != null) {
+              widget.onFinish!();
+            } else {
+              Navigator.pop(context);
+            }
+          }
         ),
-        body: Column(
-          children: [
-            _buildTimerHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildOrderSummary(),
-                    const SizedBox(height: 20),
-                    _buildPaymentMethods(),
-                    const SizedBox(height: 20),
-                    _buildUploadSection(),
-                    const SizedBox(height: 20),
-                    if (_paymentStatus == 'pending_verification')
-                      _buildStatusBanner(l10n.verifying, Icons.hourglass_top, Colors.orange)
-                    else if (_paymentStatus == 'rejected')
-                      _buildStatusBanner(l10n.paymentRejected, Icons.error_outline, Colors.red)
-                    else if (_paymentStatus == 'expired')
-                      _buildStatusBanner(l10n.timeOut, Icons.timer_off, Colors.grey),
-                  ],
-                ),
+        title: Text(l10n.paymentTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          _buildTimerHeader(l10n),
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildSectionHeader(l10n.itemDetails, Icons.receipt_long),
+                  const SizedBox(height: 12),
+                  _buildOrderSummary(l10n),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader(l10n.transferTo, Icons.account_balance),
+                  const SizedBox(height: 12),
+                  _buildBankInfo(l10n),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader(l10n.paymentSteps, Icons.help_outline),
+                  const SizedBox(height: 12),
+                  _buildInstructions(l10n),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader(l10n.paymentProof, Icons.cloud_upload),
+                  const SizedBox(height: 12),
+                  _buildUploadSection(l10n),
+                  const SizedBox(height: 20),
+                  if (_paymentStatus == 'pending_verification')
+                    _buildStatusBanner(l10n.verifying, Icons.hourglass_top, Colors.orange)
+                  else if (_paymentStatus == 'rejected')
+                    _buildStatusBanner(l10n.paymentRejected, Icons.error_outline, Colors.red)
+                  else if (_paymentStatus == 'expired')
+                    _buildStatusBanner(l10n.timeOut, Icons.timer_off, Colors.grey),
+                  const SizedBox(height: 100),
+                ],
               ),
             ),
-            _buildBottomAction(),
-          ],
-        ),
+          ),
+        ],
       ),
+      bottomSheet: _buildBottomAction(l10n),
     );
   }
 
-  Widget _buildTimerHeader() {
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: kBrownAccent, size: 18),
+        const SizedBox(width: 8),
+        Text(title.toUpperCase(), style: const TextStyle(color: kBrownAccent, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+      ],
+    );
+  }
+
+  Widget _buildTimerHeader(AppLocalizations l10n) {
     bool isUrgent = _timeRemaining.inMinutes < 5;
     return Container(
       width: double.infinity,
-      color: isUrgent ? Colors.red.withValues(alpha:0.1) : kCardBg,
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        color: kCardBg,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.4), blurRadius: 10)],
+      ),
       child: Column(
         children: [
-          const Text("Selesaikan pembayaran dalam", style: TextStyle(color: Colors.white54, fontSize: 12)),
-          const SizedBox(height: 4),
+          Text(l10n.payBefore, style: const TextStyle(color: kTextSecondary, fontSize: 13)),
+          const SizedBox(height: 8),
           Text(
             "${_timeRemaining.inMinutes.toString().padLeft(2,'0')}:${(_timeRemaining.inSeconds % 60).toString().padLeft(2,'0')}",
-            style: TextStyle(
-              color: isUrgent ? Colors.redAccent : kBrownAccent,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2
-            ),
+            style: TextStyle(color: isUrgent ? Colors.redAccent : kBrownAccent, fontSize: 40, fontWeight: FontWeight.w900, letterSpacing: 4),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOrderSummary() {
-    final l10n = AppLocalizations.of(context)!;
+  Widget _buildOrderSummary(AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: kCardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white10),
-      ),
+      decoration: BoxDecoration(color: kCardBg, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withValues(alpha:0.05))),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(l10n.totalBill, style: const TextStyle(color: Colors.white54)),
-              Text("#${widget.orderId}", style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              Text(l10n.orderId, style: const TextStyle(color: kTextSecondary, fontSize: 12)),
+              Text("#${widget.orderId}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(widget.totalPrice),
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          const Divider(color: Colors.white12),
-          const SizedBox(height: 16),
+          const Divider(height: 32, color: Colors.white10),
           ..._itemizedBill.entries.map((e) => Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
+            padding: const EdgeInsets.only(bottom: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(e.key, style: const TextStyle(color: Colors.white70)),
-                Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(e.value), style: const TextStyle(color: Colors.white)),
+                Expanded(child: Text(e.key, style: const TextStyle(color: Colors.white70, fontSize: 14))),
+                Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(e.value), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
               ],
             ),
           )),
+          const Divider(height: 32, color: Colors.white10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(l10n.totalBill, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(widget.totalPrice),
+                style: const TextStyle(color: kBrownAccent, fontSize: 20, fontWeight: FontWeight.w900),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPaymentMethods() {
-    final l10n = AppLocalizations.of(context)!;
+  Widget _buildBankInfo(AppLocalizations l10n) {
     const accNumber = "87705955837";
-    const accName = "FEBRIAN BARBERSHOP";
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(l10n.transferTo, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: kCardBg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: kBrownAccent.withValues(alpha:0.3)),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: kCardBg, borderRadius: BorderRadius.circular(20), border: Border.all(color: kBrownAccent.withValues(alpha:0.2))),
+      child: Row(
+        children: [
+          Container(
+            width: 56, height: 56,
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+            alignment: Alignment.center,
+            child: const Text("BCA", style: TextStyle(color: Color(0xFF005CAA), fontWeight: FontWeight.w900, fontSize: 18)),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 50, height: 50,
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                alignment: Alignment.center,
-                child: const Text("BCA", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 18)),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Bank Central Asia", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                const SizedBox(height: 2),
+                const Text("FEBRIAN BARBERSHOP", style: TextStyle(color: kTextSecondary, fontSize: 12)),
+                const SizedBox(height: 8),
+                Row(
                   children: [
-                    const Text("Bank Central Asia", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text(accName, style: TextStyle(color: kTextSecondary, fontSize: 12)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Text(accNumber, style: TextStyle(color: kBrownAccent, fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          onTap: () {
-                            Clipboard.setData(const ClipboardData(text: accNumber));
-                            _showSnack("No. Rekening disalin!", success: true);
-                          },
-                          child: const Icon(Icons.copy, size: 16, color: kBrownAccent)
-                        )
-                      ],
+                    Text(accNumber, style: const TextStyle(color: kBrownAccent, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: () {
+                        Clipboard.setData(const ClipboardData(text: accNumber));
+                        _showSnack(l10n.copySuccess, success: true);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: kBrownAccent.withValues(alpha:0.1), borderRadius: BorderRadius.circular(6)),
+                        child: const Icon(Icons.copy_rounded, size: 16, color: kBrownAccent),
+                      ),
                     )
                   ],
-                ),
-              )
-            ],
-          ),
-        ),
+                )
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructions(AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: kCardBg.withValues(alpha:0.5), borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        children: [
+          _buildStepRow("1", l10n.paymentStep1),
+          const SizedBox(height: 12),
+          _buildStepRow("2", l10n.paymentStep2),
+          const SizedBox(height: 12),
+          _buildStepRow("3", l10n.paymentStep3),
+          const SizedBox(height: 12),
+          _buildStepRow("4", l10n.paymentStep4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepRow(String number, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(radius: 10, backgroundColor: kBrownAccent, child: Text(number, style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold))),
+        const SizedBox(width: 12),
+        Expanded(child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4))),
       ],
     );
   }
 
-  Widget _buildUploadSection() {
-    final l10n = AppLocalizations.of(context)!;
+  Widget _buildUploadSection(AppLocalizations l10n) {
     bool isLocked = _paymentStatus != 'awaiting'; 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(l10n.paymentProof, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-        const SizedBox(height: 12),
-        InkWell(
-          onTap: isLocked ? null : _pickImage,
-          child: Container(
-            height: 200,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: kCardBg,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white12, style: BorderStyle.solid),
-              image: _pickedImage != null 
-                ? DecorationImage(image: FileImage(_pickedImage!), fit: BoxFit.cover, opacity: 0.5)
-                : null
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (_pickedImage == null)
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.cloud_upload_outlined, size: 48, color: isLocked ? Colors.grey : kBrownAccent),
-                      const SizedBox(height: 12),
-                      Text(
-                        isLocked ? l10n.uploadLocked : l10n.tapToUpload, 
-                        style: const TextStyle(color: Colors.white70)
-                      ),
-                    ],
-                  ),
-                if (_pickedImage != null)
-                   const Icon(Icons.check_circle, color: kBrownAccent, size: 48),
-              ],
-            ),
-          ),
+    return InkWell(
+      onTap: isLocked ? null : _pickImage,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        height: 180,
+        decoration: BoxDecoration(
+          color: kCardBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white10),
+          image: _pickedImage != null 
+            ? DecorationImage(image: FileImage(_pickedImage!), fit: BoxFit.cover, opacity: 0.4)
+            : null
         ),
-      ],
+        child: Center(
+          child: _pickedImage == null 
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_a_photo_outlined, size: 40, color: isLocked ? Colors.grey : kBrownAccent),
+                  const SizedBox(height: 12),
+                  Text(isLocked ? l10n.uploadLocked : l10n.tapToUpload, style: const TextStyle(color: kTextSecondary, fontWeight: FontWeight.w500)),
+                ],
+              )
+            : Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                child: const Icon(Icons.check_rounded, color: kSuccess, size: 40),
+              ),
+        ),
+      ),
     );
   }
 
   Widget _buildStatusBanner(String text, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha:0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha:0.5)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Text(text, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-        ],
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha:0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withValues(alpha:0.3))),
+      child: Row(children: [Icon(icon, color: color), const SizedBox(width: 12), Expanded(child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.bold)))]),
     );
   }
 
-  Widget _buildBottomAction() {
-    final l10n = AppLocalizations.of(context)!;
+  Widget _buildBottomAction(AppLocalizations l10n) {
     bool isLocked = _paymentStatus != 'awaiting';
     String btnText = l10n.sendProof;
     if (_isSubmitting) btnText = l10n.sending;
     if (_paymentStatus == 'pending_verification') btnText = l10n.verificationPending;
     if (_paymentStatus == 'expired') btnText = l10n.timeOut;
-    if (_paymentStatus == 'success') btnText = "Berhasil!";
 
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: kCardBg,
-        border: Border(top: BorderSide(color: Colors.white.withValues(alpha:0.05))),
-      ),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      decoration: BoxDecoration(color: kSurface, border: Border(top: BorderSide(color: Colors.white.withValues(alpha:0.05)))),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: 56,
             child: ElevatedButton(
               onPressed: (isLocked || _isSubmitting) ? null : _submitProof,
               style: ElevatedButton.styleFrom(
                 backgroundColor: kBrownAccent,
                 foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 disabledBackgroundColor: Colors.white10,
-                disabledForegroundColor: Colors.white24,
               ),
               child: _isSubmitting 
                 ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)) 
-                : Text(btnText, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                : Text(btnText, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1)),
             ),
           ),
-          
-          if (widget.tenantId != null) ...[
-             const SizedBox(height: 12),
-             TextButton(
-               onPressed: _isSubmitting ? null : () {
-                 if (widget.cancelTenantHandler != null) {
-                    widget.cancelTenantHandler!(tenantId: widget.tenantId!, userId: widget.testUserId ?? '');
-                 }
-                 Navigator.pop(context);
-               },
-               child: const Text("Batalkan Pendaftaran", style: TextStyle(color: Colors.redAccent)),
-             )
-          ]
+          if (widget.tenantId != null && !isLocked && !_isSubmitting) ...[
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () {
+                if (widget.cancelTenantHandler != null) {
+                  widget.cancelTenantHandler!(tenantId: widget.tenantId!, userId: widget.testUserId ?? '');
+                }
+                Navigator.pop(context);
+              },
+              child: const Text("Batalkan Pendaftaran", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            ),
+          ],
         ],
       ),
     );
@@ -666,26 +576,29 @@ class _PaymentScreenState extends State<PaymentScreen> {
       backgroundColor: kSurface,
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(40),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.verified, size: 80, color: kBrownAccent),
-              const SizedBox(height: 24),
-              Text(l10n.paymentAccepted, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Text(l10n.paymentSuccessDesc, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54)),
-              const SizedBox(height: 40),
+              Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: kSuccess.withValues(alpha:0.1), shape: BoxShape.circle), child: const Icon(Icons.verified_rounded, size: 100, color: kSuccess)),
+              const SizedBox(height: 32),
+              Text(l10n.paymentAccepted, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 16),
+              Text(l10n.paymentSuccessDesc, textAlign: TextAlign.center, style: const TextStyle(color: kTextSecondary, fontSize: 16, height: 1.5)),
+              const SizedBox(height: 48),
               SizedBox(
                 width: double.infinity,
-                height: 50,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: kBrownAccent),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text(l10n.backToHome, style: const TextStyle(color: kBrownAccent, fontWeight: FontWeight.bold)),
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (widget.onFinish != null) {
+                      widget.onFinish!();
+                    } else {
+                      Navigator.popUntil(context, (route) => route.isFirst);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                  child: Text(l10n.backToHome, style: const TextStyle(fontWeight: FontWeight.w900)),
                 ),
               )
             ],

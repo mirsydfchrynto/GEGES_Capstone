@@ -31,7 +31,7 @@ void main() {
     // find and tap the tenant upload button
     final uploadFinder = find.widgetWithText(
       ElevatedButton,
-      'Kirim Bukti Pembayaran',
+      'Kirim Konfirmasi',
     );
     expect(uploadFinder, findsOneWidget);
 

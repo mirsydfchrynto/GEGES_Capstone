@@ -7,12 +7,21 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 
 import 'package:geges_smartbarber/services/tenant_service.dart';
+import 'package:geges_smartbarber/services/barbershop_service.dart';
+import 'package:geges_smartbarber/services/location_service.dart';
+import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/widgets/document_upload_widget.dart';
 import 'package:geges_smartbarber/screens/legal/terms_page.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
+import 'package:geges_smartbarber/screens/customer/home_screen.dart';
 
 class TenantRegistrationScreen extends StatefulWidget {
   final TenantService? tenantService;
+  final BarbershopService? barbershopService;
+  final LocationService? locationService;
+  final QueueService? queueService;
+  final AuthService? authService;
   final String? currentUserId;
   final Future<String?> Function()? filePicker;
   final bool initialAcceptedTerms;
@@ -24,6 +33,10 @@ class TenantRegistrationScreen extends StatefulWidget {
   const TenantRegistrationScreen({
     super.key,
     this.tenantService,
+    this.barbershopService,
+    this.locationService,
+    this.queueService,
+    this.authService,
     this.currentUserId,
     this.filePicker,
     this.initialAcceptedTerms = false,
@@ -69,6 +82,41 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkPendingRegistration());
   }
 
+  void _resetForm() {
+    _businessNameCtrl.clear();
+    _legalNameCtrl.clear();
+    _ownerNameCtrl.clear();
+    _ownerEmailCtrl.clear();
+    _ownerPhoneCtrl.clear();
+    _addressCtrl.clear();
+    _taxIdCtrl.clear();
+    if (mounted) {
+      setState(() {
+        _companyDocFile = null;
+        _taxDocFile = null;
+        _acceptedTerms = false;
+        _plan = 'monthly';
+      });
+    }
+  }
+
+  void _navigateToProfile() {
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => HomeScreen(
+          initialIndex: 3, // Profile tab
+          currentUserId: widget.currentUserId,
+          barbershopService: widget.barbershopService,
+          locationService: widget.locationService,
+          queueService: widget.queueService,
+          authService: widget.authService,
+        ),
+      ),
+      (route) => false,
+    );
+  }
+
   Future<void> _checkPendingRegistration() async {
     String? userId = widget.currentUserId;
     if (userId == null) {
@@ -90,6 +138,7 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
             'awaiting_payment',
             'waiting_proof',
             'payment_submitted',
+            'active',
           ])
           .get();
 
@@ -110,6 +159,21 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
         final data = doc.data();
         final status = data['status'] as String?;
         
+        if (status == 'active') {
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Sudah Terdaftar'),
+              content: const Text('Akun Anda sudah terdaftar sebagai Owner Barbershop. Silakan login menggunakan Aplikasi Admin.'),
+              actions: [
+                TextButton(onPressed: () { Navigator.pop(ctx); Navigator.pop(context); }, child: const Text('OK')),
+              ],
+            ),
+          );
+          return;
+        }
+
         final paymentData = data['payment'] as Map<String, dynamic>?;
         final verificationStatus = paymentData?['verificationStatus'] as String?;
         final hasProof = (paymentData?['payment_proof_base64'] != null && paymentData!['payment_proof_base64'].toString().isNotEmpty) ||
@@ -179,10 +243,11 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
               (invoice?['payment_deadline'] as Timestamp?)?.toDate() ??
               DateTime.now().add(const Duration(hours: 1));
 
-          Navigator.of(context).push(
+          Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder:
                   (_) => PaymentScreen(
+                    onFinish: _navigateToProfile,
                     orderId: doc.id,
                     totalPrice: amount,
                     tenantId: doc.id,
@@ -344,9 +409,14 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
       });
 
       if (!mounted) return;
-      Navigator.of(context).push(
+      
+      // Reset form before navigating away to ensure clean state if user comes back
+      _resetForm();
+
+      Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => PaymentScreen(
+            onFinish: _navigateToProfile,
             orderId: tenantId!, 
             totalPrice: _price,
             tenantId: tenantId,
@@ -515,9 +585,9 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                               icon: const Icon(Icons.upload_file),
                               label: Text(
                                 _companyDocFile == null
-                                    ? 'Pilih Surat Izin Usaha Perdagangan (SIUP)'
-                                    : 'Surat Izin Usaha Perdagangan (SIUP): ${_companyDocFile!.path.split('/').last}',
-                                style: const TextStyle(color: Colors.black),
+                                    ? 'SIUP'
+                                    : 'SIUP: ${_companyDocFile!.path.split('/').last}',
+                                style: const TextStyle(color: Colors.black, fontSize: 12),
                               ),
                               onPressed: () async {
                                 String? pickedPath;
@@ -546,9 +616,9 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                               icon: const Icon(Icons.upload_file),
                               label: Text(
                                 _taxDocFile == null
-                                    ? 'Pilih Nomor Pokok Wajib Pajak (NPWP)'
-                                    : 'Nomor Pokok Wajib Pajak (NPWP): ${_taxDocFile!.path.split('/').last}',
-                                style: const TextStyle(color: Colors.black),
+                                    ? 'NPWP'
+                                    : 'NPWP: ${_taxDocFile!.path.split('/').last}',
+                                style: const TextStyle(color: Colors.black, fontSize: 12),
                               ),
                               onPressed: () async {
                                 String? pickedPath;
@@ -583,8 +653,8 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
               const SizedBox(height: 8),
               SegmentedButton<String>(
                 segments: const <ButtonSegment<String>>[
-                  ButtonSegment(value: 'monthly', label: Text('Bulanan - Rp 300.000')),
-                  ButtonSegment(value: 'yearly', label: Text('Tahunan - Rp 3.000.000 (promo)')),
+                  ButtonSegment(value: 'monthly', label: Text('Bulanan')),
+                  ButtonSegment(value: 'yearly', label: Text('Tahunan')),
                 ],
                 selected: <String>{_plan},
                 onSelectionChanged: (Set<String> newSelection) => setState(() => _plan = newSelection.first),
@@ -592,10 +662,9 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
 
               const SizedBox(height: 16),
               const Text(
-                'Setelah menekan Daftar, Anda akan diarahkan ke halaman lanjutan untuk mengunggah dokumen dan bukti pembayaran.',
+                'Setelah menekan Daftar, Anda akan diarahkan ke halaman pembayaran.',
                 style: TextStyle(fontSize: 14),
               ),
-              const SizedBox(height: 12),
               const SizedBox(height: 24),
               SizedBox(
                 height: 52,
@@ -618,18 +687,28 @@ class TenantContinueScreen extends StatefulWidget {
   final String tenantId;
   final int amount;
   final TenantService? tenantService;
+  final BarbershopService? barbershopService;
+  final LocationService? locationService;
+  final QueueService? queueService;
+  final AuthService? authService;
   final FirebaseFirestore? firestore;
   final Future<String?> Function()? filePicker;
   final Future<void> Function()? submitProofHandler;
+  final String? currentUserId;
 
   const TenantContinueScreen({
     super.key,
     required this.tenantId,
     required this.amount,
     this.tenantService,
+    this.barbershopService,
+    this.locationService,
+    this.queueService,
+    this.authService,
     this.firestore,
     this.filePicker,
     this.submitProofHandler,
+    this.currentUserId,
   });
 
   @override
@@ -641,14 +720,27 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
   FirebaseFirestore get _fs => widget.firestore ?? FirebaseFirestore.instance;
   bool _isSubmitting = false;
 
+  void _navigateToProfile() {
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => HomeScreen(
+          initialIndex: 3, // Profile tab
+          currentUserId: widget.currentUserId,
+          barbershopService: widget.barbershopService,
+          locationService: widget.locationService,
+          queueService: widget.queueService,
+          authService: widget.authService,
+        ),
+      ),
+      (route) => false,
+    );
+  }
+
   Future<void> _submitPaymentProof(File proofFile) async {
     setState(() => _isSubmitting = true);
     try {
-      debugPrint(
-        'TenantContinueScreen: starting submitPaymentProof for ${widget.tenantId}',
-      );
       final bytes = await proofFile.readAsBytes();
-      debugPrint('TenantContinueScreen: read bytes length ${bytes.length}');
       final base64Proof = base64Encode(bytes);
       const int limit = 950000;
       if (base64Proof.length > limit) {
@@ -657,20 +749,18 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
         );
       }
 
-      String userId = 'unknown';
-      try {
-        userId = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
-      } catch (_) {
-        
+      String userId = widget.currentUserId ?? 'unknown';
+      if (userId == 'unknown') {
+        try {
+          userId = FirebaseAuth.instance.currentUser?.uid ?? 'unknown';
+        } catch (_) {}
       }
 
-      debugPrint('TenantContinueScreen: calling submitRegistrationPayment');
       await _tenantService.submitRegistrationPayment(
         tenantId: widget.tenantId,
         proofBase64: base64Proof,
         userId: userId,
       );
-      debugPrint('TenantContinueScreen: submitRegistrationPayment returned');
 
       await _fs.collection('tenants').doc(widget.tenantId).set({
         'invoice': {
@@ -679,21 +769,16 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
         },
       }, SetOptions(merge: true));
 
-      debugPrint('TenantContinueScreen: invoice updated in firestore');
-
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Bukti pembayaran terkirim. Pendaftaran dan dokumen sedang diproses (maks. 1 minggu). Anda akan diberi tahu via email dan notifikasi aplikasi.',
+            'Bukti pembayaran terkirim. Pendaftaran sedang diproses.',
           ),
         ),
       );
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      _navigateToProfile();
     } catch (e) {
-      debugPrint('TenantContinueScreen: submitPaymentProof error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal mengirim bukti pembayaran: $e')),
@@ -750,6 +835,7 @@ class _TenantContinueScreenState extends State<TenantContinueScreen> {
                         setState(() => _isSubmitting = true);
                         try {
                           await widget.submitProofHandler!.call();
+                          _navigateToProfile();
                         } finally {
                           if (mounted) setState(() => _isSubmitting = false);
                         }

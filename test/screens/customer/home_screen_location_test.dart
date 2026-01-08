@@ -48,6 +48,15 @@ class MockBarbershopService extends Mock implements BarbershopService {
       returnValueForMissingStub: Future.value(<Barbershop>[]),
     );
   }
+
+  @override
+  Stream<List<Barbershop>> streamAllBarbershops() {
+    return super.noSuchMethod(
+      Invocation.method(#streamAllBarbershops, []),
+      returnValue: Stream.value(<Barbershop>[]),
+      returnValueForMissingStub: Stream.value(<Barbershop>[]),
+    );
+  }
   
   @override
   Future<List<Service>> getAllServices() async {

@@ -60,7 +60,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     // Verify Payment Screen
-    final uploadButton = find.widgetWithText(ElevatedButton, 'Kirim Bukti Pembayaran');
+    final uploadButton = find.widgetWithText(ElevatedButton, 'Kirim Konfirmasi');
     expect(uploadButton, findsOneWidget);
 
     await tester.tap(uploadButton);

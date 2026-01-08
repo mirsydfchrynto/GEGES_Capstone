@@ -18,7 +18,8 @@ import 'my_bookings_screen.dart'; // Akan digunakan sebagai History Screen
 import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final AuthService? authService;
+  const ProfileScreen({super.key, this.authService});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -35,23 +36,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     0xFF1B1B1B,
   ); // Teks hitam untuk tombol emas
 
-  final AuthService _authService = AuthService();
-
-  UserData _currentUser = UserData(
-    uid: FirebaseAuth.instance.currentUser?.uid ?? 'guest_uid',
-    name: "Loading...", 
-    role: "customer",
-  );
-  String _userEmail = "..."; 
+  late final AuthService _authService;
+  late UserData _currentUser;
+  late String _userEmail; 
 
   @override
   void initState() {
     super.initState();
+    _authService = widget.authService ?? AuthService();
+    _currentUser = UserData(
+      uid: _authService.currentUser?.uid ?? 'guest_uid',
+      name: "Loading...", 
+      role: "customer",
+    );
+    _userEmail = _authService.currentUser?.email ?? "...";
     _loadUserProfile();
   }
 
   Future<void> _loadUserProfile() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _authService.currentUser;
     if (user != null) {
       final userData = await _authService.getUserById(user.uid);
       if (mounted && userData != null) {

@@ -133,7 +133,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Menunggu Pembayaran'), findsOneWidget); // Header Title
+      expect(find.text('Pembayaran'), findsOneWidget); // Header Title
 
       final qs = await fs.collection('queues').where('customer_id', isEqualTo: 'cust-ui-1').get();
       final bookingId = qs.docs.first.id;

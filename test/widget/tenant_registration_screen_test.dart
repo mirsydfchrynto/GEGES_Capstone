@@ -123,7 +123,7 @@ void main() {
     await tester.tap(submitBtn);
     await tester.pumpAndSettle();
 
-    // Payment screen appears (localized: Menunggu Pembayaran)
-    expect(find.text('Menunggu Pembayaran'), findsOneWidget);
+    // Payment screen appears (localized: Pembayaran)
+    expect(find.text('Pembayaran'), findsOneWidget);
   });
 }

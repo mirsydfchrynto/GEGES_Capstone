@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 
 class AlbumTab extends StatelessWidget {
@@ -7,6 +8,7 @@ class AlbumTab extends StatelessWidget {
   const AlbumTab({super.key, required this.shop});
 
   static const Color kBrownAccent = Color(0xFFC3A47B);
+  static const Color kDarkGrey = Color(0xFF1E1E1E);
 
   @override
   Widget build(BuildContext context) {
@@ -30,11 +32,36 @@ class AlbumTab extends StatelessWidget {
           onTap: () => _showImagePreview(context, img),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.memory(base64Decode(img), fit: BoxFit.cover),
+            child: _buildImageWidget(img),
           ),
         );
       },
     );
+  }
+
+  Widget _buildImageWidget(String path) {
+    if (path.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: path,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(color: kDarkGrey),
+        errorWidget: (context, url, error) => Container(
+          color: kDarkGrey,
+          child: const Center(child: Icon(Icons.broken_image, color: kBrownAccent, size: 30)),
+        ),
+      );
+    } else if (path.length > 200) {
+      try {
+        return Image.memory(base64Decode(path), fit: BoxFit.cover);
+      } catch (e) {
+        return Container(
+          color: kDarkGrey,
+          child: const Center(child: Icon(Icons.broken_image, color: kBrownAccent, size: 30)),
+        );
+      }
+    } else {
+      return Image.asset(path, fit: BoxFit.cover);
+    }
   }
 
   void _showImagePreview(BuildContext context, String base64) {
@@ -45,7 +72,7 @@ class AlbumTab extends StatelessWidget {
         insetPadding: const EdgeInsets.all(10),
         child: Stack(
           children: [
-            Center(child: InteractiveViewer(child: Image.memory(base64Decode(base64)))),
+            Center(child: InteractiveViewer(child: _buildImageWidget(base64))),
             Positioned(
               top: 10,
               right: 10,

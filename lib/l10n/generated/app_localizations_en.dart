@@ -129,7 +129,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get changeLanguage => 'Change Language';
 
   @override
-  String get paymentTitle => 'Waiting for Payment';
+  String get paymentTitle => 'Payment';
 
   @override
   String get totalBill => 'Total Bill';
@@ -141,13 +141,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paymentProof => 'Payment Proof';
 
   @override
-  String get tapToUpload => 'Tap to upload photo';
+  String get tapToUpload => 'Tap to Upload Proof';
 
   @override
   String get uploadLocked => 'Upload Locked';
 
   @override
-  String get sendProof => 'Send Payment Proof';
+  String get sendProof => 'Send Confirmation';
 
   @override
   String get sending => 'Sending...';
@@ -162,14 +162,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get timeOut => 'Timed Out';
 
   @override
-  String get paymentAccepted => 'Payment Accepted!';
+  String get paymentAccepted => 'Payment Successful!';
 
   @override
   String get paymentSuccessDesc =>
-      'Thank you, your booking has been confirmed. Please arrive on time.';
+      'Thank you! We have received your payment and your order is being processed.';
 
   @override
   String get backToHome => 'Back to Home';
+
+  @override
+  String get paymentSteps => 'Payment Steps:';
+
+  @override
+  String get paymentStep1 =>
+      'Transfer the exact amount to the bank account above.';
+
+  @override
+  String get paymentStep2 => 'Save the transfer receipt or take a screenshot.';
+
+  @override
+  String get paymentStep3 => 'Upload the proof in the section below.';
+
+  @override
+  String get paymentStep4 =>
+      'Click \'Send Confirmation\' and wait for admin verification (1-5 mins).';
+
+  @override
+  String get itemDetails => 'Order Details';
+
+  @override
+  String get orderId => 'Order ID';
+
+  @override
+  String get copySuccess => 'Copied to clipboard!';
+
+  @override
+  String get payBefore => 'Pay before';
 
   @override
   String get welcomeSubtitle => 'Sign in or create an account to get started.';

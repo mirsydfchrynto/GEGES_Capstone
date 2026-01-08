@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
@@ -45,7 +46,8 @@ class HaircutRecommendation {
 // --- SCREEN WIDGET ---
 
 class ChatAssistantScreen extends StatefulWidget {
-  const ChatAssistantScreen({super.key});
+  final AuthService? authService;
+  const ChatAssistantScreen({super.key, this.authService});
 
   @override
   State<ChatAssistantScreen> createState() => _ChatAssistantScreenState();
@@ -56,7 +58,8 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
   final ScrollController _scrollController = ScrollController();
   final QueueService _queueService = QueueService();
   final BarbershopService _barbershopService = BarbershopService();
-  final String? _uid = FirebaseAuth.instance.currentUser?.uid;
+  late final AuthService _authService;
+  String? _uid;
 
   // Data Dummy untuk Demo UI diperbarui
   final List<ChatMessage> _messages = [];
@@ -65,6 +68,8 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
   @override
   void initState() {
     super.initState();
+    _authService = widget.authService ?? AuthService();
+    _uid = _authService.currentUser?.uid;
     // Start initial conversation
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
@@ -122,14 +127,15 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
     
     // 1. CEK ANTRIAN
     if (lowerCaseText.contains("antrian") || lowerCaseText.contains("booking") || lowerCaseText.contains("jadwal") || lowerCaseText.contains("queue")) {
-       if (_uid == null) {
+       final uid = _uid;
+       if (uid == null) {
          _addGiaMessage(l10n.errMustLoginChat);
          return;
        }
        
        try {
          // Ambil booking aktif
-         final queuesStream = _queueService.streamQueuesForCustomer(_uid, statusFilter: ['waiting', 'awaiting_payment', 'booked', 'ongoing']);
+         final queuesStream = _queueService.streamQueuesForCustomer(uid, statusFilter: ['waiting', 'awaiting_payment', 'booked', 'ongoing']);
          final queues = await queuesStream.first; // Ambil snapshot pertama
 
          if (!mounted) return; // FIX: Async gap check

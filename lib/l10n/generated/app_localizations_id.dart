@@ -129,7 +129,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get changeLanguage => 'Ganti Bahasa';
 
   @override
-  String get paymentTitle => 'Menunggu Pembayaran';
+  String get paymentTitle => 'Pembayaran';
 
   @override
   String get totalBill => 'Total Tagihan';
@@ -141,13 +141,13 @@ class AppLocalizationsId extends AppLocalizations {
   String get paymentProof => 'Bukti Transfer';
 
   @override
-  String get tapToUpload => 'Tap untuk upload foto';
+  String get tapToUpload => 'Ketuk untuk Unggah Bukti';
 
   @override
   String get uploadLocked => 'Upload Terkunci';
 
   @override
-  String get sendProof => 'Kirim Bukti Pembayaran';
+  String get sendProof => 'Kirim Konfirmasi';
 
   @override
   String get sending => 'Mengirim...';
@@ -162,14 +162,45 @@ class AppLocalizationsId extends AppLocalizations {
   String get timeOut => 'Waktu Habis';
 
   @override
-  String get paymentAccepted => 'Pembayaran Diterima!';
+  String get paymentAccepted => 'Pembayaran Berhasil!';
 
   @override
   String get paymentSuccessDesc =>
-      'Terima kasih, booking Anda telah dikonfirmasi. Silakan datang tepat waktu.';
+      'Terima kasih! Pembayaran Anda telah kami terima dan pesanan Anda sedang diproses.';
 
   @override
   String get backToHome => 'Kembali ke Beranda';
+
+  @override
+  String get paymentSteps => 'Langkah Pembayaran:';
+
+  @override
+  String get paymentStep1 =>
+      'Lakukan transfer tepat sesuai nominal ke rekening di atas.';
+
+  @override
+  String get paymentStep2 =>
+      'Simpan bukti transfer atau screenshot hasil transaksi.';
+
+  @override
+  String get paymentStep3 =>
+      'Unggah foto bukti tersebut pada kolom di bawah ini.';
+
+  @override
+  String get paymentStep4 =>
+      'Klik tombol \'Kirim Konfirmasi\' dan tunggu verifikasi admin (1-5 menit).';
+
+  @override
+  String get itemDetails => 'Rincian Pesanan';
+
+  @override
+  String get orderId => 'ID Pesanan';
+
+  @override
+  String get copySuccess => 'Berhasil disalin!';
+
+  @override
+  String get payBefore => 'Bayar sebelum';
 
   @override
   String get welcomeSubtitle => 'Masuk atau buat akun untuk memulai.';

@@ -1,6 +1,7 @@
 // NAMA FILE: lib/screens/customer/barbershop_detail_screen.dart
 
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:geges_smartbarber/models/barbershop.dart';
 // Import Halaman Tujuan (Booking)
 import 'package:geges_smartbarber/screens/customer/appointment_screen.dart';
@@ -48,6 +49,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
 
   bool _isFavorite = false;
   bool _isLoadingFavorite = true;
+  late Stream<Barbershop?> _barbershopStream;
   // ---------------------------------
 
   @override
@@ -56,6 +58,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
     _firestore = widget.firestore ?? FirebaseFirestore.instance;
     _userId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid;
     _barbershopService = BarbershopService(firestore: _firestore);
+    _barbershopStream = _barbershopService.streamBarbershopById(widget.barbershop.id);
     
     _tabController = TabController(length: 3, vsync: this);
 
@@ -138,122 +141,154 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
 
   // ------------------------------------------
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+  Widget _buildHeaderImage(String path) {
+    Widget img;
+    if (path.startsWith('http')) {
+      img = CachedNetworkImage(
+        imageUrl: path,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(color: kDarkGrey),
+        errorWidget: (context, url, error) => Container(
+          color: kDarkGrey,
+          child: const Center(
+            child: Icon(Icons.broken_image, color: kBrownAccent, size: 50),
+          ),
+        ),
+      );
+    } else if (path.length > 200) {
+      try {
+        img = Image.memory(
+          base64Decode(path),
+          fit: BoxFit.cover,
+          errorBuilder: (c, e, s) => Container(
+            color: kDarkGrey,
+            child: const Center(
+              child: Icon(Icons.broken_image, color: kBrownAccent, size: 50),
+            ),
+          ),
+        );
+      } catch (e) {
+        img = Container(
+          color: kDarkGrey,
+          child: const Center(
+            child: Icon(Icons.broken_image, color: kBrownAccent, size: 50),
+          ),
+        );
+      }
+    } else {
+      img = Image.asset(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (c, e, s) => Container(
+          color: kDarkGrey,
+          child: const Center(
+            child: Icon(Icons.broken_image, color: kBrownAccent, size: 50),
+          ),
+        ),
+      );
+    }
 
-  // Navigasi ke halaman booking
-  void _goToAppointment() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AppointmentScreen(barbershop: widget.barbershop),
-      ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        img,
+        Container(color: Colors.black.withValues(alpha: 0.3)), // Overlay gelap
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kSurface, // Menggunakan warna kSurface
-      body: NestedScrollView(
-        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-          return <Widget>[
-            // 1. AppBar yang bisa collapse (SliverAppBar)
-            SliverAppBar(
-              expandedHeight: 300.0,
-              floating: false,
-              pinned: true,
-              backgroundColor: kDarkGrey,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+    return StreamBuilder<Barbershop?>(
+      stream: _barbershopStream,
+      initialData: widget.barbershop,
+      builder: (context, snapshot) {
+        final shop = snapshot.data ?? widget.barbershop;
 
-              // --- Tombol Favorite (DISESUAIKAN) ---
-              actions: [
-                _isLoadingFavorite
-                    ? const Padding(
-                        // Tampilkan loading kecil
-                        padding: EdgeInsets.all(18.0),
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+        return Scaffold(
+          backgroundColor: kSurface, // Menggunakan warna kSurface
+          body: NestedScrollView(
+            headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+              return <Widget>[
+                // 1. AppBar yang bisa collapse (SliverAppBar)
+                SliverAppBar(
+                  expandedHeight: 300.0,
+                  floating: false,
+                  pinned: true,
+                  backgroundColor: kDarkGrey,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+
+                  // --- Tombol Favorite (DISESUAIKAN) ---
+                  actions: [
+                    _isLoadingFavorite
+                        ? const Padding(
+                            // Tampilkan loading kecil
+                            padding: EdgeInsets.all(18.0),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          )
+                        : IconButton(
+                            icon: Icon(
+                              _isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: _isFavorite ? Colors.redAccent : Colors.white,
+                            ),
+                            onPressed: _toggleFavorite, // Panggil fungsi toggle
                           ),
-                        ),
-                      )
-                    : IconButton(
-                        icon: Icon(
-                          _isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: _isFavorite ? Colors.redAccent : Colors.white,
-                        ),
-                        onPressed: _toggleFavorite, // Panggil fungsi toggle
-                      ),
-              ],
-              // ---------------------------------
+                  ],
+                  // ---------------------------------
 
-              // --- Gambar Latar (DISESUAIKAN) ---
-              flexibleSpace: FlexibleSpaceBar(
-                background: CachedNetworkImage(
-                  imageUrl: widget.barbershop.imageUrl,
-                  fit: BoxFit.cover,
-                  color: Colors.black.withValues(alpha: 0.3), // Overlay gelap
-                  colorBlendMode: BlendMode.darken,
-                  placeholder: (context, url) => Container(color: kDarkGrey),
-                  errorWidget: (context, url, error) => Container(
-                    color: kDarkGrey,
-                    child: const Center(
-                      child: Icon(
-                        Icons.broken_image,
-                        color: kBrownAccent,
-                        size: 50,
-                      ),
-                    ),
+                  // --- Gambar Latar (DISESUAIKAN) ---
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: _buildHeaderImage(shop.imageUrl),
+                  ),
+                  // ---------------------------------
+
+                  // 2. TabBar (Menempel di bawah AppBar)
+                  bottom: TabBar(
+                    controller: _tabController,
+                    indicatorColor: kBrownAccent,
+                    indicatorWeight: 3.0,
+                    labelColor: kBrownAccent,
+                    unselectedLabelColor: Colors.white70,
+                    tabs: const [
+                      Tab(text: 'About'),
+                      Tab(text: 'Services'),
+                      Tab(text: 'Album'),
+                    ],
                   ),
                 ),
-              ),
-              // ---------------------------------
+              ];
+            },
 
-              // 2. TabBar (Menempel di bawah AppBar)
-              bottom: TabBar(
-                controller: _tabController,
-                indicatorColor: kBrownAccent,
-                indicatorWeight: 3.0,
-                labelColor: kBrownAccent,
-                unselectedLabelColor: Colors.white70,
-                tabs: const [
-                  Tab(text: 'About'),
-                  Tab(text: 'Services'),
-                  Tab(text: 'Album'),
-                ],
-              ),
+            // 3. Konten (Body) dari Tab yang dipilih
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                AboutTab(shop: shop),
+                ServicesTab(shop: shop),
+                AlbumTab(shop: shop),
+              ],
             ),
-          ];
-        },
+          ),
 
-        // 3. Konten (Body) dari Tab yang dipilih
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            AboutTab(shop: widget.barbershop),
-            ServicesTab(shop: widget.barbershop),
-            AlbumTab(shop: widget.barbershop),
-          ],
-        ),
-      ),
-
-      // 4. Tombol "Book Now" (Floating di bawah)
-      bottomNavigationBar: _buildStickyFooter(context),
+          // 4. Tombol "Book Now" (Floating di bawah)
+          bottomNavigationBar: _buildStickyFooter(context, shop),
+        );
+      }
     );
   }
 
   // Widget untuk Footer (Info Barbershop & Tombol Book Now)
-  Widget _buildStickyFooter(BuildContext context) {
+  Widget _buildStickyFooter(BuildContext context, Barbershop shop) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0)
           .copyWith(
@@ -275,7 +310,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.barbershop.name,
+                  shop.name,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -289,7 +324,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
                     const Icon(Icons.access_time, color: kBrownAccent, size: 16),
                     const SizedBox(width: 6),
                     Text(
-                      "${widget.barbershop.openHour}:00 - ${widget.barbershop.closeHour}:00",
+                      "${shop.openHour}:00 - ${shop.closeHour}:00",
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 13,
@@ -303,9 +338,14 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
 
           const SizedBox(width: 16), // Beri jarak
           // Tombol Kanan
-          widget.barbershop.isOpen
+          shop.isOpen
               ? ElevatedButton(
-                  onPressed: _goToAppointment, // Navigasi ke Halaman Booking
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AppointmentScreen(barbershop: shop),
+                    ),
+                  ), // Navigasi ke Halaman Booking
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                   ),

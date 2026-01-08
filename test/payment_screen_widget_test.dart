@@ -88,11 +88,13 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    // Verify UI shows "Sedang Diverifikasi" (Banner) and "Menunggu Verifikasi Admin" (Button)
+    // Verify UI shows "Sedang Diverifikasi" (Banner)
     expect(find.text('Sedang Diverifikasi'), findsOneWidget);
+    
+    // Button text is now "Menunggu Verifikasi Admin" (verificationPending localized)
     expect(find.text('Menunggu Verifikasi Admin'), findsOneWidget);
 
-    // Verify button is present
+    // Verify button is present and disabled
     final btnFinder = find.widgetWithText(ElevatedButton, 'Menunggu Verifikasi Admin');
     expect(btnFinder, findsOneWidget);
     

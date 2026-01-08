@@ -177,6 +177,29 @@ class TenantService implements TenantServiceContract {
     });
   }
 
+  /// Owner requests cancellation with reason (for refund processing)
+  Future<void> requestCancellation({
+    required String tenantId,
+    required String userId,
+    required String reason,
+  }) async {
+    await _fs.collection('tenants').doc(tenantId).update({
+      'status': 'cancellation_requested', 
+      'cancellation_request': {
+        'requested_at': Timestamp.now(),
+        'reason': reason,
+        'requested_by': userId,
+      },
+      'history': FieldValue.arrayUnion([
+        {
+          'type': 'cancellation_requested',
+          'note': 'Permintaan pembatalan & refund: $reason',
+          'created_at': Timestamp.fromDate(DateTime.now()),
+        }
+      ]),
+    });
+  }
+
   /// Admin verifies tenant (approve or reject)
   Future<void> verifyTenant({
     required String tenantId,

@@ -335,7 +335,7 @@ abstract class AppLocalizations {
   /// No description provided for @paymentTitle.
   ///
   /// In id, this message translates to:
-  /// **'Menunggu Pembayaran'**
+  /// **'Pembayaran'**
   String get paymentTitle;
 
   /// No description provided for @totalBill.
@@ -359,7 +359,7 @@ abstract class AppLocalizations {
   /// No description provided for @tapToUpload.
   ///
   /// In id, this message translates to:
-  /// **'Tap untuk upload foto'**
+  /// **'Ketuk untuk Unggah Bukti'**
   String get tapToUpload;
 
   /// No description provided for @uploadLocked.
@@ -371,7 +371,7 @@ abstract class AppLocalizations {
   /// No description provided for @sendProof.
   ///
   /// In id, this message translates to:
-  /// **'Kirim Bukti Pembayaran'**
+  /// **'Kirim Konfirmasi'**
   String get sendProof;
 
   /// No description provided for @sending.
@@ -401,13 +401,13 @@ abstract class AppLocalizations {
   /// No description provided for @paymentAccepted.
   ///
   /// In id, this message translates to:
-  /// **'Pembayaran Diterima!'**
+  /// **'Pembayaran Berhasil!'**
   String get paymentAccepted;
 
   /// No description provided for @paymentSuccessDesc.
   ///
   /// In id, this message translates to:
-  /// **'Terima kasih, booking Anda telah dikonfirmasi. Silakan datang tepat waktu.'**
+  /// **'Terima kasih! Pembayaran Anda telah kami terima dan pesanan Anda sedang diproses.'**
   String get paymentSuccessDesc;
 
   /// No description provided for @backToHome.
@@ -415,6 +415,60 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Kembali ke Beranda'**
   String get backToHome;
+
+  /// No description provided for @paymentSteps.
+  ///
+  /// In id, this message translates to:
+  /// **'Langkah Pembayaran:'**
+  String get paymentSteps;
+
+  /// No description provided for @paymentStep1.
+  ///
+  /// In id, this message translates to:
+  /// **'Lakukan transfer tepat sesuai nominal ke rekening di atas.'**
+  String get paymentStep1;
+
+  /// No description provided for @paymentStep2.
+  ///
+  /// In id, this message translates to:
+  /// **'Simpan bukti transfer atau screenshot hasil transaksi.'**
+  String get paymentStep2;
+
+  /// No description provided for @paymentStep3.
+  ///
+  /// In id, this message translates to:
+  /// **'Unggah foto bukti tersebut pada kolom di bawah ini.'**
+  String get paymentStep3;
+
+  /// No description provided for @paymentStep4.
+  ///
+  /// In id, this message translates to:
+  /// **'Klik tombol \'Kirim Konfirmasi\' dan tunggu verifikasi admin (1-5 menit).'**
+  String get paymentStep4;
+
+  /// No description provided for @itemDetails.
+  ///
+  /// In id, this message translates to:
+  /// **'Rincian Pesanan'**
+  String get itemDetails;
+
+  /// No description provided for @orderId.
+  ///
+  /// In id, this message translates to:
+  /// **'ID Pesanan'**
+  String get orderId;
+
+  /// No description provided for @copySuccess.
+  ///
+  /// In id, this message translates to:
+  /// **'Berhasil disalin!'**
+  String get copySuccess;
+
+  /// No description provided for @payBefore.
+  ///
+  /// In id, this message translates to:
+  /// **'Bayar sebelum'**
+  String get payBefore;
 
   /// No description provided for @welcomeSubtitle.
   ///

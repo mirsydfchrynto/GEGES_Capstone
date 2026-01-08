@@ -1,5 +1,6 @@
 // lib/screens/customer/home_screen.dart
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -9,6 +10,7 @@ import 'package:geges_smartbarber/models/promo_banner.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/location_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/barbershop_detail_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/profile_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/chat_assistant_screen.dart';
@@ -20,14 +22,18 @@ class HomeScreen extends StatefulWidget {
   final BarbershopService? barbershopService;
   final LocationService? locationService;
   final QueueService? queueService;
+  final AuthService? authService;
   final String? currentUserId; // For testing injection
+  final int initialIndex;
 
   const HomeScreen({
     super.key, 
     this.barbershopService, 
     this.locationService, 
     this.queueService,
+    this.authService,
     this.currentUserId,
+    this.initialIndex = 0,
   });
 
   @override
@@ -38,12 +44,13 @@ class _HomeScreenState extends State<HomeScreen> {
   late final BarbershopService _barbershopService;
   late final LocationService _locationService;
   late final QueueService _queueService;
-  final PageController _pageController = PageController();
+  late final PageController _pageController;
   final TextEditingController _searchController = TextEditingController();
   static const Color kBrownAccent = Color(0xFFC3A47B);
   static const Color kDarkGrey = Color(0xFF1E1E1E);
   int _selectedIndex = 0;
   late Future<List<Barbershop>> _barbershopFuture;
+  late Stream<List<Barbershop>> _barbershopStream;
   String _currentAddress = 'Menentukan lokasi...';
   bool _isLocating = false;
   List<Barbershop>? _searchResults;
@@ -54,6 +61,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: _selectedIndex);
     _barbershopService = widget.barbershopService ?? BarbershopService();
     _locationService = widget.locationService ?? LocationService();
     _queueService = widget.queueService ?? QueueService();
@@ -61,8 +70,14 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_userPosition != null) _calculateAllDistances(shops);
       return shops;
     });
-    _updateLocation();
-    _fetchServiceNames();
+    _barbershopStream = _barbershopService.streamAllBarbershops();
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _updateLocation();
+        _fetchServiceNames();
+      }
+    });
   }
 
   Future<void> _fetchServiceNames() async {
@@ -189,7 +204,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildRecommendedList() {
     final l10n = AppLocalizations.of(context)!;
-    return Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: FutureBuilder<List<Barbershop>>(future: _barbershopFuture, builder: (context, snapshot) { if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator(color: kBrownAccent)); if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) return Container(padding: const EdgeInsets.symmetric(vertical: 40), child: Center(child: Text(l10n.failedToLoadShops, style: const TextStyle(color: Colors.white70)))); return Column(children: snapshot.data!.map((shop) => _buildBarbershopCard(context, shop)).toList());
+    return Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: StreamBuilder<List<Barbershop>>(stream: _barbershopStream, builder: (context, snapshot) { 
+      if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) return const Center(child: CircularProgressIndicator(color: kBrownAccent)); 
+      if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) return Container(padding: const EdgeInsets.symmetric(vertical: 40), child: Center(child: Text(l10n.failedToLoadShops, style: const TextStyle(color: Colors.white70)))); 
+      
+      final shops = snapshot.data!;
+      // Trigger distance calculation for newly streamed shops if user pos exists
+      if (_userPosition != null) _calculateAllDistances(shops);
+
+      return Column(children: shops.map((shop) => _buildBarbershopCard(context, shop)).toList());
     }));
   }
 
@@ -269,21 +292,42 @@ class _HomeScreenState extends State<HomeScreen> {
   // Define kRedDanger if not present or use standard Colors.red
   static const Color kRedDanger = Color(0xFFDC3545);
 
-  Widget _buildImage(String path) => path.startsWith('http')
-      ? CachedNetworkImage(
+  Widget _buildImage(String path) {
+    if (path.startsWith('http')) {
+      return CachedNetworkImage(
           imageUrl: path,
           fit: BoxFit.cover,
           placeholder: (c, u) => Container(color: kDarkGrey),
           errorWidget: (c, u, e) => Container(
               color: kDarkGrey,
               child: const Icon(Icons.broken_image,
-                  color: Colors.white54, size: 48)))
-      : Image.asset(path,
+                  color: Colors.white54, size: 48)));
+    } else if (path.length > 200) {
+      // Treat as Base64 if very long and not a URL
+      try {
+        return Image.memory(
+          base64Decode(path),
+          fit: BoxFit.cover,
+          errorBuilder: (c, e, s) => Container(
+              color: kDarkGrey,
+              child: const Icon(Icons.broken_image,
+                  color: Colors.white54, size: 48)),
+        );
+      } catch (e) {
+        return Container(
+            color: kDarkGrey,
+            child: const Icon(Icons.broken_image,
+                color: Colors.white54, size: 48));
+      }
+    } else {
+      return Image.asset(path,
           fit: BoxFit.cover,
           errorBuilder: (c, e, s) => Container(
               color: kDarkGrey,
               child: const Icon(Icons.broken_image,
                   color: Colors.white54, size: 48)));
+    }
+  }
 
   Widget _buildTagChip(String id) {
     // Karena kita sudah filter di atas, id pasti ada di map.
@@ -360,8 +404,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final List<Widget> widgetOptions = <Widget>[
       _buildHomePageBody(),
       const StyleScanScreen(),
-      const ChatAssistantScreen(),
-      const ProfileScreen(),
+      ChatAssistantScreen(authService: widget.authService),
+      ProfileScreen(authService: widget.authService),
     ];
 
     return Scaffold(
