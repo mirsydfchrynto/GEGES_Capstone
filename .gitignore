@@ -48,3 +48,4 @@ app.*.map.json
 DOKUMENTASI_FINAL_OVERVIEW.md
 DOKUMENTASI_INLINE_AUTH_SCREENS.md
 scripts/*.json
+scripts/seeder_node/node_modules/
