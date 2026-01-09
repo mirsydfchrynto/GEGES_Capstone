@@ -62,11 +62,13 @@ dev_dependencies:
   network_image_mock: ^2.1.1
 
 flutter_native_splash:
-  color: "#C3A47B"
-  image: assets/images/ivon.png
+  color: "#000000"
+  image: assets/images/empty.png
+  android_gravity: center
+  ios_content_mode: center
   android_12:
-    image: assets/images/ivon.png
-    icon_background_color: "#C3A47B"
+    image: assets/images/empty.png
+    icon_background_color: "#000000"
 
 flutter:
   uses-material-design: true

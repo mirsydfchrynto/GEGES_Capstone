@@ -9,13 +9,23 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
-  // Warna Coklat Khas Project
-  static const Color kBrownAccent = Color(0xFFC3A47B);
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
+
+    // Setup Animasi Fade-In
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+
+    _controller.forward();
 
     // Timer untuk navigasi ke halaman berikutnya
     Timer(const Duration(seconds: 3), () {
@@ -33,27 +43,31 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   void dispose() {
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kBrownAccent, // Latar belakang coklat sesuai permintaan
+      backgroundColor: Colors.black, // Latar belakang hitam sesuai tema native
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Logo
-            Image.asset(
-              'assets/images/ivon.png',
-              width: 100, // Ukuran logo tetap agar konsisten dengan estimasi native
-              height: 100,
-            ),
-            const SizedBox(height: 24),
-            // Opsional: Nama App atau Loading Indicator jika diinginkan
-            // Tapi user minta simpel dan elegan, jadi logo saja sudah cukup.
-          ],
+        child: FadeTransition(
+          opacity: _animation,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Logo
+              Image.asset(
+                'assets/images/ivon_high.png',
+                width: 65, // Ukuran lebih kecil & profesional (seperti Shopee/Top Apps)
+                height: 65,
+              ),
+              const SizedBox(height: 24),
+              // Opsional: Nama App atau Loading Indicator jika diinginkan
+              // Tapi user minta simpel dan elegan, jadi logo saja sudah cukup.
+            ],
+          ),
         ),
       ),
     );
