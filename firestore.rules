@@ -59,5 +59,11 @@ service cloud.firestore {
       // User login boleh mengirim rating
       allow read, write: if true; 
     }
+
+    // 4. Promo Banners (Public)
+    match /promo_banners/{document=**} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
   }
 }
