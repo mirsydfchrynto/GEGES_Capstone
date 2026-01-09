@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:geges_smartbarber/screens/login_screen.dart';
-import 'package:geges_smartbarber/screens/register_screen.dart';
-import '../test_helpers.dart';
+import 'package:geges_smartbarber/screens/auth/login_screen.dart';
+import 'package:geges_smartbarber/screens/auth/register_screen.dart';
+import '../helpers/test_helpers.dart';
 
 void main() {
   testWidgets('Login TextField uses rounded focused border (radius 20)', (

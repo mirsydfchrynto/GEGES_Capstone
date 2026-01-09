@@ -12,7 +12,7 @@ import '../../../models/user_data.dart'; // Model UserData yang sudah kita buat
 import '../edit_profile_screen.dart'; // EditProfileScreen yang sudah kita buat
 
 // Pastikan path import ke screens lain ini sudah benar di project Anda
-import '../../login_screen.dart';
+import 'package:geges_smartbarber/screens/auth/login_screen.dart';
 import 'my_bookings_screen.dart'; // Akan digunakan sebagai History Screen
 import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 

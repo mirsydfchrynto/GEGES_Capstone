@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:geges_smartbarber/screens/login_screen.dart';
+import 'package:geges_smartbarber/screens/auth/login_screen.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/models/user_data.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../test_helpers.dart';
+import '../helpers/test_helpers.dart';
 
 // Simple fake AuthService for widget tests
 class FakeAuthService implements AuthService {

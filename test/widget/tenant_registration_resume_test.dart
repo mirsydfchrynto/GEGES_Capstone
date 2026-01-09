@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/models/tenant.dart';
-import '../test_helpers.dart';
+import '../helpers/test_helpers.dart';
 
 class StubTenantService extends TenantService {
   StubTenantService() : super(firestore: FakeFirebaseFirestore());

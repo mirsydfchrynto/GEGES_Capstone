@@ -15,73 +15,50 @@ import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart
 import 'package:geges_smartbarber/screens/admin/tenant_requests_screen.dart';
 import 'package:geges_smartbarber/screens/legal/terms_page.dart';
 import 'package:geges_smartbarber/screens/legal/privacy_page.dart';
-import 'package:geges_smartbarber/screens/splash_screen.dart';
+import 'package:geges_smartbarber/screens/intro/splash_screen.dart';
 import 'package:geges_smartbarber/services/network_service.dart'; // Import NetworkService
 import 'package:geges_smartbarber/widgets/offline_screen.dart'; // Import OfflineScreen
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 // ==========================================
-// file: lib/main.dart
-// deskripsi: entry point aplikasi flutter
-// penjelasan:
-//   - main() function adalah starting point aplikasi
-//   - initialize firebase sebelum app dijalankan
-//   - setup intl untuk format tanggal & waktu dalam bahasa indonesia
-//   - konfigurasi tema global aplikasi (warna, style, dll)
-//   - menjalankan widget tree dari myapp
-// ==========================================
+
+const String sentryDsn = 'YOUR_DSN_HERE'; // GANTI DENGAN DSN DARI SENTRY.IO
 
 void main() async {
-  // penjelasan widgetsfutterbinding:
-  // - ensureInitialized() memastikan flutter binding sudah siap
-  // - harus dijalankan sebelum await firebase initialization
-  // - tanpa ini, firebase init bisa failed
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  
-  // Tahan Native Splash sampai app siap (agar tidak black screen)
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
-  // penjelasan initializeDateFormatting:
-  // - setup locale untuk menampilkan tanggal dalam bahasa indonesia
-  // - 'id_ID' adalah kode untuk indonesian locale
-  // - ini penting untuk booking date formatting (contoh: "17 Nov 2025" bukan "Nov 17, 2025")
-  // - intl package menyediakan formatting utk berbagai bahasa
   await initializeDateFormatting('id_ID', null);
 
-  // penjelasan firebase initialization:
-  // - firebase adalah backend service untuk data & authentication
-  // - initializeapp() menghubungkan aplikasi dengan firebase project
-  // - DefaultFirebaseOptions.currentPlatform = auto-detect platform (ios/android/web)
-  // - ini harus dijalankan pertama sebelum akses firestore, auth, storage, dll
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    // Initialize notification service (FCM) after Firebase is ready
-    try {
-      await NotificationService.instance.init();
-    } catch (_) {
-      // non-fatal: continue even if notification init fails
-    }
-    // Initialize Network Service
-    NetworkService().init();
-    // firebase initialization berhasil
-  } catch (e) {
-    // firebase initialization error (akan di-log via crashlytics nanti)
-    rethrow;
-  }
-  
-  // Hapus native splash setelah inisialisasi selesai
-  FlutterNativeSplash.remove();
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = sentryDsn;
+      options.tracesSampleRate = 1.0; // Tangkap 100% transaksi untuk debugging awal
+      options.profilesSampleRate = 1.0; // Tangkap profiling performa
+    },
+    appRunner: () async {
+      try {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+        try {
+          await NotificationService.instance.init();
+        } catch (_) {}
+        NetworkService().init();
+      } catch (e, stackTrace) {
+        await Sentry.captureException(e, stackTrace: stackTrace);
+        rethrow;
+      }
+      
+      FlutterNativeSplash.remove();
 
-  // penjelasan runApp:
-  // - runApp() menjalankan aplikasi flutter
-  // - MyApp() adalah root widget dari aplikasi
-  // - semua widget di bawah MyApp adalah app tree
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => LocaleProvider(),
-      child: const MyApp(),
-    ),
+      runApp(
+        ChangeNotifierProvider(
+          create: (context) => LocaleProvider(),
+          child: const MyApp(),
+        ),
+      );
+    },
   );
 }
 

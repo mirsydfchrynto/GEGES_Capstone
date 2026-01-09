@@ -3,7 +3,8 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
-import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
+import 'mocks/auth_service_test.mocks.dart' as auth_mocks;
+import 'mocks/booking_payment_lifecycle_test.mocks.dart';
 
 // Generate Mocks for Firestore classes
 @GenerateNiceMocks([
@@ -15,7 +16,7 @@ import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
   MockSpec<QuerySnapshot<Map<String, dynamic>>>(as: #MockQuerySnapshot),
   MockSpec<QueryDocumentSnapshot<Map<String, dynamic>>>(as: #MockQueryDocSnap),
 ])
-import 'booking_payment_lifecycle_test.mocks.dart';
+// No second import here
 
 // Fake Transaction implementation
 class FakeTx implements Transaction {
@@ -51,7 +52,7 @@ class FakeTx implements Transaction {
 
 void main() {
   late MockFirebaseFirestore mockFs;
-  late MockFirebaseAuth mockAuth;
+  late auth_mocks.MockFirebaseAuth mockAuth;
   late MockCollectionRef mockQueuesColl;
   late MockDocRef mockQueueRef;
   late MockDocSnap mockQueueSnap;
@@ -63,7 +64,7 @@ void main() {
 
   setUp(() {
     mockFs = MockFirebaseFirestore();
-    mockAuth = MockFirebaseAuth();
+    mockAuth = auth_mocks.MockFirebaseAuth();
     mockQueuesColl = MockCollectionRef();
     mockQueueRef = MockDocRef();
     mockQueueSnap = MockDocSnap();

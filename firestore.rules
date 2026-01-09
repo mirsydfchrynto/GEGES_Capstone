@@ -4,66 +4,79 @@ service cloud.firestore {
 
     // --- FUNGSI PEMBANTU (HELPERS) ---
     
-    // Cek apakah user sudah login
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Cek apakah user adalah Super Admin (Akses Mutlak)
     function isSuperAdmin() {
       return isAuthenticated() && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
     }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
 
     // --- AKSES TOTAL UNTUK SUPER ADMIN ---
-    // Jika role Anda 'super_admin', Anda bisa baca/tulis/hapus APAPUN di Firestore.
-    // Ini menjamin Website Admin tidak akan pernah kena "Permission Denied".
+    // Aturan ini menimpa aturan di bawahnya untuk Super Admin.
     match /{document=**} {
       allow read, write: if isSuperAdmin();
     }
 
     // --- ATURAN UNTUK USER BIASA (Aplikasi Mobile) ---
 
-    // 1. Barbershop, Service, Barbermen: Bisa dibaca siapa saja (Katalog Publik)
+    // 1. KATALOG PUBLIK (READ-ONLY untuk User Biasa)
+    // Celah diperbaiki: User biasa TIDAK BOLEH menulis di sini.
     match /barbershops/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if false; // Hanya Super Admin (rule atas)
     }
     match /services/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if false; // Hanya Super Admin (rule atas)
     }
     match /barbermen/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if false; // Hanya Super Admin (rule atas)
     }
-
-    // 2. Data Transaksi (Queue, User, Tenant, Notification)
-    // Untuk user biasa, wajib login untuk baca/tulis datanya sendiri.
-    // (Super Admin sudah di-cover oleh rule paling atas).
-    match /users/{userId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == userId;
-    }
-    match /queues/{document=**} {
-      allow read, write: if isAuthenticated();
-    }
-    match /tenants/{document=**} {
-      allow read, write: if isAuthenticated();
-    }
-    match /notifications/{document=**} {
-      allow read, write: if isAuthenticated();
-    }
-    
-    // 3. Rating & Ulasan
-    match /app_ratings/{ratingId} {
-      // User login boleh mengirim rating
-      allow read, write: if true; 
-    }
-
-    // 4. Promo Banners (Public)
     match /promo_banners/{document=**} {
       allow read: if true;
-      allow write: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    // 2. DATA USER
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      // Create/Update: Boleh, TAPI tidak boleh mengubah field 'role' menjadi 'super_admin'
+      allow write: if isOwner(userId) && 
+        (!request.resource.data.keys().hasAny(['role']) || request.resource.data.role == resource.data.role || request.resource.data.role == 'user');
+    }
+
+    // 3. TRANSAKSI & ANTRIAN
+    // Queue: User boleh membuat antrian (create) dan update status mereka sendiri.
+    match /queues/{document=**} {
+      allow read: if isAuthenticated(); // Perlu baca antrian orang lain untuk estimasi waktu
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.customerId == request.auth.uid);
+      // Delete tidak diizinkan user biasa, gunakan update status 'canceled'
+    }
+
+    // Tenant: Pendaftaran mitra
+    match /tenants/{document=**} {
+      allow read, write: if isAuthenticated(); // Tenant owner perlu akses dokumennya
+    }
+
+    // Notifikasi
+    match /notifications/{document=**} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if isAuthenticated(); // Diperlukan trigger notifikasi client-side (jika ada)
+    }
+    
+    // 4. RATING & ULASAN
+    match /app_ratings/{ratingId} {
+      allow read: if true; // Public boleh baca review
+      allow create: if isAuthenticated(); // Hanya user login boleh review
+      allow update, delete: if false; // Review permanen, tidak bisa diedit user (untuk integritas)
     }
   }
 }

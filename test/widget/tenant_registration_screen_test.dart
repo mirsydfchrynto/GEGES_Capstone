@@ -4,7 +4,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/models/tenant.dart';
-import '../test_helpers.dart';
+import '../helpers/test_helpers.dart';
 
 // Small in-memory tenant service for tests
 class InMemoryTenantService extends TenantService {

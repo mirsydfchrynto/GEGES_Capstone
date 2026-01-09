@@ -5,7 +5,7 @@ import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/barbershop_detail_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/favorite_barbershops_screen.dart';
 import 'package:network_image_mock/network_image_mock.dart';
-import '../test_helpers.dart';
+import '../helpers/test_helpers.dart';
 
 // Mock CachedNetworkImage to avoid network calls
 class MockCachedNetworkImage extends StatelessWidget {

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import '../test_utils.dart'; // Import utility
+import '../helpers/test_utils.dart'; // Import utility
 
 void main() {
   setUpAll(() {

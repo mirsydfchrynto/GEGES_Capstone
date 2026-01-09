@@ -7,7 +7,7 @@ import 'package:geges_smartbarber/services/location_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:network_image_mock/network_image_mock.dart';
 import 'package:mockito/mockito.dart';
-import '../test_helpers.dart';
+import '../helpers/test_helpers.dart';
 
 class MockLocationService extends LocationService {
   @override

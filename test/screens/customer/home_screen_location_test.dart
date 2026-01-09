@@ -9,7 +9,7 @@ import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/models/promo_banner.dart';
 import 'package:mockito/mockito.dart';
 import 'package:geolocator/geolocator.dart';
-import '../../test_helpers.dart';
+import '../../helpers/test_helpers.dart';
 
 // Mock Services
 class MockLocationService extends Mock implements LocationService {

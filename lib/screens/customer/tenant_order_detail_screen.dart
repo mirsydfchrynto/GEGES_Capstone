@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
-import 'package:geges_smartbarber/screens/auth_gate.dart';
+import 'package:geges_smartbarber/screens/auth/auth_gate.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 

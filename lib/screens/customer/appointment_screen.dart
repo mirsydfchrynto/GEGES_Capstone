@@ -376,7 +376,16 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       'order_id': orderId,
       if (widget.initialStyleNote != null) 'notes': widget.initialStyleNote,
     };
-    try { await _queueService.createQueue(payload); if (!mounted) return; Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (c) => PaymentScreen(orderId: orderId, totalPrice: _totalPrice, barbershopId: widget.barbershop.id, barbermanId: barberId, bookingTime: bdt, paymentDeadline: DateTime.now().add(const Duration(minutes: 15)))));     } catch (e) {
+    try { await _queueService.createQueue(payload); if (!mounted) return; Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (c) => PaymentScreen(
+      orderId: orderId, 
+      totalPrice: _totalPrice, 
+      barbershopId: widget.barbershop.id, 
+      barbermanId: barberId, 
+      bookingTime: bdt, 
+      paymentDeadline: DateTime.now().add(const Duration(minutes: 15)),
+      queueService: widget.queueService,
+      testUserId: customerId,
+    )));     } catch (e) {
       if (mounted) _showSnack("Gagal: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);

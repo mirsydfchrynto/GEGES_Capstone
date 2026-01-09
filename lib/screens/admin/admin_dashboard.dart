@@ -8,7 +8,7 @@ import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
-import 'package:geges_smartbarber/screens/login_screen.dart';
+import 'package:geges_smartbarber/screens/auth/login_screen.dart';
 import 'package:geges_smartbarber/screens/admin/live_queue_screen.dart';
 import 'package:geges_smartbarber/screens/admin/_manual_booking_form.dart';
 import 'package:geges_smartbarber/screens/admin/payment_verification_screen_improved.dart';

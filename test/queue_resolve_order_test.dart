@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
-import 'package:firebase_auth_mocks/firebase_auth_mocks.dart'; // Import MockFirebaseAuth
+import 'mocks/auth_service_test.mocks.dart'; // Import MockFirebaseAuth
 
 void main() {
   late MockFirebaseAuth mockAuth;
