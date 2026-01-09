@@ -19,9 +19,25 @@ void main() {
     final auth = FirebaseAuth.instance;
     User? user = auth.currentUser;
     if (user == null) {
-      debugPrint("🔐 Signing in anonymously for seeding...");
-      final cred = await auth.signInAnonymously();
-      user = cred.user;
+      debugPrint("🔐 Signing in via Email/Password for seeding...");
+      try {
+        final randomEmail = 'seeder_${DateTime.now().millisecondsSinceEpoch}@test.com';
+        final cred = await auth.createUserWithEmailAndPassword(
+          email: randomEmail,
+          password: 'Password123!',
+        );
+        user = cred.user;
+      } catch (e) {
+        debugPrint("⚠️ Create user failed: $e");
+        // Try sign in as fallback if somehow collision (rare)
+        try {
+           final cred = await auth.signInWithEmailAndPassword(email: 'seeder_fallback@test.com', password: 'Password123!');
+           user = cred.user;
+        } catch (e2) {
+           debugPrint("❌ Fatal Auth Error: $e2");
+           rethrow;
+        }
+      }
     }
     debugPrint("👤 Seeding as User: ${user!.uid}");
 
@@ -112,16 +128,22 @@ void main() {
     final snapshot = await firestore
         .collection('app_ratings')
         .where('platform', isEqualTo: 'seeder_script')
-        .orderBy('createdAt', descending: true)
-        .limit(10)
         .get();
 
-    debugPrint("📊 Found ${snapshot.docs.length} seeded reviews in Firestore:");
-    for (var doc in snapshot.docs) {
+    // Sort client-side to avoid Firestore Index requirement
+    final docs = snapshot.docs.toList()
+      ..sort((a, b) {
+        final tA = (a.data()['createdAt'] as Timestamp).toDate();
+        final tB = (b.data()['createdAt'] as Timestamp).toDate();
+        return tB.compareTo(tA);
+      });
+
+    debugPrint("📊 Found ${docs.length} seeded reviews in Firestore:");
+    for (var doc in docs.take(10)) {
       final data = doc.data();
       debugPrint("   - [${data['sentiment']?.toUpperCase()}] ${data['feedback']} (Confidence: ${data['sentimentConfidence']})");
     }
     
-    expect(snapshot.docs.length, greaterThanOrEqualTo(1), reason: "At least positive/negative reviews should be saved.");
+    expect(docs.length, greaterThanOrEqualTo(1), reason: "At least positive/negative reviews should be saved.");
   });
 }
