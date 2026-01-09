@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
 
 class TenantRequestsScreen extends StatefulWidget {
   final FirebaseFirestore? firestore;
@@ -273,11 +273,10 @@ class _TenantRequestsScreenState extends State<TenantRequestsScreen> {
   }
 
   void _showBase64Image(String base64Str) {
-    final bytes = base64Decode(base64Str);
     showDialog(
       context: context,
       builder: (_) =>
-          Dialog(child: InteractiveViewer(child: Image.memory(bytes))),
+          Dialog(child: InteractiveViewer(child: AppImage(imageUrl: base64Str))),
     );
   }
 

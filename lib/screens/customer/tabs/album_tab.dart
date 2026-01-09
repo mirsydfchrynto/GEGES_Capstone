@@ -1,7 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
 
 class AlbumTab extends StatelessWidget {
   final Barbershop shop;
@@ -30,38 +29,22 @@ class AlbumTab extends StatelessWidget {
         final img = shop.galleryUrls[index];
         return GestureDetector(
           onTap: () => _showImagePreview(context, img),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: _buildImageWidget(img),
-          ),
+          child: _buildImageWidget(img),
         );
       },
     );
   }
 
   Widget _buildImageWidget(String path) {
-    if (path.startsWith('http')) {
-      return CachedNetworkImage(
-        imageUrl: path,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => Container(color: kDarkGrey),
-        errorWidget: (context, url, error) => Container(
-          color: kDarkGrey,
-          child: const Center(child: Icon(Icons.broken_image, color: kBrownAccent, size: 30)),
-        ),
-      );
-    } else if (path.length > 200) {
-      try {
-        return Image.memory(base64Decode(path), fit: BoxFit.cover);
-      } catch (e) {
-        return Container(
-          color: kDarkGrey,
-          child: const Center(child: Icon(Icons.broken_image, color: kBrownAccent, size: 30)),
-        );
-      }
-    } else {
-      return Image.asset(path, fit: BoxFit.cover);
-    }
+    return AppImage(
+      imageUrl: path,
+      fit: BoxFit.cover,
+      borderRadius: BorderRadius.circular(12),
+      errorWidget: Container(
+        color: kDarkGrey,
+        child: const Center(child: Icon(Icons.broken_image, color: kBrownAccent, size: 30)),
+      ),
+    );
   }
 
   void _showImagePreview(BuildContext context, String base64) {

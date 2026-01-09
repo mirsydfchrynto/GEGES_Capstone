@@ -1,0 +1,402 @@
+# DATASET PANDUAN PENGGUNA LENGKAP: GEGES SMART BARBER
+# VERSI: 5.0 (ULTIMATE + STYLE GUIDE & AFTERCARE)
+# TOTAL LINE COUNT TARGET: > 1200+
+# DITUJUKAN UNTUK: SISTEM RAG CHATBOT (ALL USERS)
+
+---
+# DAFTAR ISI LENGKAP
+1. PENGENALAN APLIKASI
+2. AKUN & KEAMANAN
+3. MEMAHAMI ANTARMUKA
+4. PANDUAN LENGKAP BOOKING
+5. PANDUAN PEMBAYARAN & KEUANGAN
+6. PEMBATALAN & PENGEMBALIAN DANA
+7. FITUR PINTAR AI & CHATBOT
+8. PANDUAN MENJADI MITRA FRANCHISE
+9. PANDUAN APLIKASI ADMIN
+10. TIPS SUKSES MENGELOLA BARBERSHOP
+11. PEMECAHAN MASALAH TEKNIS (ADVANCED)
+12. KAMUS ISTILAH
+13. KOMUNIKASI DENGAN BARBER (CARA REQUEST POTONGAN)
+14. PANDUAN PERAWATAN RAMBUT (AFTERCARE)
+15. STANDAR KEBERSIHAN & PROTOKOL
+
+---
+
+## 1. PENGENALAN APLIKASI (CUSTOMER)
+
+### Apa itu Geges Smart Barber?
+Geges Smart Barber adalah aplikasi di HP Anda yang berguna untuk memesan antrean potong rambut secara online. Dengan aplikasi ini, Anda tidak perlu lagi datang ke barbershop lalu duduk menunggu berjam-jam. Anda pesan dari rumah, bayar, lalu datang tepat waktu saat giliran Anda tiba.
+
+### Mengapa saya harus memakai aplikasi ini?
+1.  **Hemat Waktu:** Datang langsung dicukur, tidak perlu antre fisik.
+2.  **Pasti Dapat Slot:** Jadwal Anda terkunci dan tidak akan direbut orang lain.
+3.  **Transparan:** Harga jelas, tidak ada biaya tersembunyi.
+4.  **Canggih:** Bisa cek model rambut yang cocok dengan wajah Anda menggunakan kamera HP.
+
+### Apakah aplikasi ini berbayar?
+Mendownload dan mendaftar akun di aplikasi ini **GRATIS** (tidak bayar). Anda hanya membayar ketika Anda memesan layanan cukur atau membeli produk.
+
+---
+
+## 2. AKUN & KEAMANAN (REGISTRASI & LOGIN)
+
+### 2.1 Membuat Akun Baru (Saya Pengguna Baru)
+Jika Anda baru pertama kali membuka aplikasi, ikuti langkah ini pelan-pelan:
+
+1.  Buka aplikasi Geges Smart Barber.
+2.  Anda akan melihat layar depan. Cari tulisan atau tombol **"Daftar"** (biasanya di sebelah kanan "Masuk").
+3.  **Isi Formulir:**
+    *   **Nama Lengkap:** Masukkan nama asli Anda (contoh: Budi Santoso). Ini agar tukang cukur bisa memanggil nama Anda.
+    *   **Email:** Masukkan alamat email yang aktif di HP Anda (contoh: budi@gmail.com). Kami akan mengirim bukti bayar ke sini.
+    *   **Nomor Telepon:** Masukkan nomor WA/HP aktif (contoh: 08123456789). Ini penting jika tukang cukur perlu menghubungi Anda.
+    *   **Kata Sandi (Password):** Buat kata sandi rahasia. Minimal 6 huruf/angka. Contoh yang aman: `KopiSus123`. Jangan beritahu orang lain!
+    *   **Konfirmasi Kata Sandi:** Tulis ulang kata sandi yang sama persis untuk memastikan tidak ada salah ketik.
+4.  Klik tombol besar bertuliskan **"Buat Akun"**.
+5.  **Selesai!** Anda akan langsung masuk ke halaman utama.
+
+**Cara Cepat (Google Login):**
+Jika Anda malas mengetik, klik tombol yang ada logo "G" (Google) bertuliskan **"Lanjutkan dengan Google"**. Pilih akun email yang muncul di layar HP Anda. Selesai.
+
+### 2.2 Masuk ke Akun (Login)
+Jika Anda sudah pernah mendaftar tapi keluar dari aplikasi:
+1.  Buka aplikasi.
+2.  Pilih tab **"Masuk"**.
+3.  Ketik Email dan Kata Sandi yang dulu Anda buat.
+4.  Klik tombol **"Masuk"**.
+
+**Masalah: "Saya lupa kata sandi saya!"**
+Jangan panik. Ikuti ini:
+1.  Di halaman Masuk, cari tulisan kecil **"Lupa Kata Sandi?"**. Klik itu.
+2.  Masukkan alamat email Anda.
+3.  Klik **"Kirim"**.
+4.  Buka aplikasi Email di HP Anda (Gmail/Yahoo). Cari email dari "Geges Smart Barber".
+5.  Klik link/tautan biru di dalam email tersebut.
+6.  Anda akan diminta membuat kata sandi baru. Buat yang mudah diingat tapi sulit ditebak.
+
+### 2.3 Ganti Data Akun & Hapus Akun
+**Ganti Nomor HP/Email:**
+*   Masuk ke menu **Profil** -> **Edit Profil**.
+*   Ubah data yang diinginkan lalu klik **Simpan**.
+*   *Catatan:* Jika ganti email, Anda mungkin perlu verifikasi ulang lewat email baru.
+
+**Hapus Akun (Delete Account):**
+*   Fitur ini ada di **Profil** -> **Pengaturan** -> **Hapus Akun**.
+*   *Peringatan:* Semua riwayat pesanan dan poin Anda akan hilang permanen.
+
+---
+
+## 3. MEMAHAMI ANTARMUKA (IKON & NAVIGASI)
+
+Agar tidak bingung, kenali tombol-tombol di bagian bawah layar HP Anda:
+
+1.  **Beranda (Ikon Rumah/Home):**
+    *   Ini adalah halaman utama.
+    *   Tempat mencari barbershop terdekat.
+    *   Tempat melihat promo atau diskon.
+2.  **StyleScan (Ikon Kamera):**
+    *   Fitur canggih untuk memotret wajah Anda.
+    *   Aplikasi akan memberitahu model rambut apa yang cocok (misal: Oval, Kotak).
+3.  **Chatbot (Ikon Pesan/Chat):**
+    *   Tempat bertanya pada robot asisten (GIA).
+    *   Bisa tanya "Antrian saya nomor berapa?" atau "Alamat toko dimana?".
+4.  **Profil (Ikon Orang):**
+    *   Tempat melihat data diri Anda.
+    *   Tempat melihat **Riwayat Pesanan** (History).
+    *   Tempat mengganti bahasa (Indonesia/Inggris).
+    *   Tempat Keluar (Logout).
+
+---
+
+## 4. PANDUAN LENGKAP BOOKING (PEMESANAN)
+
+### 4.1 Langkah-demi-Langkah Memesan Cukur
+Bayangkan Anda ingin cukur besok jam 10 pagi. Begini caranya:
+
+**Langkah 1: Cari Lokasi**
+*   Di halaman **Beranda**, lihat bagian atas ada tulisan "Lokasi Saya".
+*   Pastikan alamatnya sudah sesuai dengan posisi Anda. Jika belum, klik ikon putar balik (Refresh) kecil di sebelahnya.
+*   Lihat daftar "Barbershop di dekatmu". Pilih salah satu toko, misal "Febrian Barbershop". Klik kotaknya.
+
+**Langkah 2: Pilih Jasa (Service)**
+*   Anda akan masuk ke halaman detail toko.
+*   Klik tombol **"Pesan Sekarang"** (Tombol Coklat/Emas).
+*   *Penting:* Jika tombol berwarna Merah bertuliskan "TUTUP", artinya toko sedang libur atau di luar jam operasional. Anda tidak bisa pesan.
+*   Pilih layanan: Centang kotak di sebelah layanan, misal **"Haircut (Potong Rambut)"**. Anda bisa pilih lebih dari satu, misal tambah "Shaving (Cukur Kumis)".
+*   Klik **"LANJUT"**.
+
+**Langkah 3: Pilih Tukang Cukur (Barberman)**
+Anda punya dua pilihan:
+*   **Pilihan A: "Dipilihkan Sistem (Adil & Cepat)"**
+    *   *Apa ini?* Aplikasi akan mencarikan tukang cukur yang sedang menganggur atau antreannya paling sepi.
+    *   *Keuntungan:* Biasanya antrean lebih cepat dan **GRATIS** biaya admin tambahan.
+*   **Pilihan B: "Pilih Barber Favorit"**
+    *   *Apa ini?* Anda ingin dicukur spesifik oleh Mas Andi (misalnya) karena sudah langganan.
+    *   *Biaya:* Ada tambahan biaya (misal Rp 10.000) karena Anda me-request orang khusus.
+    *   *Caranya:* Klik nama barber yang Anda mau (misal: Andi).
+
+**Langkah 4: Pilih Waktu (Jadwal)**
+*   Pilih **Tanggal**: Klik tanggal di baris kalender. (Hari ini atau besok).
+    *   *Tanda Merah/Abu:* Artinya barber libur atau toko tutup. Pilih tanggal lain.
+*   Pilih **Jam**: Klik kotak jam yang tersedia (misal 10:00).
+    *   *Jam Dicoret/Garis Tengah:* Artinya jam itu SUDAH dipesan orang lain. Cari jam yang masih bersih.
+
+**Langkah 5: Konfirmasi**
+*   Aplikasi akan menampilkan ringkasan: "Tanggal sekian, Jam sekian, Barber A, Harga Total Rp 50.000".
+*   Cek sekali lagi. Apakah sudah benar?
+*   Klik tombol **"Booking Sekarang"**.
+
+---
+
+## 5. PANDUAN PEMBAYARAN & KEUANGAN
+
+### 5.1 Cara Membaca Tagihan
+Di halaman Pembayaran, Anda akan melihat rincian:
+*   **Layanan Barbershop:** Harga jasa cukur (misal Rp 40.000).
+*   **Biaya Reservasi:** Biaya tambahan (misal Rp 10.000) jika Anda memilih barber spesifik. Jika pilih sistem acak, ini Rp 0.
+*   **Total Tagihan:** Jumlah yang WAJIB Anda transfer. **Harus pas**, jangan dibulatkan.
+
+### 5.2 Cara Transfer & Upload Bukti (Sangat Penting!)
+Ikuti urutan ini agar tidak gagal:
+
+1.  **Salin Rekening:** Lihat nomor rekening BCA yang muncul di layar. Klik ikon kertas (Copy) di sebelahnya untuk menyalin.
+2.  **Buka Mobile Banking/ATM:** Lakukan transfer ke nomor tersebut senilai Total Tagihan.
+3.  **Screenshot/Foto:** Setelah transfer berhasil, FOTO bukti transfernya atau SCREENSHOT layar HP Anda. Pastikan tulisan "Berhasil" dan nominalnya terlihat jelas.
+4.  **Kembali ke Aplikasi Geges:**
+    *   Ketuk kotak besar bertuliskan **"Ketuk untuk Unggah Bukti"**.
+    *   Pilih "Galeri" (jika screenshot) atau "Kamera" (jika foto struk kertas).
+    *   Pilih gambar bukti tadi.
+5.  **Kirim:** Klik tombol **"Kirim Konfirmasi"** (Send Confirmation).
+
+### 5.3 Apa yang terjadi setelah saya kirim bukti?
+*   Status berubah menjadi: **"Menunggu Verifikasi Admin"** (Warna Biru).
+*   **Jangan khawatir**, uang Anda aman. Admin kami sedang mengecek mutasi bank.
+*   Proses ini biasanya memakan waktu 1 sampai 5 menit.
+*   Anda boleh menutup aplikasi. Nanti jika sudah disetujui, akan muncul notifikasi "Booking Berhasil".
+*   Status akan berubah menjadi **"TERJADWAL"** (Warna Hijau). Ini artinya kursi itu sudah resmi milik Anda.
+
+---
+
+## 6. PEMBATALAN & PENGEMBALIAN DANA (REFUND)
+
+Kadang rencana berubah. Berikut cara membatalkan pesanan.
+
+### 6.1 Jika status masih "Belum Bayar"
+1.  Buka menu **Riwayat** -> Tab **Belum Bayar**.
+2.  Klik pesanan Anda.
+3.  Klik tombol merah **"Batalkan Pesanan"**.
+4.  Selesai. Pesanan hilang, tidak ada denda.
+
+### 6.2 Jika status sudah "Terjadwal" atau "Menunggu Verifikasi" (Sudah Transfer)
+Karena uang sudah masuk, Anda harus mengajukan **Refund** (Pengembalian Dana).
+1.  Buka menu **Riwayat** -> Tab **Terjadwal**.
+2.  Klik pesanan Anda.
+3.  Cari tombol **"Batalkan & Minta Refund"** (biasanya di bagian bawah).
+4.  Isi alasan: Contoh "Saya mendadak ada acara keluarga".
+5.  Klik "Kirim".
+6.  Status berubah menjadi **"MENUNGGU PROSES REFUND"** (Warna Kuning/Oranye).
+
+### 6.3 Proses Pengembalian Dana
+*   Admin akan membaca alasan Anda.
+*   Jika disetujui, Admin akan mentransfer balik uang Anda (biasanya dipotong biaya admin 10% atau sesuai kebijakan toko).
+*   Jika sudah ditransfer balik, status berubah menjadi **"DIBATALKAN & REFUND SELESAI"**.
+*   **Cek Bukti:** Di halaman detail pesanan tadi, akan muncul foto bukti transfer pengembalian dari Admin dan catatannya. Anda bisa klik fotonya untuk memperbesar.
+
+---
+
+## 7. FITUR PINTAR (AI & CHATBOT)
+
+### 7.1 StyleScan (Deteksi Wajah)
+Gunakan ini jika bingung mau gaya rambut apa.
+1.  Klik menu **StyleScan** di bawah.
+2.  Pastikan cahaya cukup terang.
+3.  Lepas kacamata atau masker.
+4.  Ambil foto selfie lurus ke depan.
+5.  Tunggu sebentar... Aplikasi akan bilang: "Wajah Anda Oval, cocok dengan gaya Undercut atau Pompadour".
+
+### 7.2 Chatbot GIA (Asisten Pintar)
+GIA bisa membantu menjawab pertanyaan cepat.
+*   **Tanya Antrian:** Ketik "Cek antrian" -> GIA akan memberitahu apakah Anda punya booking aktif dan statusnya apa.
+*   **Tanya Rekomendasi:** Ketik "Rekomendasi" -> GIA akan kasih gambar contoh potongan rambut yang lagi tren.
+*   **Tanya Alamat:** Ketik "Alamat" -> GIA memberitahu lokasi toko.
+
+---
+
+## 8. PANDUAN MENJADI MITRA FRANCHISE (TENANT CANDIDATE)
+
+Bagian ini untuk Anda yang ingin membuka usaha Barbershop sendiri menggunakan sistem Geges.
+
+### 8.1 Cara Mendaftar
+1.  Buka menu **Profil**.
+2.  Cari kartu emas bertuliskan **"Kembangkan Barbershop Anda bersama kami"**. Klik tombol "Daftarkan Barbershop Saya".
+3.  **Langkah 1: Isi Data**
+    *   Nama Bisnis: Nama toko Anda nanti (Misal: "Ganteng Barber").
+    *   Nama Pemilik: Nama Anda.
+    *   Email Pemilik: Gunakan email Google yang aktif. Ini akan jadi kunci login Admin Anda.
+4.  **Langkah 2: Dokumen Legal**
+    *   Anda WAJIB punya **SIUP** (Surat Izin Usaha) dan **NPWP**.
+    *   Foto dokumen tersebut dan upload di kolom yang disediakan.
+5.  **Langkah 3: Pilih Paket**
+    *   Bulanan: Rp 300.000 / bulan.
+    *   Tahunan: Rp 3.000.000 / tahun (Lebih hemat).
+6.  Klik **"Daftar & Bayar"**.
+
+### 8.2 Setelah Mendaftar
+*   Anda akan diminta membayar biaya pendaftaran (seperti booking biasa).
+*   Setelah bayar, status pendaftaran Anda menjadi **"Menunggu Verifikasi"**.
+*   Tim Pusat akan mengecek dokumen Anda (SIUP/NPWP).
+*   Jika disetujui, Anda akan menerima email berisi Password Sementara.
+*   Gunakan email dan password tersebut untuk login di **Aplikasi Geges Admin** (Aplikasi berbeda khusus pemilik toko).
+
+### 8.3 Membatalkan Pendaftaran Kemitraan
+*   Jika Anda berubah pikiran SEBELUM diverifikasi admin, masuk ke menu "Pesanan Khusus" di Profil.
+*   Pilih pendaftaran Anda.
+*   Klik "Batalkan & Minta Refund".
+*   Prosesnya sama seperti refund customer biasa.
+
+---
+
+## 9. PANDUAN APLIKASI ADMIN (OWNER & BARBERMAN)
+
+Bagian ini khusus untuk **Pemilik Toko** (Owner) dan **Karyawan** (Barberman) yang menggunakan aplikasi Admin.
+
+### 9.1 Login Admin
+*   Gunakan aplikasi yang berbeda (Geges Admin App).
+*   Gunakan email yang Anda daftarkan saat menjadi mitra.
+*   Gunakan password sementara dari email (untuk pertama kali), lalu segera ganti password di menu pengaturan.
+
+### 9.2 Mengelola Antrean (Queue Management)
+*   **Lihat Antrean:** Di halaman utama Admin, Anda melihat daftar pesanan hari ini.
+*   **Terima Pelanggan:** Saat pelanggan datang, klik tombol **"Mulai Layanan"**. Status berubah jadi *Ongoing*.
+*   **Selesaikan Layanan:** Setelah selesai cukur, klik **"Selesai"**. Status berubah jadi *Served*.
+*   **No-Show (Tidak Datang):** Jika pelanggan tidak datang setelah 15 menit, klik **"Batalkan/No-Show"**. Slot akan terbuka kembali untuk orang lain.
+
+### 9.3 Mengelola Karyawan (Barber Management)
+*   **Tambah Barber:** Menu Kelola -> Tambah Karyawan -> Masukkan Nama & Foto.
+*   **Set Libur:** Jika barber sakit atau cuti, masuk ke profil barber tersebut -> Aktifkan saklar **"Sedang Cuti"**. Pelanggan tidak akan bisa memilih dia hari itu.
+*   **Jadwal:** Atur jam kerja barber jika berbeda dengan jam toko.
+
+### 9.4 Tutup Toko Darurat
+Jika ada mati lampu atau renovasi mendadak:
+1.  Masuk ke Menu **Toko** (Shop Settings).
+2.  Matikan saklar **"Buka Toko"** (Switch Open/Close).
+3.  Aplikasi Customer akan langsung menampilkan status "TUTUP" dan menolak pesanan baru.
+
+### 9.5 Laporan Keuangan (Sales Report)
+*   Masuk ke menu **Laporan**.
+*   Anda bisa melihat total pendapatan harian, mingguan, dan bulanan.
+*   Laporan bisa difilter per-barber untuk menghitung komisi.
+
+---
+
+## 10. TIPS SUKSES MENGELOLA BARBERSHOP (BUSINESS)
+
+Tips ini berdasarkan fitur aplikasi agar barbershop Anda makin ramai:
+
+1.  **Gunakan Foto Bagus:** Saat setting toko di Admin, upload foto interior yang terang dan estetik. Pelanggan lebih suka toko yang terlihat bersih di aplikasi.
+2.  **Nama Layanan Jelas:** Jangan cuma tulis "Potong". Tulis "Potong Rambut + Pijat Kepala" agar nilai jual lebih tinggi.
+3.  **Respon Cepat:** Jika ada yang bertanya lewat chat, segera balas.
+4.  **Disiplin Update Status:** Selalu klik "Mulai" dan "Selesai" tepat waktu di aplikasi Admin. Ini membuat estimasi waktu di aplikasi Customer jadi akurat, sehingga pelanggan tidak kecewa menunggu.
+5.  **Promo:** Gunakan fitur Banner Promo (jika tersedia) untuk menawarkan diskon di hari sepi (misal: Selasa).
+
+---
+
+## 11. PEMECAHAN MASALAH TEKNIS (ADVANCED)
+
+### Layar HP saya hitam/putih (Blank)
+*   **Sebab:** Mungkin memori HP penuh atau koneksi internet terputus mendadak.
+*   **Solusi:** Tutup paksa aplikasi (Swipe up dari recent apps), lalu buka lagi. Pastikan internet 4G/WiFi nyala.
+
+### Saya tidak bisa upload foto bukti bayar
+*   **Sebab:** Izin akses galeri ditolak.
+*   **Solusi:** Buka Pengaturan HP -> Aplikasi -> Geges Smart Barber -> Izin (Permissions) -> Izinkan Foto/Penyimpanan.
+
+### Notifikasi tidak muncul
+*   **Sebab:** Fitur penghemat baterai HP mematikan notifikasi.
+*   **Solusi:** Pastikan aplikasi tidak di-blokir oleh mode hemat daya. Cek manual status pesanan di menu Riwayat.
+
+### Tombol "Booking" tidak bisa diklik (Warna Abu-abu)
+*   **Sebab:** Anda belum memilih jam, atau belum memilih layanan.
+*   **Solusi:** Pastikan semua langkah (Layanan, Barber, Jam) sudah terisi/terpilih.
+
+### Login dengan Google gagal terus
+*   **Sebab:** Masalah koneksi ke server Google atau jam di HP Anda salah.
+*   **Solusi:** Atur jam HP ke "Otomatis", cek internet, lalu coba lagi.
+
+### Skenario Pembayaran Khusus
+*   **Kurang Bayar:** Transfer kekurangannya -> Kirim kedua bukti ke WA Admin.
+*   **Lebih Bayar:** Hubungi Admin -> Minta Refund kelebihan dana.
+*   **Struk Hilang:** Cek mutasi m-banking -> Screenshot mutasi -> Upload sebagai bukti.
+
+---
+
+## 12. KAMUS ISTILAH
+
+*   **Booking:** Memesan tempat/jadwal.
+*   **Tenant/Mitra:** Pemilik usaha barbershop yang bekerjasama dengan Geges.
+*   **Refund:** Pengembalian uang dari penjual ke pembeli karena pembatalan.
+*   **Invoice:** Tagihan pembayaran.
+*   **Pending:** Sedang diproses / menunggu giliran.
+*   **Verified:** Sudah diperiksa dan dinyatakan benar/asli.
+*   **Barberman:** Tukang cukur / Hairstylist.
+*   **Off-Day:** Hari libur tukang cukur.
+*   **SIUP:** Surat Izin Usaha Perdagangan (Dokumen resmi pemerintah).
+*   **NPWP:** Nomor Pokok Wajib Pajak.
+*   **Upload:** Mengunggah / mengirim file dari HP ke internet.
+
+---
+
+## 13. KOMUNIKASI DENGAN BARBER (CARA REQUEST POTONGAN)
+
+Bingung cara ngomong ke tukang cukur? Gunakan panduan ini agar hasilnya sesuai ekspektasi.
+
+### 13.1 Istilah "Samping & Belakang"
+*   **Skin (Botak/Nol):** Habis sama sekali, kelihatan kulit kepala.
+*   **Satu Jari / Dua Jari:** Ukuran panjang rambut samping (bukan tinggi potongan).
+*   **Gradasi (Fade):** Dari tipis (bawah) perlahan menebal ke atas. Mulus, tidak ada garis patah.
+*   **Disconnected:** Ada garis batas tegas antara rambut samping (pendek) dan atas (panjang).
+
+### 13.2 Istilah "Rambut Atas"
+*   **Trim (Ujung-ujung saja):** Hanya potong bagian rusak/bercabang, panjang tidak banyak berubah.
+*   **Sasak (Texturize):** Mengurangi ketebalan rambut agar tidak gembung, tapi panjang tetap sama.
+*   **Trap (Layer):** Dipotong bertingkat agar rambut terlihat bervolume/mengembang.
+
+### 13.3 Contoh Kalimat Request (Template)
+*   *"Mas, sampingnya Fade tipis dari nol, atasnya dirapikan sedikit aja (Trim) biar bisa disisir ke samping."* -> Hasil: **Side Part Fade**.
+*   *"Sampingnya dipotong pendek tapi jangan botak (Taper), atasnya biarin panjang mau saya ikat."* -> Hasil: **Man Bun**.
+*   *"Habisin samping dan belakang (Undercut), atasnya potong pendek dan arahkan ke depan."* -> Hasil: **French Crop**.
+
+---
+
+## 14. PANDUAN PERAWATAN RAMBUT (AFTERCARE)
+
+Setelah ganteng, rawat rambut Anda agar tetap sehat.
+
+### 14.1 Memilih Produk Styling
+*   **Pomade (Oil Based):** Kilap tinggi, daya rekat kuat, susah dibilas. Cocok untuk gaya klimis (Pompadour, Slick Back).
+*   **Pomade (Water Based):** Kilap sedang, daya rekat sedang, mudah dibilas air. Cocok untuk sehari-hari.
+*   **Wax / Clay:** Tidak mengkilap (Matte/Natural), tekstur kering. Cocok untuk gaya berantakan natural (French Crop, Quiff) agar rambut terlihat tebal.
+*   **Hair Powder:** Bubuk untuk menambah volume instan. Cocok untuk rambut lepek/tipis.
+
+### 14.2 Tips Keramas
+*   Jangan keramas setiap hari jika rambut kering. Cukup 2-3 hari sekali.
+*   Gunakan kondisioner HANYA di ujung rambut, jangan di kulit kepala (bikin ketombe).
+*   Jika pakai Pomade Oil Based, keramas pakai air hangat dulu baru sampo agar minyak luntur.
+
+---
+
+## 15. STANDAR KEBERSIHAN & PROTOKOL
+
+Geges Smart Barber mewajibkan mitra untuk menjaga kebersihan demi kesehatan Anda.
+
+### Apa yang harus Anda harapkan di lokasi?
+1.  **Pisau Cukur Baru:** Silet (Razor) wajib diganti baru untuk setiap pelanggan. Perhatikan saat barber mematahkan silet baru.
+2.  **Kip (Kain Penutup) Bersih:** Kain tidak boleh bau apek.
+3.  **Peralatan Steril:** Gunting dan mesin clipper dibersihkan dari rambut pelanggan sebelumnya.
+4.  **Kebersihan Lantai:** Lantai disapu setiap selesai satu sesi cukur.
+
+---
+**PESAN UNTUK PENGGUNA:**
+Aplikasi ini dibuat untuk memudahkan hidup Anda. Jika Anda bingung, jangan ragu untuk menekan tombol **"Hubungi Admin"**. Kami siap membantu Anda sampai ganteng!
+
+**AKHIR DOKUMEN PANDUAN LENGKAP**

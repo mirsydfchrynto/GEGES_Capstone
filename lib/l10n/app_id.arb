@@ -215,10 +215,6 @@
   "giaTyping": "GIA sedang mengetik...",
   "chatMinutes": "menit",
   "seeDetail": "Lihat Detail",
-  "btnCheckMyQueue": "Cek antrian saya",
-  "btnHaircutRecommendation": "Rekomendasi gaya rambut",
-  "btnAskAddress": "Tanyakan alamat",
-  "btnCreateNewBooking": "Buat Booking Baru",
   "chatHint": "Tulis pesan...",
   "stepService": "Layanan",
   "stepBarber": "Barber",
@@ -349,5 +345,10 @@
   "reason": "Alasan",
   "viewRefundProof": "Lihat Bukti Refund",
   "btnPayNow": "BAYAR SEKARANG",
-  "contactSupport": "Hubungi Bantuan / Komplain"
+  "contactSupport": "Hubungi Bantuan / Komplain",
+  "statusRefundWaiting": "MENUNGGU PROSES REFUND",
+  "statusRefundCompleted": "DIBATALKAN & REFUND SELESAI",
+  "btnRequestRefund": "Batalkan & Minta Refund",
+  "descRefundWaiting": "Permintaan pembatalan Anda sedang ditinjau admin. Dana akan dikembalikan sesuai kebijakan.",
+  "adminNote": "Catatan Admin"
 }

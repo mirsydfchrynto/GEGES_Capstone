@@ -480,18 +480,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get seeDetail => 'Lihat Detail';
 
   @override
-  String get btnCheckMyQueue => 'Cek antrian saya';
-
-  @override
-  String get btnHaircutRecommendation => 'Rekomendasi gaya rambut';
-
-  @override
-  String get btnAskAddress => 'Tanyakan alamat';
-
-  @override
-  String get btnCreateNewBooking => 'Buat Booking Baru';
-
-  @override
   String get chatHint => 'Tulis pesan...';
 
   @override
@@ -798,4 +786,20 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get contactSupport => 'Hubungi Bantuan / Komplain';
+
+  @override
+  String get statusRefundWaiting => 'MENUNGGU PROSES REFUND';
+
+  @override
+  String get statusRefundCompleted => 'DIBATALKAN & REFUND SELESAI';
+
+  @override
+  String get btnRequestRefund => 'Batalkan & Minta Refund';
+
+  @override
+  String get descRefundWaiting =>
+      'Permintaan pembatalan Anda sedang ditinjau admin. Dana akan dikembalikan sesuai kebijakan.';
+
+  @override
+  String get adminNote => 'Catatan Admin';
 }

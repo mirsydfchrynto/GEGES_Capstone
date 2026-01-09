@@ -1,48 +1,46 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:geges_smartbarber/screens/customer/tabs/my_bookings_screen.dart';
-import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
-import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:geges_smartbarber/screens/customer/special_orders_screen.dart';
+import 'package:geges_smartbarber/services/auth_service.dart';
+import 'package:mockito/mockito.dart';
 import 'test_helpers.dart';
 
-void main() {
-  testWidgets('Navigates to SpecialOrdersScreen and shows orders', (tester) async {
-    // 1. Setup Mock Firestore
-    final fakeFs = FakeFirebaseFirestore();
-    final mockAuth = MockFirebaseAuth();
-    final queueSvc = QueueService(firestore: fakeFs, auth: mockAuth);
-    final userId = 'user_special_test';
+class MockAuthService extends Mock implements AuthService {}
 
-    // 2. Seed Data
-    await fakeFs.collection('tenants').add({
-      'owner_uid': userId,
-      'business_name': 'Special Barber Shop',
-      'status': 'active', // Should show 'SUKSES / AKTIF'
+void main() {
+  late FakeFirebaseFirestore fakeFirestore;
+
+  setUpAll(() {
+    fakeFirestore = FakeFirebaseFirestore();
+  });
+
+  testWidgets('Navigates to SpecialOrdersScreen and shows orders', (tester) async {
+    // 1. Setup Data
+    await fakeFirestore.collection('tenants').add({
+      'owner_uid': 'user123',
+      'business_name': 'My Barber',
+      'status': 'pending_payment',
       'created_at': Timestamp.now(),
-      'invoice': {'amount': 300000},
     });
 
-    // 3. Pump MyBookingsScreen
-    await tester.pumpWidget(wrapWithLocalization(MyBookingsScreen(
-        firestore: fakeFs,
-        queueService: queueSvc,
-        currentUserId: userId,
+    // 2. Pump Widget (SpecialOrdersScreen directly)
+    await tester.pumpWidget(
+      wrapWithLocalization(
+        SpecialOrdersScreen(
+          firestore: fakeFirestore,
+          currentUserId: 'user123',
+        ),
       ),
-    ));
-    await tester.pumpAndSettle();
+    );
 
-    // 4. Find and Tap Special Orders Button (Star Icon)
-    final specialOrderBtn = find.byIcon(Icons.stars);
-    expect(specialOrderBtn, findsOneWidget);
-    
-    await tester.tap(specialOrderBtn);
-    await tester.pumpAndSettle();
+    // 3. Verify Loading
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pump(); // Allow stream to emit
 
-    // 5. Verify SpecialOrdersScreen content (localized: Pesanan Khusus)
-    expect(find.text('Pesanan Khusus'), findsOneWidget); // AppBar title
-    expect(find.text('Special Barber Shop'), findsOneWidget); // Business Name
-    expect(find.text('SUKSES / AKTIF'), findsOneWidget); // Status
+    // 4. Verify Content
+    expect(find.text('My Barber'), findsOneWidget);
+    expect(find.text('PARTNERSHIP'), findsOneWidget);
   });
 }

@@ -1036,20 +1036,14 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
   }
 
   @override
-  bool isBarberHolidayRaw(
-    Map<String, dynamic>? data,
-    DateTime? date,
-  ) =>
+  _i6.Stream<int> streamUnreadNotificationCount(String? userId) =>
       (super.noSuchMethod(
         Invocation.method(
-          #isBarberHolidayRaw,
-          [
-            data,
-            date,
-          ],
+          #streamUnreadNotificationCount,
+          [userId],
         ),
-        returnValue: false,
-      ) as bool);
+        returnValue: _i6.Stream<int>.empty(),
+      ) as _i6.Stream<int>);
 
   @override
   _i6.Future<String?> getFairAvailableBarberman({
@@ -1069,16 +1063,6 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
         ),
         returnValue: _i6.Future<String?>.value(),
       ) as _i6.Future<String?>);
-
-  @override
-  _i6.Stream<List<_i9.Queue>> getActiveQueueStream(String? barbershopId) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #getActiveQueueStream,
-          [barbershopId],
-        ),
-        returnValue: _i6.Stream<List<_i9.Queue>>.empty(),
-      ) as _i6.Stream<List<_i9.Queue>>);
 
   @override
   _i6.Stream<List<_i9.Queue>> streamQueuesForBarbershop(
@@ -1115,6 +1099,56 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
         ),
         returnValue: _i6.Stream<List<_i9.Queue>>.empty(),
       ) as _i6.Stream<List<_i9.Queue>>);
+
+  @override
+  _i6.Stream<_i9.Queue?> streamQueueById(String? id) => (super.noSuchMethod(
+        Invocation.method(
+          #streamQueueById,
+          [id],
+        ),
+        returnValue: _i6.Stream<_i9.Queue?>.empty(),
+      ) as _i6.Stream<_i9.Queue?>);
+
+  @override
+  _i6.Future<_i9.Queue?> getQueueById(String? queueId) => (super.noSuchMethod(
+        Invocation.method(
+          #getQueueById,
+          [queueId],
+        ),
+        returnValue: _i6.Future<_i9.Queue?>.value(),
+      ) as _i6.Future<_i9.Queue?>);
+
+  @override
+  _i6.Stream<List<_i9.Queue>> streamAllQueues({List<String>? statusFilter}) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #streamAllQueues,
+          [],
+          {#statusFilter: statusFilter},
+        ),
+        returnValue: _i6.Stream<List<_i9.Queue>>.empty(),
+      ) as _i6.Stream<List<_i9.Queue>>);
+
+  @override
+  _i6.Future<void> adminRejectCancellation(String? queueId) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #adminRejectCancellation,
+          [queueId],
+        ),
+        returnValue: _i6.Future<void>.value(),
+        returnValueForMissingStub: _i6.Future<void>.value(),
+      ) as _i6.Future<void>);
+
+  @override
+  _i6.Future<int> cancelExpiredWaitingQueuesForCustomer(String? customerId) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #cancelExpiredWaitingQueuesForCustomer,
+          [customerId],
+        ),
+        returnValue: _i6.Future<int>.value(0),
+      ) as _i6.Future<int>);
 
   @override
   _i6.Future<List<_i10.DateTimeRange<DateTime>>> getBarberBusyTimeRanges(
@@ -1290,25 +1324,6 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
       ) as _i6.Future<void>);
 
   @override
-  _i6.Future<void> adminRefundBooking(
-    String? queueId, {
-    String? reason,
-    String? adminUid,
-  }) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #adminRefundBooking,
-          [queueId],
-          {
-            #reason: reason,
-            #adminUid: adminUid,
-          },
-        ),
-        returnValue: _i6.Future<void>.value(),
-        returnValueForMissingStub: _i6.Future<void>.value(),
-      ) as _i6.Future<void>);
-
-  @override
   _i6.Future<void> adminProcessRefund(
     String? queueId, {
     required String? refundProofBase64,
@@ -1330,14 +1345,14 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
       ) as _i6.Future<void>);
 
   @override
-  _i6.Future<void> adminRejectCancellation(
+  _i6.Future<void> adminRefundBooking(
     String? queueId, {
     String? reason,
     String? adminUid,
   }) =>
       (super.noSuchMethod(
         Invocation.method(
-          #adminRejectCancellation,
+          #adminRefundBooking,
           [queueId],
           {
             #reason: reason,
@@ -1399,24 +1414,6 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
       ) as _i6.Future<int>);
 
   @override
-  _i6.Future<_i9.Queue?> getQueueById(String? queueId) => (super.noSuchMethod(
-        Invocation.method(
-          #getQueueById,
-          [queueId],
-        ),
-        returnValue: _i6.Future<_i9.Queue?>.value(),
-      ) as _i6.Future<_i9.Queue?>);
-
-  @override
-  _i6.Stream<_i9.Queue?> streamQueueById(String? id) => (super.noSuchMethod(
-        Invocation.method(
-          #streamQueueById,
-          [id],
-        ),
-        returnValue: _i6.Stream<_i9.Queue?>.empty(),
-      ) as _i6.Stream<_i9.Queue?>);
-
-  @override
   _i6.Future<_i9.Queue?> resolveQueueForCustomerByIdOrOrder(
     String? idOrOrderId,
     String? customerId,
@@ -1472,14 +1469,15 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
       ) as _i6.Future<void>);
 
   @override
-  _i6.Future<int> cancelExpiredWaitingQueuesForCustomer(String? customerId) =>
+  _i6.Future<void> withdrawCancellationRequest(String? queueId) =>
       (super.noSuchMethod(
         Invocation.method(
-          #cancelExpiredWaitingQueuesForCustomer,
-          [customerId],
+          #withdrawCancellationRequest,
+          [queueId],
         ),
-        returnValue: _i6.Future<int>.value(0),
-      ) as _i6.Future<int>);
+        returnValue: _i6.Future<void>.value(),
+        returnValueForMissingStub: _i6.Future<void>.value(),
+      ) as _i6.Future<void>);
 
   @override
   _i6.Future<int> cancelExpiredAwaitingPaymentQueuesForCustomer(
@@ -1491,32 +1489,4 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
         ),
         returnValue: _i6.Future<int>.value(0),
       ) as _i6.Future<int>);
-
-  @override
-  _i6.Stream<List<_i9.Queue>> streamAllQueues({
-    String? barbershopId,
-    List<String>? statusFilter,
-  }) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #streamAllQueues,
-          [],
-          {
-            #barbershopId: barbershopId,
-            #statusFilter: statusFilter,
-          },
-        ),
-        returnValue: _i6.Stream<List<_i9.Queue>>.empty(),
-      ) as _i6.Stream<List<_i9.Queue>>);
-
-  @override
-  _i6.Future<void> withdrawCancellationRequest(String? queueId) =>
-      (super.noSuchMethod(
-        Invocation.method(
-          #withdrawCancellationRequest,
-          [queueId],
-        ),
-        returnValue: _i6.Future<void>.value(),
-        returnValueForMissingStub: _i6.Future<void>.value(),
-      ) as _i6.Future<void>);
 }

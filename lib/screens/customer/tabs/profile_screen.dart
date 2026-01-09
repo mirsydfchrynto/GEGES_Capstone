@@ -1,12 +1,11 @@
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 import 'package:geges_smartbarber/utils/locale_provider.dart';
 import 'package:provider/provider.dart';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/favorite_barbershops_screen.dart';
 import 'package:geges_smartbarber/screens/customer/app_rating_screen.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
 
 // --- IMPORT DARI ITERASI SEBELUMNYA ---
 import '../../../models/user_data.dart'; // Model UserData yang sudah kita buat
@@ -281,12 +280,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           CircleAvatar(
             radius: 30,
             backgroundColor: kBrownAccent.withValues(alpha: 0.2),
-            backgroundImage: _currentUser.photoBase64 != null
-                ? MemoryImage(base64Decode(_currentUser.photoBase64!))
-                : null,
-            child: _currentUser.photoBase64 == null
-                ? Icon(Icons.person, size: 30, color: kBrownAccent)
-                : null,
+            child: _currentUser.photoBase64 != null
+                ? AppImage(
+                    base64: _currentUser.photoBase64,
+                    borderRadius: BorderRadius.circular(30),
+                    fit: BoxFit.cover,
+                  )
+                : Icon(Icons.person, size: 30, color: kBrownAccent),
           ),
           const SizedBox(width: 15),
           Expanded(

@@ -1,6 +1,5 @@
 // lib/screens/customer/home_screen.dart
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -11,6 +10,7 @@ import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/location_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/barbershop_detail_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/profile_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/chat_assistant_screen.dart';
@@ -293,40 +293,14 @@ class _HomeScreenState extends State<HomeScreen> {
   static const Color kRedDanger = Color(0xFFDC3545);
 
   Widget _buildImage(String path) {
-    if (path.startsWith('http')) {
-      return CachedNetworkImage(
-          imageUrl: path,
-          fit: BoxFit.cover,
-          placeholder: (c, u) => Container(color: kDarkGrey),
-          errorWidget: (c, u, e) => Container(
-              color: kDarkGrey,
-              child: const Icon(Icons.broken_image,
-                  color: Colors.white54, size: 48)));
-    } else if (path.length > 200) {
-      // Treat as Base64 if very long and not a URL
-      try {
-        return Image.memory(
-          base64Decode(path),
-          fit: BoxFit.cover,
-          errorBuilder: (c, e, s) => Container(
-              color: kDarkGrey,
-              child: const Icon(Icons.broken_image,
-                  color: Colors.white54, size: 48)),
-        );
-      } catch (e) {
-        return Container(
-            color: kDarkGrey,
-            child: const Icon(Icons.broken_image,
-                color: Colors.white54, size: 48));
-      }
-    } else {
-      return Image.asset(path,
-          fit: BoxFit.cover,
-          errorBuilder: (c, e, s) => Container(
-              color: kDarkGrey,
-              child: const Icon(Icons.broken_image,
-                  color: Colors.white54, size: 48)));
-    }
+    return AppImage(
+      imageUrl: path,
+      fit: BoxFit.cover,
+      errorWidget: Container(
+        color: kDarkGrey,
+        child: const Icon(Icons.broken_image, color: Colors.white54, size: 48),
+      ),
+    );
   }
 
   Widget _buildTagChip(String id) {

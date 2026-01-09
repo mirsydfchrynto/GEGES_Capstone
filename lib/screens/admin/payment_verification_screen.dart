@@ -1,11 +1,11 @@
 // lib/screens/admin/payment_verification_screen.dart
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
 const Color kDarkGrey = Color(0xFF1E1E1E);
@@ -413,8 +413,8 @@ class _PaymentVerificationScreenState extends State<PaymentVerificationScreen> {
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 180,
-                  child: Image.memory(
-                    base64Decode(q.paymentProofBase64!),
+                  child: AppImage(
+                    imageUrl: q.paymentProofBase64!,
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -426,8 +426,9 @@ class _PaymentVerificationScreenState extends State<PaymentVerificationScreen> {
                       builder: (dc) => AlertDialog(
                         backgroundColor: kDarkGrey,
                         content: SingleChildScrollView(
-                          child: Image.memory(
-                            base64Decode(q.paymentProofBase64!),
+                          child: AppImage(
+                            imageUrl: q.paymentProofBase64!,
+                            fit: BoxFit.contain,
                           ),
                         ),
                         actions: [

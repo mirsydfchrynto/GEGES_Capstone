@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
 const Color kDarkGrey = Color(0xFF1E1E1E);
@@ -141,12 +142,13 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                         CircleAvatar(
                           radius: 50,
                           backgroundColor: kDarkGrey,
-                          backgroundImage: _photoBase64 != null 
-                            ? MemoryImage(base64Decode(_photoBase64!)) 
-                            : null,
-                          child: _photoBase64 == null 
-                            ? const Icon(Icons.person, size: 50, color: Colors.white54) 
-                            : null,
+                          child: _photoBase64 != null 
+                            ? AppImage(
+                                base64: _photoBase64,
+                                borderRadius: BorderRadius.circular(50),
+                                fit: BoxFit.cover,
+                              )
+                            : const Icon(Icons.person, size: 50, color: Colors.white54),
                         ),
                         Positioned(
                           bottom: 0,

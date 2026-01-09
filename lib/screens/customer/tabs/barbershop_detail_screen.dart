@@ -1,7 +1,6 @@
 // NAMA FILE: lib/screens/customer/barbershop_detail_screen.dart
 
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:geges_smartbarber/models/barbershop.dart';
 // Import Halaman Tujuan (Booking)
 import 'package:geges_smartbarber/screens/customer/appointment_screen.dart';
@@ -13,8 +12,8 @@ import 'package:geges_smartbarber/screens/customer/tabs/album_tab.dart';
 // --- IMPORT BARU ---
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
 // ------------------
 
 class BarbershopDetailScreen extends StatefulWidget {
@@ -142,56 +141,10 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
   // ------------------------------------------
 
   Widget _buildHeaderImage(String path) {
-    Widget img;
-    if (path.startsWith('http')) {
-      img = CachedNetworkImage(
-        imageUrl: path,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => Container(color: kDarkGrey),
-        errorWidget: (context, url, error) => Container(
-          color: kDarkGrey,
-          child: const Center(
-            child: Icon(Icons.broken_image, color: kBrownAccent, size: 50),
-          ),
-        ),
-      );
-    } else if (path.length > 200) {
-      try {
-        img = Image.memory(
-          base64Decode(path),
-          fit: BoxFit.cover,
-          errorBuilder: (c, e, s) => Container(
-            color: kDarkGrey,
-            child: const Center(
-              child: Icon(Icons.broken_image, color: kBrownAccent, size: 50),
-            ),
-          ),
-        );
-      } catch (e) {
-        img = Container(
-          color: kDarkGrey,
-          child: const Center(
-            child: Icon(Icons.broken_image, color: kBrownAccent, size: 50),
-          ),
-        );
-      }
-    } else {
-      img = Image.asset(
-        path,
-        fit: BoxFit.cover,
-        errorBuilder: (c, e, s) => Container(
-          color: kDarkGrey,
-          child: const Center(
-            child: Icon(Icons.broken_image, color: kBrownAccent, size: 50),
-          ),
-        ),
-      );
-    }
-
     return Stack(
       fit: StackFit.expand,
       children: [
-        img,
+        AppImage(imageUrl: path, fit: BoxFit.cover),
         Container(color: Colors.black.withValues(alpha: 0.3)), // Overlay gelap
       ],
     );

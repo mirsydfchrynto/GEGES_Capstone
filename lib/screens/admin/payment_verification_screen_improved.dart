@@ -3,9 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'dart:convert';
 
 import 'package:geges_smartbarber/services/booking_anti_duplicate_service.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
 
 class PaymentVerificationScreenImproved extends StatefulWidget {
   final String? barbershopId;
@@ -89,11 +89,12 @@ class _PaymentVerificationScreenImprovedState extends State<PaymentVerificationS
           if (proof != null) 
             GestureDetector(
               onTap: () => _showFullImage(proof),
-              child: ClipRRect(
+              child: AppImage(
+                imageUrl: proof,
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
                 borderRadius: BorderRadius.circular(8),
-                child: proof.toString().startsWith('http') 
-                  ? Image.network(proof, height: 150, width: double.infinity, fit: BoxFit.cover)
-                  : Image.memory(base64Decode(proof), height: 150, width: double.infinity, fit: BoxFit.cover, cacheWidth: 500),
               ),
             ),
           
@@ -119,7 +120,7 @@ class _PaymentVerificationScreenImprovedState extends State<PaymentVerificationS
   void _showFullImage(String proof) {
     showDialog(context: context, builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
-      child: InteractiveViewer(child: proof.startsWith('http') ? Image.network(proof) : Image.memory(base64Decode(proof))),
+      child: InteractiveViewer(child: AppImage(imageUrl: proof, fit: BoxFit.contain)),
     ));
   }
 

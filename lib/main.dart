@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -15,6 +16,8 @@ import 'package:geges_smartbarber/screens/admin/tenant_requests_screen.dart';
 import 'package:geges_smartbarber/screens/legal/terms_page.dart';
 import 'package:geges_smartbarber/screens/legal/privacy_page.dart';
 import 'package:geges_smartbarber/screens/splash_screen.dart';
+import 'package:geges_smartbarber/services/network_service.dart'; // Import NetworkService
+import 'package:geges_smartbarber/widgets/offline_screen.dart'; // Import OfflineScreen
 
 // ==========================================
 // file: lib/main.dart
@@ -32,7 +35,10 @@ void main() async {
   // - ensureInitialized() memastikan flutter binding sudah siap
   // - harus dijalankan sebelum await firebase initialization
   // - tanpa ini, firebase init bisa failed
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  
+  // Tahan Native Splash sampai app siap (agar tidak black screen)
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   // penjelasan initializeDateFormatting:
   // - setup locale untuk menampilkan tanggal dalam bahasa indonesia
@@ -56,11 +62,16 @@ void main() async {
     } catch (_) {
       // non-fatal: continue even if notification init fails
     }
+    // Initialize Network Service
+    NetworkService().init();
     // firebase initialization berhasil
   } catch (e) {
     // firebase initialization error (akan di-log via crashlytics nanti)
     rethrow;
   }
+  
+  // Hapus native splash setelah inisialisasi selesai
+  FlutterNativeSplash.remove();
 
   // penjelasan runApp:
   // - runApp() menjalankan aplikasi flutter
@@ -98,6 +109,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    // NetworkService dispose handled by singleton pattern usually, or kept alive
     super.dispose();
   }
 
@@ -154,6 +166,20 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       locale: provider.locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
+
+      // Global Builder untuk Offline Handling
+      builder: (context, child) {
+        return StreamBuilder<NetworkStatus>(
+          stream: NetworkService().stream,
+          initialData: NetworkStatus.online,
+          builder: (context, snapshot) {
+            if (snapshot.data == NetworkStatus.offline) {
+              return const OfflineScreen();
+            }
+            return child ?? const SizedBox.shrink();
+          },
+        );
+      },
 
       // admin routes
       routes: {

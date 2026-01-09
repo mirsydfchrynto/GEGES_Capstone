@@ -13,14 +13,14 @@ class StyleScanService {
     this.timeout = const Duration(seconds: 30),
   });
 
-  /// Uploads [imageFile] to the `/detect` endpoint and returns the parsed JSON map.
+  /// Uploads [imageFile] to the `/predict` endpoint and returns the parsed JSON map.
   /// Throws on non-200 responses or network errors.
   Future<Map<String, dynamic>> scanImage(File imageFile) async {
-    final uri = Uri.parse('${baseUrl.replaceAll(r"/\z", '')}/detect');
+    final uri = Uri.parse('${baseUrl.replaceAll(r"/\z", '')}/predict');
 
     final request = http.MultipartRequest('POST', uri);
     request.files.add(
-      await http.MultipartFile.fromPath('image', imageFile.path),
+      await http.MultipartFile.fromPath('file', imageFile.path),
     );
 
     final streamed = await request.send().timeout(timeout);

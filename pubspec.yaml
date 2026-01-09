@@ -41,7 +41,11 @@ dependencies:
   geocoding: ^4.0.0
   flutter_localizations:
     sdk: flutter
-
+  flutter_markdown: ^0.7.7+1
+  shared_preferences: ^2.5.4
+  connectivity_plus: ^7.0.0
+  internet_connection_checker_plus: ^2.9.1+2
+  flutter_native_splash: ^2.4.0
 
 dev_dependencies:
   flutter_test:
@@ -56,6 +60,13 @@ dev_dependencies:
   fake_cloud_firestore: ^3.1.0
   firebase_auth_mocks: ^0.14.1
   network_image_mock: ^2.1.1
+
+flutter_native_splash:
+  color: "#C3A47B"
+  image: assets/images/ivon.png
+  android_12:
+    image: assets/images/ivon.png
+    icon_background_color: "#C3A47B"
 
 flutter:
   uses-material-design: true

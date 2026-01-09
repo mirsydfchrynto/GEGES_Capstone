@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
+import 'package:geges_smartbarber/utils/image_helper.dart';
 
 class BarbershopGalleryScreen extends StatefulWidget {
   final Barbershop barbershop;
@@ -136,7 +137,7 @@ class _BarbershopGalleryScreenState extends State<BarbershopGalleryScreen> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.memory(base64Decode(img), fit: BoxFit.cover),
+                          child: Image.memory(ImageHelper.decodeBase64(img), fit: BoxFit.cover),
                         ),
                         Positioned(
                           top: 5,

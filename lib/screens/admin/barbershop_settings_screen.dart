@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
 
 class BarbershopSettingsScreen extends StatefulWidget {
   final Barbershop barbershop;
@@ -211,22 +211,19 @@ class _BarbershopSettingsScreenState extends State<BarbershopSettingsScreen> {
                           color: kDarkSurface,
                           shape: BoxShape.circle,
                           border: Border.all(color: kBrownAccent, width: 2),
-                          image: _imageFile != null
-                              ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
-                              : (_currentImageUrl != null && _currentImageUrl!.isNotEmpty)
-                                  ? DecorationImage(
-                                      image: _currentImageUrl!.startsWith('http')
-                                          ? CachedNetworkImageProvider(_currentImageUrl!)
-                                          : (_currentImageUrl!.length > 200 // Base64 check roughly
-                                              ? MemoryImage(base64Decode(_currentImageUrl!))
-                                              : NetworkImage(_currentImageUrl!) as ImageProvider),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
                         ),
-                        child: (_imageFile == null && (_currentImageUrl == null || _currentImageUrl!.isEmpty))
-                            ? const Icon(Icons.add_a_photo, color: kBrownAccent, size: 40)
-                            : null,
+                        child: _imageFile != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(120),
+                                child: Image.file(_imageFile!, fit: BoxFit.cover),
+                              )
+                            : (_currentImageUrl != null && _currentImageUrl!.isNotEmpty)
+                                ? AppImage(
+                                    imageUrl: _currentImageUrl,
+                                    borderRadius: BorderRadius.circular(120),
+                                    fit: BoxFit.cover,
+                                  )
+                                : const Icon(Icons.add_a_photo, color: kBrownAccent, size: 40),
                       ),
                     ),
                     const SizedBox(height: 10),

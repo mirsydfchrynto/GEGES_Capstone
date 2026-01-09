@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
 import 'package:geges_smartbarber/screens/auth_gate.dart';
@@ -44,41 +45,30 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
         .format(amount);
   }
 
-  Future<void> _handleCancellation() async {
+  Future<void> _handleRequestRefund() async {
     final l10n = AppLocalizations.of(context)!;
-    
-    final payment = widget.data['payment'] as Map<String, dynamic>?;
-    final hasProof = (payment?['payment_proof_base64'] != null) || (payment?['proofUrl'] != null);
-    final isRefund = hasProof;
-
     String? reason = await showDialog<String>(
       context: context,
       builder: (ctx) {
         String input = '';
         return AlertDialog(
           backgroundColor: kDarkGrey,
-          title: Text(isRefund ? l10n.statusRefundProcessing : l10n.cancelRegistrationTitle, style: const TextStyle(color: Colors.white)),
+          title: Text(l10n.cancelRegistrationTitle, style: const TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(isRefund 
-                ? l10n.cancelRegistrationWarning 
-                : l10n.cancelRegistrationTitle,
-                style: const TextStyle(color: kTextGrey),
-              ),
-              if (isRefund) ...[
-                const SizedBox(height: 16),
-                TextField(
-                  onChanged: (v) => input = v,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: l10n.reason,
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: kBrownAccent)),
-                  ),
+              Text(l10n.cancelRegistrationWarning, style: const TextStyle(color: kTextGrey)),
+              const SizedBox(height: 16),
+              TextField(
+                onChanged: (v) => input = v,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: l10n.reason,
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: kBrownAccent)),
                 ),
-              ],
+              ),
             ],
           ),
           actions: [
@@ -89,10 +79,10 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: kDanger),
               onPressed: () {
-                 if (isRefund && input.trim().isEmpty) return;
-                 Navigator.pop(ctx, isRefund ? input : 'Dibatalkan User');
+                 if (input.trim().isEmpty) return;
+                 Navigator.pop(ctx, input);
               },
-              child: Text(isRefund ? l10n.btnYesCancel : l10n.cancel),
+              child: Text(l10n.btnYesCancel),
             ),
           ],
         );
@@ -102,11 +92,21 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
     if (reason != null) {
       setState(() => _isLoading = true);
       try {
-        await widget.tenantService.cancelRegistrationByOwner(
-          tenantId: widget.tenantId,
-          userId: widget.currentUserId,
-          reason: reason,
-        );
+        if (widget.tenantService is TenantService) {
+           await (widget.tenantService as TenantService).requestCancellation(
+            tenantId: widget.tenantId,
+            userId: widget.currentUserId,
+            reason: reason,
+          );
+        } else {
+           // Fallback for contract (mostly tests)
+           await widget.tenantService.cancelRegistrationByOwner(
+            tenantId: widget.tenantId,
+            userId: widget.currentUserId,
+            reason: reason,
+          );
+        }
+        
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.msgCancelSent)),
@@ -117,6 +117,44 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.errCancelFailed(e.toString()))),
         );
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleCancellation() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: kDarkGrey,
+        title: Text(l10n.cancelRegistrationTitle, style: const TextStyle(color: Colors.white)),
+        content: Text(l10n.cancelRegistrationWarning, style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.btnBack, style: const TextStyle(color: kTextGrey))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: kDanger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.btnYesCancel),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isLoading = true);
+      try {
+        await widget.tenantService.cancelRegistrationByOwner(
+          tenantId: widget.tenantId,
+          userId: widget.currentUserId,
+          reason: 'User cancelled before payment',
+        );
+        if (!mounted) return;
+        Navigator.pop(context);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal membatalkan: $e')));
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }
@@ -147,6 +185,11 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
     final payment = widget.data['payment'] as Map<String, dynamic>?;
     final hasProof = (payment?['payment_proof_base64'] != null) || (payment?['proofUrl'] != null);
     final verificationStatus = payment?['verificationStatus'];
+    
+    // New fields for refund
+    final refundStatus = widget.data['refund_status'] as String?;
+    final refundProofUrl = widget.data['refund_proof_url'] as String?;
+    final cancelReason = invoice?['cancel_reason'] as String?;
 
     final adminEmail = widget.data['admin_email'] ?? widget.data['owner_email'];
     final tempPassword = widget.data['temp_password'] ?? l10n.contactAdmin;
@@ -154,11 +197,21 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
     String statusText = l10n.statusAwaitingPayment;
     Color statusColor = kBrownAccent;
     IconData statusIcon = Icons.hourglass_empty;
+    String? statusDesc;
     
     if (status == 'active') {
       statusText = l10n.statusActiveCompleted;
       statusColor = kSuccess;
       statusIcon = Icons.check_circle_outline;
+    } else if (status == 'cancellation_requested') {
+      statusText = l10n.statusRefundWaiting;
+      statusColor = kWarning;
+      statusIcon = Icons.access_time_filled;
+      statusDesc = l10n.descRefundWaiting;
+    } else if (status == 'cancelled' && refundStatus == 'completed') {
+      statusText = l10n.statusRefundCompleted;
+      statusColor = Colors.teal;
+      statusIcon = Icons.assignment_return;
     } else if (status == 'rejected' || status == 'cancelled' || invStatus == 'cancelled_by_owner') {
       statusText = l10n.statusCancelledRejected;
       statusColor = kDanger;
@@ -167,11 +220,7 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
       statusText = l10n.statusWaitingVerification;
       statusColor = kInfo;
       statusIcon = Icons.verified_user_outlined;
-    } else if (status == 'cancellation_requested') {
-      statusText = l10n.statusRefundProcessing;
-      statusColor = kWarning;
-      statusIcon = Icons.history_outlined;
-    }
+    } 
 
     return Scaffold(
       backgroundColor: kSurface,
@@ -195,6 +244,15 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
                   children: [
                     // Status Badge Card
                     _buildStatusCard(statusText, statusColor, statusIcon),
+                    if (statusDesc != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          statusDesc,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ),
                     const SizedBox(height: 24),
 
                     // Main Info Card
@@ -207,8 +265,14 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
                       const SizedBox(height: 24),
                     ],
 
-                    // Cancellation Info
-                    if (status == 'cancelled' || status == 'rejected') ...[
+                    // Refund Completed Info
+                    if (status == 'cancelled' && refundStatus == 'completed') ...[
+                      _buildRefundCompletedCard(l10n, cancelReason, refundProofUrl),
+                      const SizedBox(height: 24),
+                    ],
+
+                    // Cancellation Info (Standard)
+                    if ((status == 'cancelled' || status == 'rejected') && refundStatus != 'completed') ...[
                       _buildCancellationCard(l10n, invoice, widget.data),
                       const SizedBox(height: 24),
                     ],
@@ -467,6 +531,54 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
     );
   }
 
+  Widget _buildRefundCompletedCard(AppLocalizations l10n, String? adminNote, String? proofUrl) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.teal.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.teal.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.teal),
+              const SizedBox(width: 8),
+              Text('REFUND SELESAI', style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.w900, fontSize: 14)),
+            ],
+          ),
+          if (adminNote != null && adminNote.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text('${l10n.adminNote}:', style: const TextStyle(color: kTextGrey, fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(adminNote, style: const TextStyle(color: Colors.white, fontSize: 14)),
+          ],
+          if (proofUrl != null) ...[
+            const SizedBox(height: 24),
+            Text(l10n.viewRefundProof, style: const TextStyle(color: kTextGrey, fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => launchUrl(Uri.parse(proofUrl)),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CachedNetworkImage(
+                  imageUrl: proofUrl,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (c, u) => Container(color: Colors.black26, child: const Center(child: CircularProgressIndicator())),
+                  errorWidget: (c, u, e) => Container(color: Colors.black26, child: const Icon(Icons.broken_image, color: Colors.white24)),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildActionButtons(AppLocalizations l10n, String status, bool hasProof, int fee, Map<String, dynamic>? invoice) {
     if (status == 'active' || status == 'cancelled' || status == 'rejected' || status == 'cancellation_requested') {
       return const SizedBox.shrink();
@@ -504,6 +616,9 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
               child: Text(l10n.btnPayNow, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
             ),
           ),
+        
+        // Show "Batalkan & Minta Refund" if paid/waiting verification
+        // Show "Batalkan Pendaftaran" if unpaid
         const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
@@ -514,8 +629,11 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
               side: const BorderSide(color: kDanger),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
-            onPressed: _handleCancellation,
-            child: Text(l10n.btnCancelRegistration, style: const TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: (hasProof) ? _handleRequestRefund : _handleCancellation,
+            child: Text(
+              hasProof ? l10n.btnRequestRefund : l10n.btnCancelRegistration, 
+              style: const TextStyle(fontWeight: FontWeight.bold)
+            ),
           ),
         ),
       ],

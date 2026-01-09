@@ -1,16 +1,12 @@
 // lib/screens/customer/booking_detail_screen.dart
-import 'dart:async';
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart'; // Wajib ada provider
 import 'package:geges_smartbarber/models/queue.dart';
-import 'package:geges_smartbarber/models/barbershop.dart';
-import 'package:geges_smartbarber/models/barberman.dart';
-import 'package:geges_smartbarber/models/service.dart' as model;
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
+import 'package:geges_smartbarber/viewmodels/booking_detail_viewmodel.dart';
 import 'payment_screen.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
@@ -21,7 +17,7 @@ const Color kSuccess = Color(0xFF4CAF50);
 const Color kError = Color(0xFFD32F2F);
 const Color kWarning = Color(0xFFFFA000);
 
-class BookingDetailScreen extends StatefulWidget {
+class BookingDetailScreen extends StatelessWidget {
   final String queueId;
   final QueueService? queueService;
   final BarbershopService? barbershopService;
@@ -34,106 +30,30 @@ class BookingDetailScreen extends StatefulWidget {
   });
 
   @override
-  State<BookingDetailScreen> createState() => _BookingDetailScreenState();
+  Widget build(BuildContext context) {
+    // Inject ViewModel di sini
+    return ChangeNotifierProvider(
+      create: (_) => BookingDetailViewModel(
+        queueId: queueId,
+        queueService: queueService,
+        barbershopService: barbershopService,
+      ),
+      child: const _BookingDetailView(),
+    );
+  }
 }
 
-class _BookingDetailScreenState extends State<BookingDetailScreen> {
-  late final QueueService _queueService;
-  late final BarbershopService _barbershopService;
-  
-  Barbershop? _barbershop;
-  Barberman? _barberman;
-  List<model.Service> _services = [];
-  bool _metadataLoaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _queueService = widget.queueService ?? QueueService();
-    _barbershopService = widget.barbershopService ?? BarbershopService();
-    _loadMetadata();
-  }
-
-  /// Load static metadata once (shop, barber, services names)
-  Future<void> _loadMetadata() async {
-    try {
-      final q = await _queueService.getQueueById(widget.queueId);
-      if (q != null) {
-        final results = await Future.wait([
-          _barbershopService.getBarbershopById(q.barbershopId),
-          _barbershopService.getBarbermanById(q.barbermanId),
-          _loadServices(q.serviceIds ?? (q.serviceId != null ? [q.serviceId!] : [])),
-        ]);
-        
-        if (mounted) {
-          setState(() {
-            _barbershop = results[0] as Barbershop?;
-            _barberman = results[1] as Barberman?;
-            _services = results[2] as List<model.Service>;
-            _metadataLoaded = true;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Error loading metadata: $e");
-    }
-  }
-
-  Future<List<model.Service>> _loadServices(List<String> ids) async {
-    if (ids.isEmpty) return [];
-    final all = await _barbershopService.getAllServices();
-    return all.where((s) => ids.contains(s.id)).toList();
-  }
-
-  Future<void> _contactSupport(String bookingId) async {
-    final String message = "Halo Admin Geges SmartBarber, saya butuh bantuan untuk Booking ID: $bookingId";
-    final Uri whatsappUrl = Uri.parse("https://wa.me/6281234567890?text=${Uri.encodeComponent(message)}");
-    if (!await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal membuka WhatsApp support')),
-        );
-      }
-    }
-  }
-
-  Future<void> _handleWithdraw(String qId) async {
-    final confirm = await _showConfirmDialog('Tarik Pengajuan?', 'Batalkan permintaan refund dan aktifkan kembali pesanan Anda?');
-    if (confirm == true) {
-      try {
-        await _queueService.withdrawCancellationRequest(qId);
-      } catch (e) { _showSnack('Gagal: $e', isError: true); }
-    }
-  }
-
-  Future<void> _handleRequestCancellation(String qId) async {
-    final TextEditingController reasonCtrl = TextEditingController();
-    final confirm = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-      backgroundColor: kDarkGrey,
-      title: const Text('Minta Refund', style: TextStyle(color: Colors.white)),
-      content: TextField(
-        controller: reasonCtrl, maxLines: 3, style: const TextStyle(color: Colors.white),
-        decoration: const InputDecoration(hintText: 'Alasan pembatalan...', border: OutlineInputBorder()),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Batal')),
-        ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Kirim')),
-      ],
-    ));
-
-    if (confirm == true && reasonCtrl.text.isNotEmpty) {
-      try {
-        await _queueService.customerRequestCancellation(qId, reason: reasonCtrl.text.trim());
-      } catch (e) { _showSnack('Gagal: $e', isError: true); }
-    }
-  }
+class _BookingDetailView extends StatelessWidget {
+  const _BookingDetailView();
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = Provider.of<BookingDetailViewModel>(context);
+
     return StreamBuilder<Queue?>(
-      stream: _queueService.streamQueueById(widget.queueId),
+      stream: viewModel.queueStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting && !_metadataLoaded) {
+        if (snapshot.connectionState == ConnectionState.waiting && !viewModel.metadataLoaded) {
           return const Scaffold(backgroundColor: kSurface, body: Center(child: CircularProgressIndicator(color: kBrownAccent)));
         }
         
@@ -155,21 +75,20 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             centerTitle: true,
           ),
           body: RefreshIndicator(
-            onRefresh: _loadMetadata,
+            onRefresh: viewModel.loadMetadata,
             color: kBrownAccent,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Column(
                 children: [
-                  _buildTicketCard(queue, hasPaid, isVerified, isRequested),
-                  // FIX REFUND VISIBILITY
+                  _buildTicketCard(context, viewModel, queue, hasPaid, isVerified, isRequested),
                   if (queue.isRefunded == true || queue.status == QueueStatus.cancelled || queue.requestStatus == RequestStatus.rejected) 
-                    _buildRefundInfo(queue),
+                    _buildRefundInfo(context, queue),
                   const SizedBox(height: 24),
                   _buildTimelineSection(queue, hasPaid, isVerified, isRequested),
                   const SizedBox(height: 32),
-                  _buildActionButtons(queue, hasPaid, isVerified, isRequested),
+                  _buildActionButtons(context, viewModel, queue, hasPaid, isVerified, isRequested),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -180,7 +99,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     );
   }
 
-  Widget _buildTicketCard(Queue queue, bool hasPaid, bool isVerified, bool isRequested) {
+  Widget _buildTicketCard(BuildContext context, BookingDetailViewModel vm, Queue queue, bool hasPaid, bool isVerified, bool isRequested) {
     return Container(
       decoration: BoxDecoration(
         color: kDarkGrey,
@@ -194,9 +113,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                Text(_barbershop?.name.toUpperCase() ?? 'SMART BARBER', style: const TextStyle(color: kBrownAccent, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 2)),
+                Text(vm.barbershop?.name.toUpperCase() ?? 'SMART BARBER', style: const TextStyle(color: kBrownAccent, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 2)),
                 const SizedBox(height: 4),
-                Text(_barbershop?.addres ?? 'Detail Alamat...', textAlign: TextAlign.center, style: const TextStyle(color: kTextGrey, fontSize: 12)),
+                Text(vm.barbershop?.addres ?? 'Detail Alamat...', textAlign: TextAlign.center, style: const TextStyle(color: kTextGrey, fontSize: 12)),
                 const SizedBox(height: 16),
                 _statusBadge(queue, hasPaid, isVerified, isRequested),
               ],
@@ -224,8 +143,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 CircleAvatar(
                   radius: 22,
                   backgroundColor: kBrownAccent.withValues(alpha: 0.2),
-                  backgroundImage: _barberman?.imageUrl != null ? NetworkImage(_barberman!.imageUrl!) : null,
-                  child: _barberman?.imageUrl == null ? const Icon(Icons.person, color: kBrownAccent) : null,
+                  backgroundImage: vm.barberman?.imageUrl != null ? NetworkImage(vm.barberman!.imageUrl!) : null,
+                  child: vm.barberman?.imageUrl == null ? const Icon(Icons.person, color: kBrownAccent) : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -233,7 +152,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('HAIRSTYLIST', style: TextStyle(color: kTextGrey, fontSize: 10, fontWeight: FontWeight.bold)),
-                      Text(_barberman?.name ?? 'Assigned by System', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                      Text(vm.barberman?.name ?? 'Assigned by System', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
@@ -252,7 +171,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               children: [
                 const Text('DETAIL LAYANAN', style: TextStyle(color: kTextGrey, fontSize: 10, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
-                ..._services.map((s) => Padding(
+                ...vm.services.map((s) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -414,7 +333,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         const Text('TRACKING STATUS', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 20),
         _buildStep('Booking Dibuat', 'Pesanan Anda telah diterima sistem', true),
-        _buildStep('Pembayaran', hasPaid ? 'Bukti transfer telah diterima' : 'Menunggu penyelesaian pembayaran', hasPaid),
+        _buildStep('Pembayaran', actuallyPaid(queue, hasPaid) ? 'Bukti transfer telah diterima' : 'Menunggu penyelesaian pembayaran', actuallyPaid(queue, hasPaid)),
         _buildStep('Verifikasi Admin', adminVerified ? 'Pembayaran valid & Jadwal terkunci' : 'Menunggu validasi pembayaran', adminVerified),
         _buildStep('Sedang Dicukur', isOngoing ? 'Hairstylist sedang memberikan layanan' : 'Menunggu giliran layanan', isOngoing),
         if (isRequested) _buildStep('Refund', 'Dana dalam proses pengembalian', true, isCurrent: true),
@@ -423,7 +342,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     );
   }
 
-  Widget _buildRefundInfo(Queue queue) {
+  bool actuallyPaid(Queue q, bool hasPaid) {
+    return hasPaid || (q.paymentProofUrl != null && q.paymentProofUrl!.isNotEmpty);
+  }
+
+  Widget _buildRefundInfo(BuildContext context, Queue queue) {
     final proof = queue.refundProofBase64;
     final bool isTextProof = proof != null && proof.startsWith('REF:');
     final String proofText = isTextProof ? proof.substring(4) : (proof ?? '-');
@@ -466,24 +389,21 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             else
               GestureDetector(
                 onTap: () => _showFullImage(context, proof),
-                child: Container(
-                  height: 180,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white10),
-                    image: DecorationImage(
-                      image: MemoryImage(base64Decode(proof)),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    AppImage(
+                      imageUrl: proof,
+                      height: 180,
+                      borderRadius: BorderRadius.circular(12),
                       fit: BoxFit.cover,
+                      errorWidget: Container(
+                        color: Colors.black26,
+                        child: const Icon(Icons.broken_image, color: Colors.white24),
+                      ),
                     ),
-                  ),
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(20)),
-                      child: const Icon(Icons.zoom_in, color: Colors.white, size: 20),
-                    ),
-                  ),
+                    const Icon(Icons.zoom_in, color: Colors.white70, size: 40),
+                  ],
                 ),
               )
           ],
@@ -493,54 +413,49 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   void _showFullImage(BuildContext context, String base64) {
-    try {
-      final Uint8List bytes = base64Decode(base64);
-      showDialog(
-        context: context,
-        builder: (_) => Dialog(
-          backgroundColor: Colors.black,
-          insetPadding: const EdgeInsets.all(10),
-          child: Stack(
-            children: [
-              Center(
-                child: InteractiveViewer(
-                  minScale: 0.5,
-                  maxScale: 4.0,
-                  child: Image.memory(bytes, fit: BoxFit.contain),
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(10),
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: AppImage(imageUrl: base64, fit: BoxFit.contain),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: CircleAvatar(
-                  backgroundColor: Colors.black54,
-                  child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
-    } catch (e) {
-      _showSnack('Gagal memuat gambar bukti', isError: true);
-    }
+      ),
+    );
   }
 
-  Widget _buildActionButtons(Queue queue, bool hasPaid, bool isVerified, bool isRequested) {
+  Widget _buildActionButtons(BuildContext context, BookingDetailViewModel vm, Queue queue, bool hasPaid, bool isVerified, bool isRequested) {
     // 1. Status: Refund Requested -> Withdraw option
     if (isRequested) {
       return Column(
         children: [
           ElevatedButton(
-            onPressed: () => _handleWithdraw(queue.id), 
+            onPressed: () => vm.handleWithdraw(context), 
             style: ElevatedButton.styleFrom(backgroundColor: Colors.white10, minimumSize: const Size.fromHeight(50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), 
             child: const Text('TARIK PENGAJUAN REFUND', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
           ),
           const SizedBox(height: 16),
-          _buildCustomerServiceButton(queue.id),
+          _buildCustomerServiceButton(context, vm, queue.id),
         ],
       );
     }
@@ -549,10 +464,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     if (queue.status == QueueStatus.cancelled || queue.status == QueueStatus.served) {
       return Column(
         children: [
-          _buildCustomerServiceButton(queue.id),
+          _buildCustomerServiceButton(context, vm, queue.id),
           const SizedBox(height: 16),
           OutlinedButton(
-            onPressed: () => _handleDeleteOrder(queue.id),
+            onPressed: () => vm.handleDeleteOrder(context),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Colors.white24),
               minimumSize: const Size.fromHeight(50),
@@ -573,7 +488,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           child: const Text('BAYAR SEKARANG', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         ),
         const SizedBox(height: 16),
-        TextButton(onPressed: () => _showCancelUnpaidDialog(queue.id), child: const Text('Batalkan Pesanan', style: TextStyle(color: kError))),
+        TextButton(onPressed: () => vm.cancelUnpaidOrder(context), child: const Text('Batalkan Pesanan', style: TextStyle(color: kError))),
       ]);
     }
 
@@ -598,7 +513,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 style: TextStyle(color: Colors.white70, fontSize: 13)
               ),
               const SizedBox(height: 16),
-              _buildCustomerServiceButton(queue.id),
+              _buildCustomerServiceButton(context, vm, queue.id),
             ]),
           ),
           const SizedBox(height: 12),
@@ -616,7 +531,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       return Column(
         children: [
           OutlinedButton(
-            onPressed: () => _handleRequestCancellation(queue.id), 
+            onPressed: () => vm.handleRequestCancellation(context), 
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: kWarning), 
               minimumSize: const Size.fromHeight(50), 
@@ -625,7 +540,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             child: const Text('MINTA REFUND / BATAL', style: TextStyle(color: kWarning, fontWeight: FontWeight.bold))
           ),
           const SizedBox(height: 16),
-          _buildCustomerServiceButton(queue.id),
+          _buildCustomerServiceButton(context, vm, queue.id),
         ],
       );
     }
@@ -633,9 +548,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     return const SizedBox.shrink();
   }
 
-  Widget _buildCustomerServiceButton(String bookingId) {
+  Widget _buildCustomerServiceButton(BuildContext context, BookingDetailViewModel vm, String bookingId) {
     return ElevatedButton.icon(
-      onPressed: () => _contactSupport(bookingId), 
+      onPressed: () => vm.contactSupport(context, bookingId), 
       icon: const Icon(Icons.chat_bubble_outline, size: 20, color: Colors.black), 
       label: const Text('HUBUNGI ADMIN', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900)),
       style: ElevatedButton.styleFrom(
@@ -645,42 +560,5 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
       ),
     );
-  }
-
-  Future<void> _handleDeleteOrder(String qId) async {
-    final confirm = await _showConfirmDialog('Hapus Pesanan?', 'Pesanan akan dihapus permanen dari riwayat Anda.');
-    if (confirm == true) {
-      try {
-        await _queueService.deleteQueue(qId);
-        if (mounted) Navigator.pop(context); // Close detail screen
-      } catch (e) {
-        _showSnack('Gagal menghapus: $e', isError: true);
-      }
-    }
-  }
-
-  Future<void> _showCancelUnpaidDialog(String qId) async {
-    final confirm = await _showConfirmDialog('Batal?', 'Pesanan belum dibayar dan akan langsung dibatalkan.');
-    if (confirm == true) {
-      try {
-        await _queueService.cancelQueue(qId);
-        if (!mounted) return;
-        Navigator.pop(context);
-      } catch (_) {
-        _showSnack('Gagal');
-      }
-    }
-  }
-
-  Future<bool?> _showConfirmDialog(String t, String d) {
-    return showDialog<bool>(context: context, builder: (c) => AlertDialog(backgroundColor: kDarkGrey, title: Text(t, style: const TextStyle(color: Colors.white)), content: Text(d, style: const TextStyle(color: Colors.white70)), actions: [
-      TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('KEMBALI')),
-      ElevatedButton(onPressed: () => Navigator.pop(c, true), style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent), child: const Text('OK', style: TextStyle(color: Colors.black))),
-    ]));
-  }
-
-  void _showSnack(String m, {bool isError = false}) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), backgroundColor: isError ? kError : kBrownAccent));
   }
 }

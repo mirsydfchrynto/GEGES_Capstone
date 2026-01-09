@@ -186,8 +186,8 @@ class TenantService implements TenantServiceContract {
     await _fs.collection('tenants').doc(tenantId).update({
       'status': 'cancellation_requested', 
       'cancellation_request': {
-        'requested_at': Timestamp.now(),
         'reason': reason,
+        'requested_at': FieldValue.serverTimestamp(),
         'requested_by': userId,
       },
       'history': FieldValue.arrayUnion([

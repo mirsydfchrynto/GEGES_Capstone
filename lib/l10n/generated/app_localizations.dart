@@ -974,30 +974,6 @@ abstract class AppLocalizations {
   /// **'Lihat Detail'**
   String get seeDetail;
 
-  /// No description provided for @btnCheckMyQueue.
-  ///
-  /// In id, this message translates to:
-  /// **'Cek antrian saya'**
-  String get btnCheckMyQueue;
-
-  /// No description provided for @btnHaircutRecommendation.
-  ///
-  /// In id, this message translates to:
-  /// **'Rekomendasi gaya rambut'**
-  String get btnHaircutRecommendation;
-
-  /// No description provided for @btnAskAddress.
-  ///
-  /// In id, this message translates to:
-  /// **'Tanyakan alamat'**
-  String get btnAskAddress;
-
-  /// No description provided for @btnCreateNewBooking.
-  ///
-  /// In id, this message translates to:
-  /// **'Buat Booking Baru'**
-  String get btnCreateNewBooking;
-
   /// No description provided for @chatHint.
   ///
   /// In id, this message translates to:
@@ -1573,6 +1549,36 @@ abstract class AppLocalizations {
   /// In id, this message translates to:
   /// **'Hubungi Bantuan / Komplain'**
   String get contactSupport;
+
+  /// No description provided for @statusRefundWaiting.
+  ///
+  /// In id, this message translates to:
+  /// **'MENUNGGU PROSES REFUND'**
+  String get statusRefundWaiting;
+
+  /// No description provided for @statusRefundCompleted.
+  ///
+  /// In id, this message translates to:
+  /// **'DIBATALKAN & REFUND SELESAI'**
+  String get statusRefundCompleted;
+
+  /// No description provided for @btnRequestRefund.
+  ///
+  /// In id, this message translates to:
+  /// **'Batalkan & Minta Refund'**
+  String get btnRequestRefund;
+
+  /// No description provided for @descRefundWaiting.
+  ///
+  /// In id, this message translates to:
+  /// **'Permintaan pembatalan Anda sedang ditinjau admin. Dana akan dikembalikan sesuai kebijakan.'**
+  String get descRefundWaiting;
+
+  /// No description provided for @adminNote.
+  ///
+  /// In id, this message translates to:
+  /// **'Catatan Admin'**
+  String get adminNote;
 }
 
 class _AppLocalizationsDelegate

@@ -54,7 +54,7 @@ void main() {
           testUserId: 'user1',
         ),
       ));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       // 2. Initial State: Not Favorite (Heart Outline)
       expect(find.byIcon(Icons.favorite_border), findsOneWidget);
@@ -63,7 +63,8 @@ void main() {
       // 3. Tap Favorite Button
       await tester.tap(find.byIcon(Icons.favorite_border));
       await tester.pump(); // Start animation/logic
-      await tester.pumpAndSettle(); // Wait for completion
+      await tester.pump(const Duration(milliseconds: 500)); // Wait for logic to complete
+      await tester.pump(); // Final rebuild after logic
 
       // 4. Verify UI Change (Heart Filled)
       expect(find.byIcon(Icons.favorite), findsOneWidget);
@@ -103,7 +104,7 @@ void main() {
 
       // 5. Tap Remove
       await tester.tap(removeBtn);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       // 6. Verify Removed from UI
       expect(find.text('Geges Test Shop'), findsNothing);

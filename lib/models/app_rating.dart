@@ -9,6 +9,8 @@ class AppRating {
   final String feedback;
   final String platform;
   final DateTime createdAt;
+  final String? sentiment;
+  final double? sentimentConfidence;
 
   AppRating({
     required this.id,
@@ -19,6 +21,8 @@ class AppRating {
     required this.feedback,
     required this.platform,
     required this.createdAt,
+    this.sentiment,
+    this.sentimentConfidence,
   });
 
   factory AppRating.fromFirestore(DocumentSnapshot doc) {
@@ -32,6 +36,8 @@ class AppRating {
       feedback: data['feedback'] ?? '',
       platform: data['platform'] ?? 'unknown',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
+      sentiment: data['sentiment'],
+      sentimentConfidence: (data['sentimentConfidence'] as num?)?.toDouble(),
     );
   }
 
@@ -45,6 +51,8 @@ class AppRating {
       'platform': platform,
       'createdAt': FieldValue.serverTimestamp(), // Firestore Server Timestamp
       'processed': false, // Flag untuk diolah model AI nantinya
+      'sentiment': sentiment,
+      'sentimentConfidence': sentimentConfidence,
     };
   }
 }   

@@ -1,102 +1,122 @@
 // lib/screens/customer/tabs/chat_assistant_screen.dart
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
-import 'package:geges_smartbarber/services/queue_service.dart';
+import 'package:flutter/services.dart'; // Untuk Clipboard
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'package:geges_smartbarber/services/auth_service.dart';
-import 'package:geges_smartbarber/services/barbershop_service.dart';
-import 'package:geges_smartbarber/models/queue.dart';
+import 'package:geges_smartbarber/services/chatbot_service.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 
-// --- THEME COLORS (Konsisten) ---
+// --- THEME COLORS ---
 const Color kBrownAccent = Color(0xFFC3A47B);
-const Color kSurface = Color(
-  0xFF121212,
-); // Dibuat sedikit lebih gelap dari 1B1B1B
+const Color kSurface = Color(0xFF121212);
 const Color kCardColor = Color(0xFF2C2C2C);
 const Color kUserBubble = Color(0xFFE9B01A);
 const Color kTextDark = Color(0xFF1B1B1B);
 const Color kTextGrey = Colors.white70;
+const Color kDarkGrey = Color(0xFF1E1E1E);
 
-// --- DUMMY DATA ---
-
+// --- MODELS ---
 class ChatMessage {
   final String text;
   final bool isUser;
-  final List<HaircutRecommendation>? recommendations;
 
-  ChatMessage({required this.text, required this.isUser, this.recommendations});
-}
+  ChatMessage({required this.text, required this.isUser});
 
-class HaircutRecommendation {
-  final String title;
-  final String imageUrl;
-  final String description; // Tambah deskripsi untuk card
-  final VoidCallback onTap;
+  Map<String, dynamic> toMap() => {'text': text, 'isUser': isUser};
 
-  HaircutRecommendation({
-    required this.title,
-    required this.imageUrl,
-    required this.onTap,
-    this.description = "Lihat detail gaya rambut ini.",
-  });
+  factory ChatMessage.fromMap(Map<String, dynamic> map) => ChatMessage(
+        text: map['text'] ?? '',
+        isUser: map['isUser'] ?? false,
+      );
 }
 
 // --- SCREEN WIDGET ---
-
 class ChatAssistantScreen extends StatefulWidget {
   final AuthService? authService;
-  const ChatAssistantScreen({super.key, this.authService});
+  final ChatbotService? chatbotService;
+
+  const ChatAssistantScreen({
+    super.key,
+    this.authService,
+    this.chatbotService,
+  });
 
   @override
   State<ChatAssistantScreen> createState() => _ChatAssistantScreenState();
 }
 
-class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
+class _ChatAssistantScreenState extends State<ChatAssistantScreen>
+    with AutomaticKeepAliveClientMixin {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final QueueService _queueService = QueueService();
-  final BarbershopService _barbershopService = BarbershopService();
+  late final ChatbotService _chatbotService;
   late final AuthService _authService;
   String? _uid;
 
-  // Data Dummy untuk Demo UI diperbarui
   final List<ChatMessage> _messages = [];
-  bool _isGiaTyping = false; // State untuk indikator mengetik
+  bool _isGiaTyping = false;
+
+  @override
+  bool get wantKeepAlive => true; // Tab tidak akan reset saat pindah
 
   @override
   void initState() {
     super.initState();
     _authService = widget.authService ?? AuthService();
+    _chatbotService = widget.chatbotService ?? ChatbotService();
     _uid = _authService.currentUser?.uid;
-    // Start initial conversation
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        _addGiaMessage(l10n.giaGreeting);
-      }
-    });
+    _loadChatHistory();
   }
 
-  void _addGiaMessage(
-    String text, {
-    List<HaircutRecommendation>? recommendations,
-  }) {
-    if (!mounted) return;
-    // Hapus indikator mengetik sebelum menambahkan pesan baru
-    _messages.removeWhere((msg) => msg.text == "GIA is typing...");
-    _isGiaTyping = false;
+  Future<void> _loadChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? chatData = prefs.getString('chat_history_${_uid ?? "guest"}');
 
+      if (chatData != null) {
+        final List<dynamic> decoded = jsonDecode(chatData);
+        if (mounted) {
+          setState(() {
+            _messages.addAll(decoded.map((m) => ChatMessage.fromMap(m)).toList());
+          });
+          _scrollToBottom();
+        }
+      } else {
+        // Initial Greeting
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && _messages.isEmpty) {
+            _addGiaMessage(AppLocalizations.of(context)!.giaGreeting);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading history: $e");
+    }
+  }
+
+  Future<void> _saveChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final List<Map<String, dynamic>> toSave = _messages
+          .where((m) => !m.text.contains("mengetik"))
+          .map((m) => m.toMap())
+          .toList();
+      await prefs.setString('chat_history_${_uid ?? "guest"}', jsonEncode(toSave));
+    } catch (e) {
+      debugPrint("Error saving history: $e");
+    }
+  }
+
+  void _addGiaMessage(String text) {
+    if (!mounted) return;
+    _messages.removeWhere((msg) => msg.text == "GIA sedang mengetik...");
     setState(() {
-      _messages.add(
-        ChatMessage(
-          text: text,
-          isUser: false,
-          recommendations: recommendations,
-        ),
-      );
+      _isGiaTyping = false;
+      _messages.add(ChatMessage(text: text, isUser: false));
     });
+    _saveChatHistory();
     _scrollToBottom();
   }
 
@@ -105,93 +125,30 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
       _messages.add(ChatMessage(text: text, isUser: true));
       _textController.clear();
     });
+    _saveChatHistory();
     _scrollToBottom();
-    // Simulate GIA response logic
     _handleGiaLogic(userText: text);
   }
 
   Future<void> _handleGiaLogic({required String userText}) async {
     if (!mounted) return;
-    final l10n = AppLocalizations.of(context)!;
-
-    // Tampilkan indikator mengetik
     setState(() {
       _isGiaTyping = true;
-      _messages.add(ChatMessage(text: "GIA is typing...", isUser: false));
+      _messages.add(ChatMessage(text: "GIA sedang mengetik...", isUser: false));
     });
     _scrollToBottom();
 
-    String lowerCaseText = userText.toLowerCase();
-
-    // LOGIKA NYATA (REAL LOGIC)
-    
-    // 1. CEK ANTRIAN
-    if (lowerCaseText.contains("antrian") || lowerCaseText.contains("booking") || lowerCaseText.contains("jadwal") || lowerCaseText.contains("queue")) {
-       final uid = _uid;
-       if (uid == null) {
-         _addGiaMessage(l10n.errMustLoginChat);
-         return;
-       }
-       
-       try {
-         // Ambil booking aktif
-         final queuesStream = _queueService.streamQueuesForCustomer(uid, statusFilter: ['waiting', 'awaiting_payment', 'booked', 'ongoing']);
-         final queues = await queuesStream.first; // Ambil snapshot pertama
-
-         if (!mounted) return; // FIX: Async gap check
-
-         if (queues.isEmpty) {
-           _addGiaMessage(l10n.noActiveBookings);
-         } else {
-           final q = queues.first;
-           final locale = Localizations.localeOf(context).toString();
-           final dateStr = DateFormat('EEEE, d MMM HH:mm', locale).format(q.bookingTime.toDate());
-           final statusStr = q.status.value.toUpperCase();
-           _addGiaMessage(l10n.activeBookingDesc(dateStr, statusStr, q.barbershopId));
-         }
-       } catch (e) {
-         _addGiaMessage(l10n.errCheckQueueFailed);
-       }
-       return;
-    }
-
-    // 2. REKOMENDASI GAYA (Ambil dari Services di DB)
-    if (lowerCaseText.contains("rekomendasi") || lowerCaseText.contains("gaya") || lowerCaseText.contains("potongan") || lowerCaseText.contains("style") || lowerCaseText.contains("recommendation")) {
-      try {
-        final services = await _barbershopService.getAllServices();
-        if (services.isEmpty) {
-           _addGiaMessage(l10n.errNoStylesAvailable);
-        } else {
-          // Ambil 3 acak
-          services.shuffle();
-          final top3 = services.take(3).toList();
-          
-          _addGiaMessage(l10n.popularServicesHeader);
-          _addGiaMessage("", recommendations: top3.map((s) => HaircutRecommendation(
-            title: s.name,
-            imageUrl: "https://via.placeholder.com/300?text=${s.name.replaceAll(' ', '+')}", // Placeholder jika tidak ada gambar
-            description: "${s.defaultDuration} ${l10n.chatMinutes} - Rp${s.price}",
-            onTap: () {}
-          )).toList());
-        }
-      } catch (e) {
-         _addGiaMessage(l10n.errLoadRecommendationFailed);
+    try {
+      // 100% Menggunakan API Anda (app.py)
+      final response = await _chatbotService.askQuestion(userText);
+      if (mounted) {
+        _addGiaMessage(response.answer);
       }
-      return;
+    } catch (e) {
+      if (mounted) {
+        _addGiaMessage(AppLocalizations.of(context)!.giaFallback);
+      }
     }
-    
-    // 3. STATIC INFO (Alamat, Jam Buka)
-    if (lowerCaseText.contains("alamat") || lowerCaseText.contains("lokasi") || lowerCaseText.contains("address") || lowerCaseText.contains("location")) {
-       _addGiaMessage(l10n.branchInfo);
-       return;
-    }
-
-    // DEFAULT FALLBACK
-    Future.delayed(const Duration(milliseconds: 1000), () {
-        if (mounted) {
-          _addGiaMessage(l10n.giaFallback);
-        }
-    });
   }
 
   void _handleSend() {
@@ -202,7 +159,6 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
   }
 
   void _scrollToBottom() {
-    // Memberi waktu untuk widget baru dirender sebelum scroll
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -216,6 +172,7 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: kSurface,
@@ -223,20 +180,15 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
         backgroundColor: kSurface,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: Text(
-          l10n.chatTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
+        title: Text(l10n.chatTitle,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         actions: [
-          // Ganti placeholder asset dengan Ikon User (lebih elegan untuk desain gelap)
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: kCardColor,
-              child: Icon(Icons.person_outline, color: kBrownAccent, size: 24),
-            ),
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_outlined, color: Colors.white70),
+            onPressed: _messages.isEmpty ? null : _confirmClearChat,
+            tooltip: "Hapus Riwayat",
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
@@ -244,312 +196,127 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 10.0,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 final message = _messages[index];
-                if (message.text == "GIA is typing...") {
+                if (message.text == "GIA sedang mengetik...") {
                   return _buildTypingIndicator();
-                }
-                if (message.recommendations != null) {
-                  return _buildRecommendationBubble(message);
                 }
                 return _buildMessageBubble(message);
               },
             ),
           ),
-          // --- Action Buttons dan Input dipisahkan agar rapi ---
-          _buildActionButtons(),
           _buildInputArea(),
         ],
       ),
     );
   }
 
-  // --- WIDGET KOMPONEN ---
+  void _confirmClearChat() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: kCardColor,
+        title: const Text("Hapus Riwayat?", style: TextStyle(color: Colors.white)),
+        content: const Text("Semua percakapan akan dihapus secara permanen.", style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal", style: TextStyle(color: kTextGrey))),
+          TextButton(
+            onPressed: () async {
+              final greetingText = AppLocalizations.of(context)!.giaGreeting;
+              Navigator.pop(context);
+              setState(() => _messages.clear());
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('chat_history_${_uid ?? "guest"}');
+              if (!mounted) return;
+              _addGiaMessage(greetingText);
+            }, 
+            child: const Text("Hapus", style: TextStyle(color: Colors.red))
+          ),
+        ],
+      )
+    );
+  }
 
   Widget _buildMessageBubble(ChatMessage message) {
     final color = message.isUser ? kUserBubble : kCardColor;
     final textColor = message.isUser ? kTextDark : Colors.white;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        mainAxisAlignment: message.isUser
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment:
-            CrossAxisAlignment.end, // Untuk menyamakan posisi teks
+        mainAxisAlignment: message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar GIA (Jika bukan User)
-          if (!message.isUser)
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0, bottom: 0),
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: kBrownAccent.withValues(alpha: 0.2),
-                child: const Icon(
-                  Icons.psychology_outlined,
-                  color: kBrownAccent,
-                  size: 20,
-                ),
-              ),
-            ),
+          if (!message.isUser) _buildAvatar(),
           Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
-              ),
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.only(
-                  topLeft: message.isUser
-                      ? const Radius.circular(16)
-                      : Radius.zero,
-                  topRight: message.isUser
-                      ? Radius.zero
-                      : const Radius.circular(16),
-                  bottomLeft: const Radius.circular(16),
-                  bottomRight: const Radius.circular(16),
-                ),
-                // Tambah sedikit shadow untuk efek elegan
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+            child: GestureDetector(
+              onLongPress: () {
+                Clipboard.setData(ClipboardData(text: message.text));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Pesan disalin"), duration: Duration(seconds: 1)),
+                );
+              },
+              child: Container(
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(16),
+                    topRight: const Radius.circular(16),
+                    bottomLeft: message.isUser ? const Radius.circular(16) : Radius.zero,
+                    bottomRight: message.isUser ? Radius.zero : const Radius.circular(16),
                   ),
-                ],
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 12.0,
-              ),
-              child: Text(
-                message.text,
-                style: TextStyle(color: textColor, fontSize: 15.5),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))
+                  ],
+                ),
+                child: MarkdownBody(
+                  data: message.text,
+                  styleSheet: MarkdownStyleSheet(
+                    p: TextStyle(color: textColor, fontSize: 15.5, height: 1.4),
+                    strong: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+                    em: TextStyle(color: textColor, fontStyle: FontStyle.italic),
+                    listBullet: TextStyle(color: textColor),
+                  ),
+                ),
               ),
             ),
           ),
-          // Avatar User (Opsional, tapi di desain ini tidak ada)
           if (message.isUser) const SizedBox(width: 8),
         ],
       ),
     );
   }
 
-  // lib/screens/customer/tabs/chat_assistant_screen.dart
-  // ...
+  Widget _buildAvatar() {
+    return const Padding(
+      padding: EdgeInsets.only(right: 8.0, top: 4.0),
+      child: CircleAvatar(
+        radius: 16,
+        backgroundColor: Color(0x33C3A47B),
+        child: Icon(Icons.psychology_outlined, color: kBrownAccent, size: 20),
+      ),
+    );
+  }
 
   Widget _buildTypingIndicator() {
-    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Avatar GIA
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: kBrownAccent.withValues(alpha: 0.2),
-              child: const Icon(
-                Icons.psychology_outlined,
-                color: kBrownAccent,
-                size: 20,
-              ),
-            ),
-          ),
+          _buildAvatar(),
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 12.0,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             decoration: BoxDecoration(
               color: kCardColor,
-              borderRadius: BorderRadius.circular(
-                16,
-              ).copyWith(topLeft: Radius.zero),
+              borderRadius: BorderRadius.circular(16).copyWith(topLeft: Radius.zero),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  l10n.giaTyping,
-                  style: const TextStyle(
-                    color: kTextGrey,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                // Indikator Titik (Menggunakan widget kustom yang diperbaiki)
-                // Gantikan TweenAnimationBuilder yang Error dengan widget kustom yang menggunakan AnimationController
-                _LoadingDots(color: kTextGrey),
-              ],
-            ),
+            child: const _LoadingDots(color: kTextGrey),
           ),
         ],
-      ),
-    );
-  }
-
-  // ... (lanjutkan kode lainnya) ...
-
-  Widget _buildRecommendationBubble(ChatMessage message) {
-    if (message.recommendations == null || message.recommendations!.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    // Bubble card ditempatkan di bawah bubble teks GIA sebelumnya
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(width: 40), // Offset sejajar dengan isi bubble GIA
-          Expanded(
-            child: SizedBox(
-              height: 200,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: message.recommendations!.length,
-                itemBuilder: (context, index) {
-                  final rec = message.recommendations![index];
-                  return _buildHaircutCard(rec);
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHaircutCard(HaircutRecommendation rec) {
-    final l10n = AppLocalizations.of(context)!;
-    return GestureDetector(
-      onTap: rec.onTap,
-      child: Container(
-        width: 160,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: kCardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: kBrownAccent.withValues(alpha: 0.3),
-            width: 0.5,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-              child: CachedNetworkImage(
-                imageUrl: rec.imageUrl,
-                height: 120, // Diperkecil sedikit
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(color: kSurface),
-                errorWidget: (context, url, error) => const Center(
-                  child: Icon(Icons.cut, color: kTextGrey, size: 40),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    rec.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.style, size: 14, color: kBrownAccent),
-                      const SizedBox(width: 4),
-                      Text(
-                        l10n.seeDetail,
-                        style: const TextStyle(color: kBrownAccent, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    final l10n = AppLocalizations.of(context)!;
-    return Container(
-      color: kSurface, // Pastikan background konsisten
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Row(
-          children: [
-            _buildActionButton(
-              l10n.btnCheckMyQueue,
-              () => _addUserMessage(l10n.btnCheckMyQueue),
-            ),
-            const SizedBox(width: 8),
-            _buildActionButton(
-              l10n.btnHaircutRecommendation,
-              () => _addUserMessage(l10n.btnHaircutRecommendation),
-            ),
-            const SizedBox(width: 8),
-            _buildActionButton(
-              l10n.btnAskAddress,
-              () => _addUserMessage(l10n.btnAskAddress),
-            ),
-            const SizedBox(width: 8),
-            _buildActionButton(
-              l10n.btnCreateNewBooking,
-              () => _addUserMessage(l10n.btnCreateNewBooking),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(String text, VoidCallback onTap) {
-    return OutlinedButton(
-      onPressed: onTap,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white,
-        backgroundColor: kCardColor.withValues(
-          alpha: 0.5,
-        ), // Agar terlihat berbeda dari input
-        side: const BorderSide(color: kBrownAccent, width: 1.0),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        elevation: 0,
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -558,66 +325,43 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
     final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: kSurface,
         border: Border(top: BorderSide(color: kCardColor, width: 1)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Attachment Button
-          Container(
-            height: 48,
-            width: 48,
-            decoration: BoxDecoration(
-              color: kCardColor,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: const Icon(Icons.add, color: kBrownAccent, size: 24),
-          ),
-          const SizedBox(width: 12),
-          // Text Input
           Expanded(
-            child: SizedBox(
-              height: 48,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: TextField(
-                  controller: _textController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: l10n.chatHint,
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 14,
-                      horizontal: 12,
-                    ),
-                  ),
-                  onSubmitted: (_) => _handleSend(),
-                  enabled: !_isGiaTyping, // Disable input saat GIA mengetik
+            child: Container(
+              decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(24)),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _textController,
+                style: const TextStyle(color: Colors.white),
+                minLines: 1,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  hintText: l10n.chatHint,
+                  hintStyle: const TextStyle(color: kTextGrey, fontSize: 14),
+                  border: InputBorder.none,
                 ),
+                onSubmitted: (_) => _handleSend(),
+                enabled: !_isGiaTyping, 
               ),
             ),
           ),
           const SizedBox(width: 12),
-          // Send Button
           GestureDetector(
             onTap: _handleSend,
             child: Container(
               height: 48,
               width: 48,
               decoration: BoxDecoration(
-                color: _textController.text.trim().isEmpty
-                    ? kCardColor
-                    : kUserBubble,
-                borderRadius: BorderRadius.circular(24),
+                color: _textController.text.trim().isEmpty ? kCardColor : kUserBubble,
+                shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.send,
-                color: _textController.text.trim().isEmpty
-                    ? kTextGrey
-                    : kTextDark,
-                size: 24,
-              ),
+              child: Icon(Icons.send, color: _textController.text.trim().isEmpty ? kTextGrey : kTextDark, size: 22),
             ),
           ),
         ],
@@ -626,61 +370,29 @@ class _ChatAssistantScreenState extends State<ChatAssistantScreen> {
   }
 }
 
-// --- WIDGET BARU UNTUK ANIMASI TITIK-TITIK ---
 class _LoadingDots extends StatefulWidget {
   final Color color;
   const _LoadingDots({required this.color});
-
   @override
   State<_LoadingDots> createState() => __LoadingDotsState();
 }
 
-class __LoadingDotsState extends State<_LoadingDots>
-    with SingleTickerProviderStateMixin {
+class __LoadingDotsState extends State<_LoadingDots> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _animation;
-
+  late Animation<int> _animation;
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    )..repeat();
-
-    _animation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    _controller = AnimationController(duration: const Duration(milliseconds: 1000), vsync: this)..repeat();
+    _animation = IntTween(begin: 0, end: 3).animate(_controller);
   }
-
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
+  void dispose() { _controller.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _animation,
-      builder: (context, child) {
-        // Logika animasi titik-titik
-        final value = _animation.value;
-        String dots;
-        if (value < 0.33) {
-          dots = '.';
-        } else if (value < 0.66) {
-          dots = '..';
-        } else {
-          dots = '...';
-        }
-
-        return Text(
-          dots,
-          style: TextStyle(color: widget.color, fontSize: 20, height: 0.5),
-        );
-      },
+      builder: (context, child) => Text("." * (_animation.value + 1), style: TextStyle(color: widget.color, fontSize: 24, fontWeight: FontWeight.bold)),
     );
   }
 }

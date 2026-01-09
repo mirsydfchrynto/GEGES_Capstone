@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geges_smartbarber/models/user_data.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
@@ -291,12 +292,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           CircleAvatar(
             radius: 70,
             backgroundColor: kDarkGrey,
-            backgroundImage: _newPhotoBase64 != null 
-                ? MemoryImage(base64Decode(_newPhotoBase64!))
-                : null,
-            child: _newPhotoBase64 == null 
-                ? const Icon(Icons.person, size: 70, color: Colors.white24)
-                : null,
+            child: _newPhotoBase64 != null 
+                ? AppImage(
+                    base64: _newPhotoBase64,
+                    borderRadius: BorderRadius.circular(70),
+                    fit: BoxFit.cover,
+                  )
+                : const Icon(Icons.person, size: 70, color: Colors.white24),
           ),
           Positioned(
             bottom: 0,

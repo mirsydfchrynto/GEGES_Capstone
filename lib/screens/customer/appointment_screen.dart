@@ -17,7 +17,16 @@ class AppointmentScreen extends StatefulWidget {
   final BarbershopService? barbershopService;
   final QueueService? queueService;
   final String? testUserId;
-  const AppointmentScreen({super.key, required this.barbershop, this.barbershopService, this.queueService, this.testUserId});
+  final String? initialStyleNote; // New parameter for StyleScan integration
+
+  const AppointmentScreen({
+    super.key, 
+    required this.barbershop, 
+    this.barbershopService, 
+    this.queueService, 
+    this.testUserId,
+    this.initialStyleNote,
+  });
   @override State<AppointmentScreen> createState() => _AppointmentScreenState();
 }
 
@@ -350,7 +359,23 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     final customerId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid;
     final barberId = _isPremiumChoice ? _selectedBarberman!.id : _autoBarberman!.id;
     final orderId = 'ORD-${DateTime.now().millisecondsSinceEpoch}';
-    final payload = {'barbershop_id': widget.barbershop.id, 'customer_id': customerId, 'barberman_id': barberId, 'service_ids': _selectedServices.map((s) => s.id).toList(), 'total_price': _totalPrice, 'barber_selection_fee': _selectionFee, 'paid_barber_selection': _isPremiumChoice, 'is_auto_assigned': !_isPremiumChoice, 'estimated_duration': _totalDuration, 'booking_time': Timestamp.fromDate(bdt), 'status': 'awaiting_payment', 'request_status': 'approved', 'payment_deadline': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 15))), 'order_id': orderId};
+    final payload = {
+      'barbershop_id': widget.barbershop.id,
+      'customer_id': customerId,
+      'barberman_id': barberId,
+      'service_ids': _selectedServices.map((s) => s.id).toList(),
+      'total_price': _totalPrice,
+      'barber_selection_fee': _selectionFee,
+      'paid_barber_selection': _isPremiumChoice,
+      'is_auto_assigned': !_isPremiumChoice,
+      'estimated_duration': _totalDuration,
+      'booking_time': Timestamp.fromDate(bdt),
+      'status': 'awaiting_payment',
+      'request_status': 'approved',
+      'payment_deadline': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 15))),
+      'order_id': orderId,
+      if (widget.initialStyleNote != null) 'notes': widget.initialStyleNote,
+    };
     try { await _queueService.createQueue(payload); if (!mounted) return; Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (c) => PaymentScreen(orderId: orderId, totalPrice: _totalPrice, barbershopId: widget.barbershop.id, barbermanId: barberId, bookingTime: bdt, paymentDeadline: DateTime.now().add(const Duration(minutes: 15)))));     } catch (e) {
       if (mounted) _showSnack("Gagal: $e");
     } finally {
