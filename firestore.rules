@@ -57,9 +57,7 @@ service cloud.firestore {
     // 3. Rating & Ulasan
     match /app_ratings/{ratingId} {
       // User login boleh mengirim rating
-      allow create: if isAuthenticated();
-      // Hanya pemilik rating yang boleh baca/edit (opsional, atau public read jika ingin ditampilkan di app)
-      allow read: if true; 
+      allow read, write: if true; 
     }
   }
 }

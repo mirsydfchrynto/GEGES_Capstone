@@ -11,6 +11,8 @@ class AppRating {
   final DateTime createdAt;
   final String? sentiment;
   final double? sentimentConfidence;
+  final String? barbershopId;
+  final String? barbershopName;
 
   AppRating({
     required this.id,
@@ -23,6 +25,8 @@ class AppRating {
     required this.createdAt,
     this.sentiment,
     this.sentimentConfidence,
+    this.barbershopId,
+    this.barbershopName,
   });
 
   factory AppRating.fromFirestore(DocumentSnapshot doc) {
@@ -38,6 +42,8 @@ class AppRating {
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       sentiment: data['sentiment'],
       sentimentConfidence: (data['sentimentConfidence'] as num?)?.toDouble(),
+      barbershopId: data['barbershopId'],
+      barbershopName: data['barbershopName'],
     );
   }
 
@@ -53,6 +59,8 @@ class AppRating {
       'processed': false, // Flag untuk diolah model AI nantinya
       'sentiment': sentiment,
       'sentimentConfidence': sentimentConfidence,
+      'barbershopId': barbershopId,
+      'barbershopName': barbershopName,
     };
   }
 }   
