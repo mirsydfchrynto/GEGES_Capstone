@@ -727,7 +727,7 @@ class QueueService implements QueueServiceContract {
           dataToSave['total_price'] = serverCalculatedPrice;
           debugPrint("SECURITY: Price recalculated by server: $serverCalculatedPrice");
 
-          // 2. Race Condition Check (Capacity Validation)
+          // 2. Race Condition Check (Capacity Validation - Robust Overlap)
           final capacityQuery = await _firestore.collection('barbermen')
               .where('barbershop_id', isEqualTo: shopId)
               .where('isActive', isEqualTo: true)
@@ -748,15 +748,38 @@ class QueueService implements QueueServiceContract {
           }
 
           if (totalCapacity > 0) {
+            // Cek overlap dalam window waktu (bukan hanya exact match)
+            // Asumsi rata-rata durasi booking 60 menit, kita cek range -1 jam s/d +1 jam
+            final checkStart = bookingTs.toDate().subtract(const Duration(hours: 1));
+            final checkEnd = bookingTs.toDate().add(const Duration(hours: 1));
+            
             final existingBookings = await _firestore.collection('queues')
                 .where('barbershop_id', isEqualTo: shopId)
                 .where('status', whereIn: ['booked', 'ongoing', 'awaiting_payment'])
-                .where('booking_time', isEqualTo: bookingTs)
+                .where('booking_time', isGreaterThanOrEqualTo: Timestamp.fromDate(checkStart))
+                .where('booking_time', isLessThanOrEqualTo: Timestamp.fromDate(checkEnd))
                 .get();
             
-            debugPrint('TX LOAD CHECK: Current=$existingBookings.docs.length, Max=$totalCapacity');
-            if (existingBookings.docs.length >= totalCapacity) {
-              throw Exception('Slot penuh! Baru saja diambil orang lain.');
+            int concurrentBookings = 0;
+            // Target slot
+            final newStart = bookingTs.toDate();
+            final newDuration = (dataToSave['estimated_duration'] as num? ?? 30).toInt();
+            final newEnd = newStart.add(Duration(minutes: newDuration));
+
+            for (var doc in existingBookings.docs) {
+              final bStart = (doc.data()['booking_time'] as Timestamp).toDate();
+              final bDuration = (doc.data()['estimated_duration'] as num? ?? 30).toInt();
+              final bEnd = bStart.add(Duration(minutes: bDuration));
+
+              // Check Intersection: (StartA < EndB) && (EndA > StartB)
+              if (newStart.isBefore(bEnd) && newEnd.isAfter(bStart)) {
+                concurrentBookings++;
+              }
+            }
+
+            debugPrint('TX LOAD CHECK: Concurrent=$concurrentBookings, Max=$totalCapacity (Slot: $newStart - $newEnd)');
+            if (concurrentBookings >= totalCapacity) {
+               throw Exception('Slot penuh! Kapasitas penuh di jam ini.');
             }
           }
         }

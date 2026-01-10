@@ -34,6 +34,9 @@ class FakeAuthServiceSuccess implements AuthServiceBase {
 
   @override
   Future<UserData?> getUserById(String uid) async => null;
+
+  @override
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {}
 }
 
 class FakeAuthServiceFailure implements AuthServiceBase {
@@ -66,6 +69,9 @@ class FakeAuthServiceFailure implements AuthServiceBase {
 
   @override
   Future<UserData?> getUserById(String uid) async => null;
+
+  @override
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {}
 }
 
 void main() {

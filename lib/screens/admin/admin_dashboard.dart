@@ -19,6 +19,7 @@ import 'package:geges_smartbarber/screens/admin/barbershop_settings_screen.dart'
 import 'package:geges_smartbarber/screens/admin/barbershop_gallery_screen.dart';
 import 'package:geges_smartbarber/screens/admin/account_management_screen.dart';
 import 'package:geges_smartbarber/screens/admin/sales_report_screen.dart';
+import 'package:geges_smartbarber/screens/admin/admin_dashboard_skeleton.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
 const Color kDarkSurface = Color(0xFF1E1E1E);
@@ -95,7 +96,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loadingError.isNotEmpty) return Scaffold(backgroundColor: kBlack, body: Center(child: Text(_loadingError, style: const TextStyle(color: Colors.red))));
-    if (_adminBarbershopId == null) return const Scaffold(backgroundColor: kBlack, body: Center(child: CircularProgressIndicator(color: kBrownAccent)));
+    
+    // IMPROVEMENT: Use Skeleton Loader
+    if (_adminBarbershopId == null) return const AdminDashboardSkeleton();
 
     final stream = _queueService.streamQueuesForBarbershop(_adminBarbershopId!, statusFilter: ['waiting', 'awaiting_payment', 'booked', 'ongoing', 'served', 'cancelled', 'cancellation_requested'], limit: 30);
 
@@ -104,8 +107,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       body: StreamBuilder<List<Queue>>(
         stream: stream,
         builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+             return const AdminDashboardSkeleton();
+          }
+          
           final allQueues = snapshot.data ?? [];
           final stats = _calculateStats(allQueues);
+          final nextQueue = _getNextAppointment(allQueues);
+
           return SafeArea(
             child: RefreshIndicator(
               onRefresh: () async => _loadAdminData(),
@@ -123,8 +132,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const SizedBox(height: 16),
                   _buildGridMenu(stats),
                   const SizedBox(height: 24),
-                  _buildUpcomingAppointment(allQueues),
-                  const SizedBox(height: 40),
+                  if (nextQueue != null) ...[
+                    _buildUpcomingAppointmentCard(nextQueue),
+                    const SizedBox(height: 40),
+                  ],
                 ],
               ),
             ),
@@ -132,6 +143,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         },
       ),
     );
+  }
+
+  // Refactored Logic: Helper to find the next relevant appointment
+  Queue? _getNextAppointment(List<Queue> queues) {
+    final now = DateTime.now();
+    final active = queues.where((q) => q.status == QueueStatus.booked || q.status == QueueStatus.ongoing).toList();
+    
+    // 1. Check for ongoing/upcoming today
+    final todayUpcoming = active.where((q) { 
+      final d = q.bookingTime.toDate(); 
+      return d.year == now.year && d.month == now.month && d.day == now.day && d.isAfter(now.subtract(const Duration(minutes: 30))); 
+    }).toList();
+    
+    todayUpcoming.sort((a, b) => a.bookingTime.toDate().compareTo(b.bookingTime.toDate()));
+    
+    if (todayUpcoming.isNotEmpty) return todayUpcoming.first;
+
+    // 2. Check future days
+    final futureUpcoming = active.where((q) => q.bookingTime.toDate().isAfter(now)).toList();
+    futureUpcoming.sort((a, b) => a.bookingTime.toDate().compareTo(b.bookingTime.toDate()));
+    
+    if (futureUpcoming.isNotEmpty) return futureUpcoming.first;
+
+    return null;
   }
 
   Map<String, int> _calculateStats(List<Queue> queues) {
@@ -236,27 +271,56 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  Widget _buildUpcomingAppointment(List<Queue> queues) {
+  Widget _buildUpcomingAppointmentCard(Queue next) {
     final now = DateTime.now();
-    final active = queues.where((q) => q.status == QueueStatus.booked || q.status == QueueStatus.ongoing).toList();
-    final todayUpcoming = active.where((q) { final d = q.bookingTime.toDate(); return d.year == now.year && d.month == now.month && d.day == now.day && d.isAfter(now.subtract(const Duration(minutes: 30))); }).toList();
-    todayUpcoming.sort((a, b) => a.bookingTime.toDate().compareTo(b.bookingTime.toDate()));
-    Queue? next; bool isToday = false;
-    if (todayUpcoming.isNotEmpty) { next = todayUpcoming.first; isToday = true; } else {
-      final futureUpcoming = active.where((q) => q.bookingTime.toDate().isAfter(now)).toList();
-      futureUpcoming.sort((a, b) => a.bookingTime.toDate().compareTo(b.bookingTime.toDate()));
-      if (futureUpcoming.isNotEmpty) { next = futureUpcoming.first; isToday = false; }
-    }
-    if (next == null) return const SizedBox();
-    return Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(gradient: LinearGradient(colors: [kBrownAccent.withValues(alpha: 0.2), kDarkSurface]), borderRadius: BorderRadius.circular(16), border: Border.all(color: kBrownAccent.withValues(alpha: 0.3))), child: Row(children: [
-      Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: kBrownAccent.withValues(alpha: 0.2), shape: BoxShape.circle), child: const Icon(Icons.notifications_active, color: kBrownAccent)),
-      const SizedBox(width: 16),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(isToday ? "Jadwal Berikutnya (Hari Ini)" : "Jadwal Mendatang", style: const TextStyle(color: Colors.white54, fontSize: 12)),
-        const SizedBox(height: 4),
-        Text(isToday ? DateFormat('HH:mm').format(next.bookingTime.toDate()) : DateFormat('dd MMM, HH:mm').format(next.bookingTime.toDate()), style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-        Text(next.status == QueueStatus.ongoing ? "Sedang Berlangsung" : "Siap Dilayani", style: TextStyle(color: next.status == QueueStatus.ongoing ? Colors.green : Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 12))
-      ])),
-    ]));
+    final d = next.bookingTime.toDate();
+    final isToday = d.year == now.year && d.month == now.month && d.day == now.day;
+    
+    return Container(
+      padding: const EdgeInsets.all(16), 
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [kBrownAccent.withValues(alpha: 0.2), kDarkSurface]
+        ), 
+        borderRadius: BorderRadius.circular(16), 
+        border: Border.all(color: kBrownAccent.withValues(alpha: 0.3))
+      ), 
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12), 
+            decoration: BoxDecoration(color: kBrownAccent.withValues(alpha: 0.2), shape: BoxShape.circle), 
+            child: const Icon(Icons.notifications_active, color: kBrownAccent)
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, 
+              children: [
+                Text(
+                  isToday ? "Jadwal Berikutnya (Hari Ini)" : "Jadwal Mendatang", 
+                  style: const TextStyle(color: Colors.white54, fontSize: 12)
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isToday ? DateFormat('HH:mm').format(d) : DateFormat('dd MMM, HH:mm').format(d), 
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)
+                ),
+                Text(
+                  next.status == QueueStatus.ongoing ? "Sedang Berlangsung" : "Siap Dilayani", 
+                  style: TextStyle(
+                    color: next.status == QueueStatus.ongoing ? Colors.green : Colors.blueAccent, 
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 12
+                  )
+                )
+              ]
+            )
+          ),
+        ]
+      )
+    );
   }
 }

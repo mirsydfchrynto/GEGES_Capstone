@@ -140,13 +140,16 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
 
   // ------------------------------------------
 
-  Widget _buildHeaderImage(String path) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        AppImage(imageUrl: path, fit: BoxFit.cover),
-        Container(color: Colors.black.withValues(alpha: 0.3)), // Overlay gelap
-      ],
+  Widget _buildHeaderImage(String path, String tag) {
+    return Hero(
+      tag: tag,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          AppImage(imageUrl: path, fit: BoxFit.cover),
+          Container(color: Colors.black.withValues(alpha: 0.3)), // Overlay gelap
+        ],
+      ),
     );
   }
 
@@ -201,7 +204,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
 
                   // --- Gambar Latar (DISESUAIKAN) ---
                   flexibleSpace: FlexibleSpaceBar(
-                    background: _buildHeaderImage(shop.imageUrl),
+                    background: _buildHeaderImage(shop.imageUrl, 'shop_image_${shop.id}'),
                   ),
                   // ---------------------------------
 

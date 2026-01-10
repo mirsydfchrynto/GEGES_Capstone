@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/widgets/app_image.dart';
+import 'package:geges_smartbarber/screens/common/change_password_screen.dart';
 
 const Color kBrownAccent = Color(0xFFC3A47B);
 const Color kDarkGrey = Color(0xFF1E1E1E);
@@ -103,22 +104,6 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
     }
   }
 
-  Future<void> _resetPassword() async {
-    final email = _emailCtrl.text.trim();
-    if (email.isEmpty) return;
-    
-    try {
-      await _authService.sendPasswordResetEmail(email: email);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Link reset password dikirim ke $email'), backgroundColor: kBrownAccent));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -196,9 +181,14 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                   const SizedBox(height: 20),
                   
                   OutlinedButton.icon(
-                    onPressed: _resetPassword,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+                      );
+                    },
                     icon: const Icon(Icons.lock_reset, color: Colors.white70),
-                    label: const Text('Reset Password via Email', style: TextStyle(color: Colors.white70)),
+                    label: const Text('GANTI PASSWORD', style: TextStyle(color: Colors.white70)),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.white24),
                       minimumSize: const Size.fromHeight(50),

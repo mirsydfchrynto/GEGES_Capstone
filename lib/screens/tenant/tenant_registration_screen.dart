@@ -559,7 +559,7 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                                 ),
                               ),
                               child: const Text(
-                                'Saya telah membaca dan menyetujui Perjanjian Tenant dan Kebijakan Aplikasi (ketuk untuk baca)',
+                                'Saya menyetujui Perjanjian Tenant (termasuk potongan refund 10%) dan Kebijakan Aplikasi',
                                 style: TextStyle(
                                   decoration: TextDecoration.underline,
                                   color: Colors.white,

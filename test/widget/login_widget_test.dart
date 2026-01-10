@@ -101,6 +101,11 @@ class FakeAuthService implements AuthService {
   Future<bool> isAdmin(String uid) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {
+    throw UnimplementedError();
+  }
 }
 
 void main() {

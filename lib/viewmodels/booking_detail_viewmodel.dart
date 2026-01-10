@@ -94,28 +94,15 @@ class BookingDetailViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> handleRequestCancellation(BuildContext context) async {
-    final TextEditingController reasonCtrl = TextEditingController();
-    final confirm = await showDialog<bool>(context: context, builder: (c) => AlertDialog(
-      backgroundColor: const Color(0xFF1E1E1E), // kDarkGrey
-      title: const Text('Minta Refund', style: TextStyle(color: Colors.white)),
-      content: TextField(
-        controller: reasonCtrl, maxLines: 3, style: const TextStyle(color: Colors.white),
-        decoration: const InputDecoration(hintText: 'Alasan pembatalan...', border: OutlineInputBorder()),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Batal')),
-        ElevatedButton(onPressed: () => Navigator.pop(c, true), child: const Text('Kirim')),
-      ],
-    ));
-
-    if (confirm == true && reasonCtrl.text.isNotEmpty) {
-      try {
-        await _queueService.customerRequestCancellation(queueId, reason: reasonCtrl.text.trim());
-      } catch (e) { 
-        if (!context.mounted) return;
-        _showSnack(context, 'Gagal: $e', isError: true); 
-      }
+  Future<void> handleRequestCancellation(BuildContext context, {String? reason}) async {
+    try {
+      await _queueService.customerRequestCancellation(
+        queueId, 
+        reason: reason ?? 'Permintaan pembatalan dari customer',
+      );
+    } catch (e) { 
+      if (!context.mounted) return;
+      _showSnack(context, 'Gagal: $e', isError: true); 
     }
   }
 

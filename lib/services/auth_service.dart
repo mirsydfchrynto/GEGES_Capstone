@@ -20,6 +20,10 @@ abstract class AuthServiceBase {
   Future<Map<String, dynamic>> signInWithGoogle();
   Future<Map<String, dynamic>> sendPasswordResetEmail({required String email});
   Future<UserData?> getUserById(String uid);
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
 }
 
 class AuthService implements AuthServiceBase {
@@ -502,6 +506,47 @@ class AuthService implements AuthServiceBase {
       };
     } catch (e) {
       return {'success': false, 'message': 'Re-auth gagal: $e'};
+    }
+  }
+
+  // ============================
+  // CHANGE PASSWORD
+  // ============================
+
+  /// Mengubah password dengan verifikasi password lama terlebih dahulu
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw 'User tidak ditemukan';
+    }
+
+    try {
+      // 1. Buat kredensial dari email & password lama
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+
+      // 2. Re-autentikasi (Verifikasi Password Lama)
+      await user.reauthenticateWithCredential(credential);
+
+      // 3. Jika berhasil verifikasi, update ke password baru
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password') {
+        throw 'Password lama yang Anda masukkan salah.';
+      } else if (e.code == 'weak-password') {
+        throw 'Password baru terlalu lemah.';
+      } else if (e.code == 'requires-recent-login') {
+        throw 'Sesi habis. Silakan login ulang untuk mengganti password.';
+      }
+      throw e.message ?? 'Gagal mengubah password.';
+    } catch (e) {
+      throw 'Terjadi kesalahan sistem: $e';
     }
   }
 

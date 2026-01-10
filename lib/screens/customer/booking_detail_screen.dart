@@ -531,7 +531,7 @@ class _BookingDetailView extends StatelessWidget {
       return Column(
         children: [
           OutlinedButton(
-            onPressed: () => vm.handleRequestCancellation(context), 
+            onPressed: () => _confirmCancellation(context, vm, queue), 
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: kWarning), 
               minimumSize: const Size.fromHeight(50), 
@@ -546,6 +546,135 @@ class _BookingDetailView extends StatelessWidget {
     }
 
     return const SizedBox.shrink();
+  }
+
+  Future<void> _confirmCancellation(BuildContext context, BookingDetailViewModel vm, Queue queue) async {
+    final double total = queue.totalPrice?.toDouble() ?? 0.0;
+    final double fee = total * 0.1;
+    final double refund = total - fee;
+    final TextEditingController reasonCtrl = TextEditingController();
+    bool isAgreed = false; // Move outside builder
+
+    final bool? confirm = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              left: 24, right: 24, top: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            decoration: const BoxDecoration(
+              color: kDarkGrey,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 24),
+                const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: kWarning, size: 28),
+                    SizedBox(width: 12),
+                    Expanded(child: Text("Konfirmasi Pembatalan", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                
+                // Reason field
+                const Text("Alasan Pembatalan", style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: reasonCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: "Contoh: Salah pilih jadwal...",
+                    hintStyle: const TextStyle(color: Colors.white24),
+                    filled: true,
+                    fillColor: Colors.black26,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(16)),
+                  child: Column(
+                    children: [
+                      _calcRow("Total Bayar", total),
+                      _calcRow("Biaya Admin (10%)", -fee, isRed: true),
+                      const Divider(color: Colors.white10, height: 24),
+                      _calcRow("Estimasi Refund", refund, isBold: true, color: kSuccess),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text("Kebijakan Refund:", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                const Text("• Pengajuan akan diverifikasi admin (max 1x24 jam).", style: TextStyle(color: kTextGrey, fontSize: 12)),
+                const Text("• Dana dikembalikan setelah disetujui.", style: TextStyle(color: kTextGrey, fontSize: 12)),
+                const SizedBox(height: 20),
+                
+                GestureDetector(
+                  onTap: () => setModalState(() => isAgreed = !isAgreed),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: isAgreed, 
+                        activeColor: kWarning,
+                        checkColor: Colors.black,
+                        onChanged: (v) => setModalState(() => isAgreed = v ?? false),
+                      ),
+                      const Expanded(
+                        child: Text("Saya setuju dengan potongan biaya 10% dan kebijakan di atas.", style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx, false), style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.white24)), child: const Text("KEMBALI", style: TextStyle(color: Colors.white70)))),
+                    const SizedBox(width: 16),
+                    Expanded(child: ElevatedButton(
+                      onPressed: isAgreed ? () => Navigator.pop(ctx, true) : null, 
+                      style: ElevatedButton.styleFrom(backgroundColor: kWarning, disabledBackgroundColor: Colors.white10, padding: const EdgeInsets.symmetric(vertical: 16)), 
+                      child: const Text("AJUKAN REFUND", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold))
+                    )),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+      ),
+    );
+
+    if (confirm == true) {
+      // ignore: use_build_context_synchronously
+      await vm.handleRequestCancellation(context, reason: reasonCtrl.text.trim());
+    }
+  }
+
+  Widget _calcRow(String label, double val, {bool isRed = false, bool isBold = false, Color color = Colors.white}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: kTextGrey)),
+          Text(
+            NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(val),
+            style: TextStyle(color: isRed ? kError : color, fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 16 : 14),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCustomerServiceButton(BuildContext context, BookingDetailViewModel vm, String bookingId) {

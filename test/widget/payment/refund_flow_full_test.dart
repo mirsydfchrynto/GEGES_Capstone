@@ -71,10 +71,19 @@ void main() {
     await tester.pumpAndSettle();
     
     // Ensure dialog appears
-    expect(find.text('Minta Refund'), findsOneWidget);
-    
+    expect(find.text('Konfirmasi Pembatalan'), findsOneWidget);
+
+    // Enter Reason
     await tester.enterText(find.byType(TextField), "Salah jadwal");
-    await tester.tap(find.text('Kirim'));
+    
+    // Tap Checkbox Agreement
+    await tester.tap(find.byType(Checkbox));
+    await tester.pump(); // Update isAgreed state inside modal
+
+    // Tap "AJUKAN REFUND"
+    await tester.tap(find.text('AJUKAN REFUND'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1)); // Extra wait for async ops
     await tester.pumpAndSettle();
 
     // Verify DB

@@ -64,8 +64,9 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       List<DateTimeRange> slots = [];
       if (_isPremiumChoice && _selectedBarberman != null) {
         slots = await _queueService.getBarberBusyTimeRanges(_selectedBarberman!.id, _selectedDate);
-      // ignore: curly_braces_in_flow_control_structures
-      } else if (!_isPremiumChoice) slots = await _queueService.getShopBusySlots(barbershopId: widget.barbershop.id, date: _selectedDate);
+      } else if (!_isPremiumChoice) {
+        slots = await _queueService.getShopBusySlots(barbershopId: widget.barbershop.id, date: _selectedDate);
+      }
       if (mounted) setState(() { _busySlots = slots; _isFetchingSlots = false; });
     } catch (e) { if (mounted) setState(() => _isFetchingSlots = false); }
   }
@@ -122,7 +123,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
   @override Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    // 1. BLOCKING LOGIC: If shop is closed, show "Shop Closed" screen
     if (!widget.barbershop.isOpen) {
       return Scaffold(
         backgroundColor: kSurface,
@@ -174,7 +174,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       );
     }
 
-    // 2. NORMAL FLOW
     return PopScope(canPop: false, onPopInvokedWithResult: (didPop, result) { if (didPop) return; if (_currentStep > 0) {
       _prevStep();
     } else {
@@ -254,7 +253,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   }
 
   Widget _buildTimeGrid() {
-    // Safety check for off-days when switching barbers but keeping same date
     if (_isPremiumChoice && _selectedBarberman != null) {
        final b = _selectedBarberman!;
        final dayName = DateFormat('EEEE', 'en_US').format(_selectedDate).toLowerCase();
@@ -298,7 +296,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
         final slotEnd = slotStart.add(const Duration(minutes: 30));
         
         for (var range in _busySlots) {
-          // Strict overlap logic with 1-second tolerance
           if (slotStart.isBefore(range.end.subtract(const Duration(seconds: 1))) && 
               slotEnd.isAfter(range.start.add(const Duration(seconds: 1)))) {
             isBusy = true;
@@ -353,8 +350,134 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   Future<void> _processBooking() async {
     final l10n = AppLocalizations.of(context)!;
     final bdt = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _selectedTime!.hour, _selectedTime!.minute);
-    final confirm = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(backgroundColor: kCardBg, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), title: Text(l10n.confirmBookingTitle, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [_confirmRow(l10n.labelDate, DateFormat('dd MMM yyyy').format(bdt)), _confirmRow(l10n.labelTime, DateFormat('HH:mm').format(bdt)), _confirmRow(l10n.labelBarber, _isPremiumChoice ? _selectedBarberman?.name ?? '-' : l10n.randomSystem), const SizedBox(height: 8), const Divider(color: Colors.white24), const SizedBox(height: 8), _confirmRow(l10n.labelTotalCost, NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_totalPrice), isBold: true, color: kBrownAccent)]), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.btnCancel, style: const TextStyle(color: Colors.white54))), ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent), child: Text(l10n.btnConfirmBook, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)))]));
+
+    bool? confirm = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          bool isAgreed = false;
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            decoration: const BoxDecoration(
+              color: kSurface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                Text(l10n.confirmBookingTitle, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 24),
+                
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: kCardBg, borderRadius: BorderRadius.circular(16)),
+                  child: Column(
+                    children: [
+                      _confirmRow(l10n.labelDate, DateFormat('EEEE, d MMM yyyy').format(bdt), color: Colors.white),
+                      _confirmRow(l10n.labelTime, DateFormat('HH:mm').format(bdt), color: Colors.white),
+                      _confirmRow(l10n.labelBarber, _isPremiumChoice ? _selectedBarberman?.name ?? '-' : l10n.randomSystem, color: kBrownAccent),
+                      const Divider(color: Colors.white10, height: 24),
+                      _confirmRow(l10n.labelTotalCost, NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_totalPrice), isBold: true, color: kBrownAccent),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                const Text('Kebijakan Booking & Refund', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _PolicyPoint(text: "Booking ini bersifat mengikat slot waktu Hairstylist."),
+                      _PolicyPoint(text: "Keterlambatan lebih dari 15 menit dapat menyebabkan booking hangus."),
+                      _PolicyPoint(text: "Pembatalan atau Refund akan dikenakan biaya administrasi sebesar 10% dari total pembayaran.", isWarning: true),
+                      _PolicyPoint(text: "Pengembalian dana (refund) diproses setelah disetujui admin."),
+                    ],
+                  ),
+                ),
+
+                const Spacer(),
+
+                StatefulBuilder(
+                  builder: (context, setCheckState) => Row(
+                    children: [
+                      Checkbox(
+                        value: isAgreed,
+                        activeColor: kBrownAccent,
+                        checkColor: Colors.black,
+                        onChanged: (val) {
+                          setCheckState(() => isAgreed = val ?? false);
+                          setModalState(() {});
+                        },
+                      ),
+                      const Expanded(
+                        child: Text(
+                          "Saya menyetujui Syarat & Ketentuan serta Kebijakan Refund di atas.",
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white54,
+                          side: const BorderSide(color: Colors.white24),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: Text(l10n.btnCancel),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: isAgreed ? () => Navigator.pop(ctx, true) : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kBrownAccent,
+                          foregroundColor: Colors.black,
+                          disabledBackgroundColor: Colors.white10,
+                          disabledForegroundColor: Colors.white24,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: Text(l10n.btnConfirmBook, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+      ),
+    );
+
     if (confirm != true) return;
+    
     setState(() => _isLoading = true);
     final customerId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid;
     final barberId = _isPremiumChoice ? _selectedBarberman!.id : _autoBarberman!.id;
@@ -376,20 +499,45 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       'order_id': orderId,
       if (widget.initialStyleNote != null) 'notes': widget.initialStyleNote,
     };
-    try { await _queueService.createQueue(payload); if (!mounted) return; Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (c) => PaymentScreen(
-      orderId: orderId, 
-      totalPrice: _totalPrice, 
-      barbershopId: widget.barbershop.id, 
-      barbermanId: barberId, 
-      bookingTime: bdt, 
-      paymentDeadline: DateTime.now().add(const Duration(minutes: 15)),
-      queueService: widget.queueService,
-      testUserId: customerId,
-    )));     } catch (e) {
+    try { 
+      await _queueService.createQueue(payload); 
+      if (!mounted) return; 
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (c) => PaymentScreen(
+        orderId: orderId, 
+        totalPrice: _totalPrice, 
+        barbershopId: widget.barbershop.id, 
+        barbermanId: barberId, 
+        bookingTime: bdt, 
+        paymentDeadline: DateTime.now().add(const Duration(minutes: 15)),
+        queueService: widget.queueService,
+        testUserId: customerId,
+      )));     
+    } catch (e) {
       if (mounted) _showSnack("Gagal: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-  Widget _confirmRow(String l, String v, {bool isBold = false, Color color = Colors.white}) => Padding(padding: const EdgeInsets.only(bottom: 4.0), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l, style: const TextStyle(color: Colors.white70)), Text(v, style: TextStyle(color: color, fontWeight: isBold ? FontWeight.bold : FontWeight.normal))]));
+
+  Widget _confirmRow(String l, String v, {bool isBold = false, Color color = Colors.white}) => Padding(padding: const EdgeInsets.only(bottom: 8.0), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l, style: const TextStyle(color: Colors.white54)), Text(v, style: TextStyle(color: color, fontWeight: isBold ? FontWeight.bold : FontWeight.normal, fontSize: isBold ? 16 : 14))]));
+}
+
+class _PolicyPoint extends StatelessWidget {
+  final String text;
+  final bool isWarning;
+  const _PolicyPoint({required this.text, this.isWarning = false});
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(isWarning ? Icons.warning_amber_rounded : Icons.circle, size: isWarning ? 16 : 6, color: isWarning ? Colors.orange : Colors.white54),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text, style: TextStyle(color: isWarning ? Colors.orange : Colors.white70, fontSize: 12, height: 1.4))),
+        ],
+      ),
+    );
+  }
 }

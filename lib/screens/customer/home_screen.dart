@@ -16,6 +16,7 @@ import 'package:geges_smartbarber/screens/customer/tabs/profile_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/chat_assistant_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/stylescan_screen.dart';
 import 'package:geges_smartbarber/screens/customer/notifications_screen.dart';
+import 'package:geges_smartbarber/widgets/skeleton_card.dart';
 import 'package:geolocator/geolocator.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -205,7 +206,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildRecommendedList() {
     final l10n = AppLocalizations.of(context)!;
     return Padding(padding: const EdgeInsets.symmetric(horizontal: 24.0), child: StreamBuilder<List<Barbershop>>(stream: _barbershopStream, builder: (context, snapshot) { 
-      if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) return const Center(child: CircularProgressIndicator(color: kBrownAccent)); 
+      if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+        // IMPROVEMENT: Gunakan Skeleton Loader
+        return Column(
+          children: const [
+            SkeletonBarbershopCard(),
+            SkeletonBarbershopCard(),
+          ],
+        );
+      } 
       if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) return Container(padding: const EdgeInsets.symmetric(vertical: 40), child: Center(child: Text(l10n.failedToLoadShops, style: const TextStyle(color: Colors.white70)))); 
       
       final shops = snapshot.data!;
@@ -223,7 +232,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return GestureDetector(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => BarbershopDetailScreen(barbershop: shop))), child: Container(margin: const EdgeInsets.only(bottom: 20.0), decoration: BoxDecoration(color: kDarkGrey, borderRadius: BorderRadius.circular(20)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(20)), child: SizedBox(height: 180, width: double.infinity, child: _buildImage(shop.imageUrl))),
+      Hero(
+        tag: 'shop_image_${shop.id}',
+        child: ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(20)), child: SizedBox(height: 180, width: double.infinity, child: _buildImage(shop.imageUrl))),
+      ),
       Padding(padding: const EdgeInsets.all(20.0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,

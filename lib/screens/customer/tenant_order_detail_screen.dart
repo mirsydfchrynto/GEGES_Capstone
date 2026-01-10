@@ -58,6 +58,12 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Updated warning text
+              const Text(
+                'Peringatan: Dana refund akan dikembalikan dengan potongan biaya admin 10% sesuai ketentuan.',
+                style: TextStyle(color: kWarning, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
               Text(l10n.cancelRegistrationWarning, style: const TextStyle(color: kTextGrey)),
               const SizedBox(height: 16),
               TextField(

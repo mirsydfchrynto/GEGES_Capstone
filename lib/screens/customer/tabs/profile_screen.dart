@@ -1,20 +1,17 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 import 'package:geges_smartbarber/utils/locale_provider.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter/material.dart';
+import 'package:geges_smartbarber/services/auth_service.dart';
+import 'package:geges_smartbarber/models/user_data.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
+import 'package:geges_smartbarber/screens/auth/login_screen.dart';
 import 'package:geges_smartbarber/screens/customer/tabs/favorite_barbershops_screen.dart';
 import 'package:geges_smartbarber/screens/customer/app_rating_screen.dart';
-import 'package:geges_smartbarber/services/auth_service.dart';
-import 'package:geges_smartbarber/widgets/app_image.dart';
-
-// --- IMPORT DARI ITERASI SEBELUMNYA ---
-import '../../../models/user_data.dart'; // Model UserData yang sudah kita buat
-import '../edit_profile_screen.dart'; // EditProfileScreen yang sudah kita buat
-
-// Pastikan path import ke screens lain ini sudah benar di project Anda
-import 'package:geges_smartbarber/screens/auth/login_screen.dart';
-import 'my_bookings_screen.dart'; // Akan digunakan sebagai History Screen
+import 'package:geges_smartbarber/screens/customer/tabs/my_bookings_screen.dart';
 import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
+import 'package:geges_smartbarber/screens/customer/edit_profile_screen.dart';
+import 'package:geges_smartbarber/screens/common/change_password_screen.dart'; // Import ChangePasswordScreen
 
 class ProfileScreen extends StatefulWidget {
   final AuthService? authService;
@@ -25,15 +22,13 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Theme colors, disesuaikan agar 100% sesuai desain
-  static const Color kBrownAccent = Color(0xFFB9976E); // Emas/coklat
-  static const Color kSurface = Color(0xFF1B1B1B); // Background utama
-  static const Color kCardColor = Color(0xFF2C2C2C); // Background kartu
-  static const Color kRedDanger = Color(0xFFDC3545); // Merah untuk logout
-  static const Color kTextGrey = Color(0xFFB0B0B0); // Teks abu-abu
-  static const Color kTextBlack = Color(
-    0xFF1B1B1B,
-  ); // Teks hitam untuk tombol emas
+  // Theme colors
+  static const Color kBrownAccent = Color(0xFFB9976E); 
+  static const Color kSurface = Color(0xFF1B1B1B); 
+  static const Color kCardColor = Color(0xFF2C2C2C); 
+  static const Color kRedDanger = Color(0xFFDC3545); 
+  static const Color kTextGrey = Color(0xFFB0B0B0); 
+  static const Color kTextBlack = Color(0xFF1B1B1B); 
 
   late final AuthService _authService;
   late UserData _currentUser;
@@ -95,7 +90,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final l10n = AppLocalizations.of(context)!;
     final localeProvider = Provider.of<LocaleProvider>(context);
 
-    // Update name if loading
     String displayName = _currentUser.name;
     if (displayName == "Loading...") displayName = l10n.loading;
 
@@ -146,6 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onTap: () => _showLanguageDialog(context, localeProvider),
               ),
               const SizedBox(height: 12),
+              
               _buildMenuCard(
                 title: l10n.favoriteBarbers,
                 icon: Icons.favorite_border,
@@ -154,6 +149,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => const FavoriteBarbershopsScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 12),
+
+              // --- MENU GANTI PASSWORD ---
+              _buildMenuCard(
+                title: 'Ganti Password', 
+                icon: Icons.lock_outline,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChangePasswordScreen(),
                     ),
                   );
                 },
@@ -286,7 +297,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     borderRadius: BorderRadius.circular(30),
                     fit: BoxFit.cover,
                   )
-                : Icon(Icons.person, size: 30, color: kBrownAccent),
+                : const Icon(Icons.person, size: 30, color: kBrownAccent),
           ),
           const SizedBox(width: 15),
           Expanded(
@@ -312,7 +323,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          // Tombol Settings/Edit Profile
           IconButton(
             onPressed: _goToEditProfile,
             icon: const Icon(Icons.settings, color: kTextGrey, size: 24),
@@ -321,8 +331,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-  // ... (Widget _buildMenuCard dan _buildBarbershopPromoCard tetap sama) ...
 
   Widget _buildMenuCard({
     required String title,
@@ -383,7 +391,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                // Navigate to tenant registration screen
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const TenantRegistrationScreen(),
