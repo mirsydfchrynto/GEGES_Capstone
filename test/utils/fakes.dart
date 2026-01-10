@@ -1,5 +1,6 @@
 // test/utils/fakes.dart
 // Reusable fake AuthService implementations for widget/unit tests
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/models/user_data.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
 
@@ -13,6 +14,12 @@ class FakeAuthServiceSpy implements AuthServiceBase {
     'success': false,
     'message': 'not implemented',
   };
+
+  @override
+  User? get currentUser => null;
+
+  @override
+  Future<void> signOut() async {}
 
   FakeAuthServiceSpy({
     Map<String, dynamic>? signInResponseOverride,

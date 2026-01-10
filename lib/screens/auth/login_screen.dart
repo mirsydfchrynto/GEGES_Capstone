@@ -119,8 +119,10 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final auth = _authService ?? AuthService();
       final result = await auth.signIn(email: email, password: password);
+      
       if (!mounted) return;
       setState(() => _isLoading = false);
+
       if (result['success'] == true) {
         _navigateByRole(result['role']);
       } else {

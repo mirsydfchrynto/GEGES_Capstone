@@ -61,24 +61,25 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      // Wait specifically instead of pumpAndSettle due to animations
+      await tester.pump(const Duration(milliseconds: 500));
 
       // 3. Step 0: Select Service
       final serviceItem = find.text('Cukur Rambut');
       await tester.ensureVisible(serviceItem);
       await tester.tap(serviceItem);
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
 
       final btnLanjut = find.text('LANJUT');
       await tester.ensureVisible(btnLanjut);
       await tester.tap(btnLanjut);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       // 4. Step 1: Select Barber
       final premiumOption = find.textContaining('Pilih Barber Favorit');
       await tester.ensureVisible(premiumOption);
       await tester.tap(premiumOption);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       final barberItem = find.text('Andi');
       await tester.scrollUntilVisible(
@@ -87,10 +88,9 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await tester.tap(barberItem);
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
 
       // 5. Verify Total Price (Service 20k + Fee 5k = 25k)
-      // The UI shows "Total Estimasi ... Rp 25.000"
       expect(find.textContaining(RegExp(r'25[.,]000')), findsOneWidget);
     });
   });

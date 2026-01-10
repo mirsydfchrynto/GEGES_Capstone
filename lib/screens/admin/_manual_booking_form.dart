@@ -94,11 +94,63 @@ class ManualBookingFormState extends State<ManualBookingForm> {
 
   Widget _buildTimeGrid() {
     final List<TimeOfDay> times = [];
-    for (int h = widget.barbershop.openHour; h < widget.barbershop.closeHour; h++) { times.add(TimeOfDay(hour: h, minute: 0)); times.add(TimeOfDay(hour: h, minute: 30)); }
-    return GridView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.2), itemCount: times.length, itemBuilder: (context, i) {
-      final t = times[i]; bool s = _selectedTime == t; bool p = (_selectedDate.day == DateTime.now().day && (t.hour < DateTime.now().hour || (t.hour == DateTime.now().hour && t.minute < DateTime.now().minute)));
-      return InkWell(onTap: () => setState(() { _selectedTime = t; }), child: Container(decoration: BoxDecoration(color: s ? kBrownAccent : (p ? Colors.white.withValues(alpha: 0.05) : kCardBg), borderRadius: BorderRadius.circular(8), border: Border.all(color: s ? kBrownAccent : Colors.white10)), alignment: Alignment.center, child: Text("${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}", style: TextStyle(color: s ? Colors.black : (p ? Colors.white24 : Colors.white), fontWeight: FontWeight.bold, fontSize: 13))));
-    });
+    for (int h = widget.barbershop.openHour; h < widget.barbershop.closeHour; h++) {
+      times.add(TimeOfDay(hour: h, minute: 0));
+      times.add(TimeOfDay(hour: h, minute: 30));
+    }
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 2.2,
+      ),
+      itemCount: times.length,
+      itemBuilder: (context, i) {
+        final t = times[i];
+        bool isSelected = _selectedTime == t;
+        
+        // LOGIKA WAKTU LAMPAU (REAL-TIME)
+        final now = DateTime.now();
+        bool isPast = false;
+        if (_selectedDate.year == now.year &&
+            _selectedDate.month == now.month &&
+            _selectedDate.day == now.day) {
+          if (t.hour < now.hour || (t.hour == now.hour && t.minute < now.minute)) {
+            isPast = true;
+          }
+        }
+
+        return InkWell(
+          onTap: isPast ? null : () => setState(() => _selectedTime = t),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? kBrownAccent
+                  : (isPast ? Colors.white.withValues(alpha: 0.05) : kCardBg),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isSelected ? kBrownAccent : Colors.white10,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}",
+              style: TextStyle(
+                color: isSelected ? Colors.black : (isPast ? Colors.white24 : Colors.white),
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                decoration: isPast ? TextDecoration.lineThrough : null,
+                decorationColor: Colors.white24,
+                decorationThickness: 2,
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildBottomSummary() {

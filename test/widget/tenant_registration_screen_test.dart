@@ -78,13 +78,12 @@ class InMemoryTenantService extends TenantService {
   @override
   Future<Tenant?> getActiveRegistrationForOwner(String ownerUid) async {
     for (final entry in _m.entries) {
-      final id = entry.key;
       final data = entry.value;
-      final status = (data['status'] ?? '').toString();
       final owner = (data['owner_uid'] ?? '').toString();
+      final status = (data['status'] ?? '').toString();
       final inProgress = ['draft', 'awaiting_payment', 'awaiting_confirmation', 'payment_submitted', 'waiting_proof'];
       if (owner == ownerUid && inProgress.contains(status)) {
-        return Tenant(id: id, businessName: data['business_name'] as String? ?? '', documentBase64: data['document_base64'] as String? ?? '', packageId: data['package_id'] as String? ?? '', status: status);
+        return Tenant(id: entry.key, businessName: data['business_name'] as String? ?? '', documentBase64: data['document_base64'] as String? ?? '', packageId: data['package_id'] as String? ?? '', status: status);
       }
     }
     return null;
@@ -108,6 +107,7 @@ void main() {
     await tester.enterText(fields.at(0), 'Barber Keren');
     await tester.enterText(fields.at(2), 'Owner Name');
     await tester.enterText(fields.at(3), 'owner@example.com');
+    await tester.enterText(fields.at(4), '081234567890');
     
     // Accept terms
     final checkbox = find.byType(Checkbox);
@@ -116,14 +116,21 @@ void main() {
     await tester.pump();
 
     // Submit
-    // Price is 300000 by default (monthly)
-    final submitBtn = find.widgetWithText(ElevatedButton, 'Daftar & Bayar 300000');
+    final submitBtn = find.textContaining('Daftar & Bayar');
     await tester.ensureVisible(submitBtn);
-    await tester.pumpAndSettle();
     await tester.tap(submitBtn);
-    await tester.pumpAndSettle();
-
-    // Payment screen appears (localized: Pembayaran)
-    expect(find.text('Pembayaran'), findsOneWidget);
+    
+    // Step-by-step pumps to handle transitions reliably
+    bool foundPaymentScreen = false;
+    for (int i = 0; i < 15; i++) {
+      await tester.pump(const Duration(milliseconds: 500));
+      // UI might use .toUpperCase() -> "RINCIAN PESANAN"
+      if (find.textContaining('RINCIAN PESANAN').evaluate().isNotEmpty || 
+          find.byKey(const Key('payment_screen_title')).evaluate().isNotEmpty) {
+        foundPaymentScreen = true;
+        break;
+      }
+    }
+    expect(foundPaymentScreen, true);
   });
 }

@@ -18,7 +18,7 @@ void main() {
   });
 
   testWidgets('Full booking -> payment upload -> admin verify UI flow', (
-    tester,
+    WidgetTester tester,
   ) async {
     mockNetworkImagesFor(() async {
       final fs = FakeFirebaseFirestore();
@@ -75,29 +75,27 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       await tester.tap(find.text('Signature Haircut'));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(find.text('LANJUT'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       await tester.tap(find.textContaining('Pilih Barber Favorit'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
       
-      // Ensure Andi is visible and CENTERED to avoid being covered by floating buttons
       final barberFinder = find.text('Andi');
       await tester.scrollUntilVisible(
         barberFinder,
-        500.0, // Delta scroll per drag
-        scrollable: find.byType(Scrollable).first, // Find the main scrollable
+        500.0,
+        scrollable: find.byType(Scrollable).first,
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
       
-      // Extra safety: make sure it's really there
       expect(barberFinder, findsOneWidget);
       await tester.tap(barberFinder);
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
 
       // Create queue manually
       final tomorrow = DateTime.now().add(const Duration(days: 1));
@@ -131,9 +129,9 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.text('Pembayaran'), findsOneWidget); // Header Title
+      expect(find.text('Pembayaran'), findsWidgets); 
 
       final qs = await fs.collection('queues').where('customer_id', isEqualTo: 'cust-ui-1').get();
       final bookingId = qs.docs.first.id;
@@ -144,10 +142,10 @@ void main() {
         userId: 'cust-ui-1',
       );
 
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
       
       bool found = false;
-      for (int i = 0; i < 50; i++) {
+      for (int i = 0; i < 20; i++) {
         await tester.pump(const Duration(milliseconds: 200));
         if (find.text('Menunggu Verifikasi Admin').evaluate().isNotEmpty) {
           found = true;

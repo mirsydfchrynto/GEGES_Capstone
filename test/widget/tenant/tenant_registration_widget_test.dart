@@ -30,17 +30,16 @@ void main() {
     await tester.pumpAndSettle();
 
     // Expect validation message for business name
-    expect(find.text('Nama bisnis wajib diisi'), findsOneWidget);
+    expect(find.text('Nama Bisnis wajib diisi'), findsOneWidget);
 
     // Enter invalid email and owner name, then check email validation
-    await tester.enterText(
-      find.byType(TextFormField).at(2),
-      'owner',
-    ); // owner email field is the 3rd field (index 2)
+    await tester.enterText(find.byType(TextFormField).at(2), 'Owner Name'); 
+    await tester.enterText(find.byType(TextFormField).at(3), 'invalid-email'); 
+    
     await tester.ensureVisible(submitButton);
     await tester.tap(submitButton, warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    expect(find.text('Email tidak valid'), findsOneWidget);
+    expect(find.text('Format email tidak valid'), findsOneWidget);
   });
 }

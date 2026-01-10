@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/models/service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
@@ -11,6 +10,7 @@ import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/models/barberman.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
+import 'package:geges_smartbarber/widgets/app_image.dart';
 
 class AppointmentScreen extends StatefulWidget {
   final Barbershop barbershop;
@@ -223,7 +223,31 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     return FutureBuilder<List<Barberman>>(future: _barbershopService.getBarbermenByShop(widget.barbershop.id), builder: (context, snap) {
       if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: kBrownAccent));
       final activeBarbers = snap.data!.where((b) => b.isActive).toList();
-      return SizedBox(height: 120, child: ListView.builder(scrollDirection: Axis.horizontal, itemCount: activeBarbers.length, itemBuilder: (context, i) { final b = activeBarbers[i]; bool isSelected = _selectedBarberman?.id == b.id; return Padding(padding: const EdgeInsets.only(right: 12), child: InkWell(onTap: () { setState(() => _selectedBarberman = b); _fetchBusySlots(); }, child: Column(children: [Container(width: 70, height: 70, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: isSelected ? kBrownAccent : Colors.transparent, width: 2), image: b.imageUrl != null ? DecorationImage(image: CachedNetworkImageProvider(b.imageUrl!), fit: BoxFit.cover) : null, color: Colors.grey[900]), child: b.imageUrl == null ? const Icon(Icons.person, color: Colors.white24) : null), const SizedBox(height: 8), Text(b.name, style: TextStyle(color: isSelected ? kBrownAccent : Colors.white70, fontSize: 12))]))); }));
+      return SizedBox(height: 120, child: ListView.builder(scrollDirection: Axis.horizontal, itemCount: activeBarbers.length, itemBuilder: (context, i) { 
+        final b = activeBarbers[i]; 
+        bool isSelected = _selectedBarberman?.id == b.id; 
+        return Padding(padding: const EdgeInsets.only(right: 12), child: InkWell(onTap: () { setState(() => _selectedBarberman = b); _fetchBusySlots(); }, child: Column(children: [
+          Container(
+            width: 70, height: 70, 
+            decoration: BoxDecoration(
+              shape: BoxShape.circle, 
+              border: Border.all(color: isSelected ? kBrownAccent : Colors.transparent, width: 2), 
+              color: Colors.grey[900]
+            ), 
+            child: ClipOval(
+              child: AppImage(
+                imageUrl: b.imageUrl,
+                width: 70,
+                height: 70,
+                fit: BoxFit.cover,
+                errorWidget: const Icon(Icons.person, color: Colors.white24),
+              ),
+            ),
+          ), 
+          const SizedBox(height: 8), 
+          Text(b.name, style: TextStyle(color: isSelected ? kBrownAccent : Colors.white70, fontSize: 12))
+        ]))); 
+      }));
     });
   }
 
@@ -288,8 +312,18 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     for (int h = widget.barbershop.openHour; h < widget.barbershop.closeHour; h++) { times.add(TimeOfDay(hour: h, minute: 0)); times.add(TimeOfDay(hour: h, minute: 30)); }
     return GridView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.2), itemCount: times.length, itemBuilder: (context, i) {
       if (_isFetchingSlots) return Container(decoration: BoxDecoration(color: kCardBg, borderRadius: BorderRadius.circular(8)), alignment: Alignment.center, child: const SizedBox(height: 10, width: 10, child: CircularProgressIndicator(strokeWidth: 1, color: Colors.white24)));
-      final t = times[i]; bool isSelected = _selectedTime == t; bool isPast = false;
-      if (_selectedDate.year == DateTime.now().year && _selectedDate.month == DateTime.now().month && _selectedDate.day == DateTime.now().day) { if (t.hour < DateTime.now().hour || (t.hour == DateTime.now().hour && t.minute < DateTime.now().minute)) isPast = true; }
+      final t = times[i]; 
+      bool isSelected = _selectedTime == t; 
+      
+      // LOGIKA WAKTU LAMPAU (REAL-TIME)
+      final now = DateTime.now();
+      bool isPast = false;
+      if (_selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day) {
+        if (t.hour < now.hour || (t.hour == now.hour && t.minute < now.minute)) {
+          isPast = true;
+        }
+      }
+
       bool isBusy = false;
       if (!isPast && _busySlots.isNotEmpty) {
         final slotStart = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, t.hour, t.minute);
@@ -351,13 +385,14 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     final l10n = AppLocalizations.of(context)!;
     final bdt = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _selectedTime!.hour, _selectedTime!.minute);
 
+    // Enhanced Confirmation Dialog
+    bool isAgreed = false; // Variable state untuk checkbox
     bool? confirm = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
-          bool isAgreed = false;
           return Container(
             height: MediaQuery.of(context).size.height * 0.85,
             decoration: const BoxDecoration(
@@ -416,26 +451,25 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
                 const Spacer(),
 
-                StatefulBuilder(
-                  builder: (context, setCheckState) => Row(
-                    children: [
-                      Checkbox(
-                        value: isAgreed,
-                        activeColor: kBrownAccent,
-                        checkColor: Colors.black,
-                        onChanged: (val) {
-                          setCheckState(() => isAgreed = val ?? false);
-                          setModalState(() {});
-                        },
+                Row(
+                  children: [
+                    Checkbox(
+                      value: isAgreed,
+                      activeColor: kBrownAccent,
+                      checkColor: Colors.black,
+                      onChanged: (val) {
+                        setModalState(() {
+                          isAgreed = val ?? false;
+                        });
+                      },
+                    ),
+                    const Expanded(
+                      child: Text(
+                        "Saya menyetujui Syarat & Ketentuan serta Kebijakan Refund di atas.",
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
-                      const Expanded(
-                        child: Text(
-                          "Saya menyetujui Syarat & Ketentuan serta Kebijakan Refund di atas.",
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 16),

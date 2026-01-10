@@ -174,7 +174,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // - memberikan base theme dark mode
       // - copyWith() mengubah beberapa property dari base theme
       // - ini lebih efisien daripada membuat custom theme dari 0
-      theme: ThemeData.dark().copyWith(
+      theme: ThemeData.dark(useMaterial3: true).copyWith(
+        // Native-like smooth transitions
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: ZoomPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          },
+        ),
+
         // penjelasan primarycolor:
         // - warna utama yang digunakan untuk button, highlight, icon tertentu
         // - warna ini akan "dominan" di aplikasi

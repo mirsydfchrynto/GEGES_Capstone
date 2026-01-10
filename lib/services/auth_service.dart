@@ -6,8 +6,11 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:geges_smartbarber/models/user_data.dart';
 import 'package:geges_smartbarber/services/session_service.dart';
 
+
 // Public interface so tests can inject a fake implementation without initializing Firebase
 abstract class AuthServiceBase {
+  User? get currentUser;
+  Future<void> signOut();
   Future<Map<String, dynamic>> signIn({
     required String email,
     required String password,
@@ -33,11 +36,12 @@ class AuthService implements AuthServiceBase {
   FirebaseAuth get auth => _auth;
 
   // Constructor defined below (includes optional GoogleSignIn injection)
+  @override
   User? get currentUser => _auth.currentUser;
 
-  // ============================
+  // ============================ 
   // AUTH: SIGN IN / REGISTER
-  // ============================
+  // ============================ 
 
   /// Sign in with email & password.
   /// Returns map: { 'success': bool, 'role': 'customer'|'admin_owner', 'message': ... }
@@ -158,9 +162,6 @@ class AuthService implements AuthServiceBase {
         'created_at': FieldValue.serverTimestamp(),
       });
 
-      // Opsional: kirim verifikasi email
-      await userCredential.user?.sendEmailVerification();
-
       // Save session after register to improve UX
       try {
         final current = _auth.currentUser;
@@ -172,7 +173,7 @@ class AuthService implements AuthServiceBase {
 
       return {
         'success': true,
-        'message': 'Registrasi berhasil. Silakan verifikasi email Anda.',
+        'message': 'Registrasi berhasil. Selamat datang!',
       };
     } on FirebaseAuthException catch (e) {
       return {'success': false, 'message': e.message ?? 'Registrasi gagal'};
@@ -184,9 +185,9 @@ class AuthService implements AuthServiceBase {
     }
   }
 
-  // ============================
+  // ============================ 
   // GOOGLE SIGN IN
-  // ============================
+  // ============================ 
   final GoogleSignIn? _googleSignIn;
 
   AuthService({
@@ -287,9 +288,9 @@ class AuthService implements AuthServiceBase {
     }
   }
 
-  // ============================
+  // ============================ 
   // PASSWORD RESET
-  // ============================
+  // ============================ 
 
   /// Kirim link reset password
   @override
@@ -312,9 +313,9 @@ class AuthService implements AuthServiceBase {
     }
   }
 
-  // ============================
+  // ============================ 
   // GET USER DATA (FIRESTORE)
-  // ============================
+  // ============================ 
 
   // --- PERBAIKAN DI SINI ---
   // Mengganti 'getUserByIdRaw' (Map) menjadi 'getUserById' (Model)
@@ -334,9 +335,9 @@ class AuthService implements AuthServiceBase {
   }
   // --- AKHIR PERBAIKAN ---
 
-  // ============================
+  // ============================ 
   // UPDATE PROFILE & REAUTH
-  // ============================
+  // ============================ 
 
   /// Reauthenticate using current password (email/password accounts)
   Future<void> reauthWithPassword(String email, String currentPassword) async {
@@ -509,9 +510,9 @@ class AuthService implements AuthServiceBase {
     }
   }
 
-  // ============================
+  // ============================ 
   // CHANGE PASSWORD
-  // ============================
+  // ============================ 
 
   /// Mengubah password dengan verifikasi password lama terlebih dahulu
   @override
@@ -550,10 +551,11 @@ class AuthService implements AuthServiceBase {
     }
   }
 
-  // ============================
+  // ============================ 
   // SIGN OUT
-  // ============================
+  // ============================ 
 
+  @override
   Future<void> signOut() async {
     final currentUid = _auth.currentUser?.uid;
     try {

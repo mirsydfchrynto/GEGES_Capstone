@@ -140,11 +140,22 @@ class _BookingDetailView extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: kBrownAccent.withValues(alpha: 0.2),
-                  backgroundImage: vm.barberman?.imageUrl != null ? NetworkImage(vm.barberman!.imageUrl!) : null,
-                  child: vm.barberman?.imageUrl == null ? const Icon(Icons.person, color: kBrownAccent) : null,
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: kBrownAccent.withValues(alpha: 0.2),
+                  ),
+                  child: ClipOval(
+                    child: AppImage(
+                      imageUrl: vm.barberman?.imageUrl,
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                      errorWidget: const Icon(Icons.person, color: kBrownAccent),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

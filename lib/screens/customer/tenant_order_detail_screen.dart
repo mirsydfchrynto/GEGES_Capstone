@@ -54,28 +54,30 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
         return AlertDialog(
           backgroundColor: kDarkGrey,
           title: Text(l10n.cancelRegistrationTitle, style: const TextStyle(color: Colors.white)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Updated warning text
-              const Text(
-                'Peringatan: Dana refund akan dikembalikan dengan potongan biaya admin 10% sesuai ketentuan.',
-                style: TextStyle(color: kWarning, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(l10n.cancelRegistrationWarning, style: const TextStyle(color: kTextGrey)),
-              const SizedBox(height: 16),
-              TextField(
-                onChanged: (v) => input = v,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: l10n.reason,
-                  hintStyle: const TextStyle(color: Colors.white38),
-                  enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: kBrownAccent)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Updated warning text
+                const Text(
+                  'Peringatan: Dana refund akan dikembalikan dengan potongan biaya admin 10% sesuai ketentuan.',
+                  style: TextStyle(color: kWarning, fontWeight: FontWeight.bold),
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(l10n.cancelRegistrationWarning, style: const TextStyle(color: kTextGrey)),
+                const SizedBox(height: 16),
+                TextField(
+                  onChanged: (v) => input = v,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: l10n.reason,
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: kBrownAccent)),
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -136,7 +138,9 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: kDarkGrey,
         title: Text(l10n.cancelRegistrationTitle, style: const TextStyle(color: Colors.white)),
-        content: Text(l10n.cancelRegistrationWarning, style: const TextStyle(color: Colors.white70)),
+        content: SingleChildScrollView(
+          child: Text(l10n.cancelRegistrationWarning, style: const TextStyle(color: Colors.white70)),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.btnBack, style: const TextStyle(color: kTextGrey))),
           ElevatedButton(

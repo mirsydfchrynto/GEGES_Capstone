@@ -82,6 +82,71 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => const LoginScreen()), (Route<dynamic> route) => false);
   }
 
+  // Helper: Find next relevant appointment
+  Queue? _getNextAppointment(List<Queue> queues) {
+    final now = DateTime.now();
+    final active = queues.where((q) => q.status == QueueStatus.booked || q.status == QueueStatus.ongoing).toList();
+    
+    final todayUpcoming = active.where((q) { 
+      final d = q.bookingTime.toDate(); 
+      return d.year == now.year && d.month == now.month && d.day == now.day && d.isAfter(now.subtract(const Duration(minutes: 30))); 
+    }).toList();
+    
+    todayUpcoming.sort((a, b) => a.bookingTime.toDate().compareTo(b.bookingTime.toDate()));
+    if (todayUpcoming.isNotEmpty) return todayUpcoming.first;
+
+    final futureUpcoming = active.where((q) => q.bookingTime.toDate().isAfter(now)).toList();
+    futureUpcoming.sort((a, b) => a.bookingTime.toDate().compareTo(b.bookingTime.toDate()));
+    if (futureUpcoming.isNotEmpty) return futureUpcoming.first;
+
+    return null;
+  }
+
+  // Optimized Calculation for ALL time data
+  Map<String, dynamic> _calculateEnhancedStats(List<Queue> queues) {
+    int pendingPayment = 0;
+    int verifyPayment = 0;
+    int cancellationReq = 0;
+    int totalBooked = 0;
+    int totalOngoing = 0;
+    int totalServed = 0;
+    int totalCancelled = 0;
+
+    for (var q in queues) {
+      // Global Actionable Counts
+      if (q.status == QueueStatus.awaitingPayment) {
+        if (q.paymentProofBase64 == null || q.paymentProofBase64!.isEmpty) {
+          pendingPayment++;
+        } else {
+          verifyPayment++;
+        }
+      } else if (q.status == QueueStatus.cancellationRequested) {
+        cancellationReq++;
+      }
+
+      // Track all statuses across all days
+      switch (q.status) {
+        case QueueStatus.booked: totalBooked++; break;
+        case QueueStatus.ongoing: totalOngoing++; break;
+        case QueueStatus.served: totalServed++; break;
+        case QueueStatus.cancelled: totalCancelled++; break;
+        default: break;
+      }
+    }
+
+    return {
+      'stats': {
+        'pending_payment': pendingPayment,
+        'verify_payment': verifyPayment,
+        'cancellation_req': cancellationReq,
+        'today_booked': totalBooked, // Key remains for compatibility
+        'today_ongoing': totalOngoing,
+        'today_served': totalServed,
+        'today_cancelled': totalCancelled,
+      },
+    };
+  }
+
   Future<void> _toggleShopStatus() async {
     if (_adminBarbershopId == null || _isTogglingStatus) return;
     setState(() => _isTogglingStatus = true);
@@ -95,24 +160,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingError.isNotEmpty) return Scaffold(backgroundColor: kBlack, body: Center(child: Text(_loadingError, style: const TextStyle(color: Colors.red))));
+    if (_loadingError.isNotEmpty) {
+      return Scaffold(
+        backgroundColor: kBlack,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text(_loadingError, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loadAdminData,
+                style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent),
+                child: const Text('Coba Lagi', style: TextStyle(color: Colors.black)),
+              )
+            ],
+          ),
+        ),
+      );
+    }
     
-    // IMPROVEMENT: Use Skeleton Loader
     if (_adminBarbershopId == null) return const AdminDashboardSkeleton();
 
-    final stream = _queueService.streamQueuesForBarbershop(_adminBarbershopId!, statusFilter: ['waiting', 'awaiting_payment', 'booked', 'ongoing', 'served', 'cancelled', 'cancellation_requested'], limit: 30);
+    // Accuracy: Fetch ALL data for this barbershop to track all-time status
+    final stream = _queueService.streamQueuesForBarbershop(
+      _adminBarbershopId!, 
+      statusFilter: ['waiting', 'awaiting_payment', 'booked', 'ongoing', 'served', 'cancelled', 'cancellation_requested'], 
+      limit: 500 // Increased limit to capture broader history
+    );
 
     return Scaffold(
       backgroundColor: kBlack,
       body: StreamBuilder<List<Queue>>(
         stream: stream,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          final isSyncing = snapshot.connectionState == ConnectionState.waiting;
+          
+          if (isSyncing && !snapshot.hasData) {
              return const AdminDashboardSkeleton();
           }
           
           final allQueues = snapshot.data ?? [];
-          final stats = _calculateStats(allQueues);
+          final dashboardData = _calculateEnhancedStats(allQueues);
           final nextQueue = _getNextAppointment(allQueues);
 
           return SafeArea(
@@ -120,22 +211,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               onRefresh: () async => _loadAdminData(),
               color: kBrownAccent,
               child: ListView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 children: [
-                  _buildTopBar(),
-                  const SizedBox(height: 20),
+                  _buildTopBar(isLive: snapshot.hasData),
+                  const SizedBox(height: 24),
                   _buildShopToggle(),
-                  const SizedBox(height: 20),
-                  _buildRealtimeStatsRow(stats),
                   const SizedBox(height: 24),
-                  const Text('Main Menu', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  _buildGridMenu(stats),
-                  const SizedBox(height: 24),
+                  _buildSectionHeader('Monitoring Antrean', 'Semua Data Ter-sinkronisasi'),
+                  const SizedBox(height: 12),
+                  _buildRealtimeStatsRow(dashboardData['stats'] as Map<String, int>),
+                  const SizedBox(height: 28),
                   if (nextQueue != null) ...[
+                    _buildSectionHeader('Antrean Aktif / Mendatang', 'Live Update'),
+                    const SizedBox(height: 12),
                     _buildUpcomingAppointmentCard(nextQueue),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 28),
+                  ] else if (!isSyncing) ...[
+                     _buildNoDataPrompt(),
+                     const SizedBox(height: 28),
                   ],
+                  _buildSectionHeader('Main Menu', 'Kelola Barbershop'),
+                  const SizedBox(height: 16),
+                  _buildGridMenu(dashboardData['stats'] as Map<String, int>),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -145,88 +243,183 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  // Refactored Logic: Helper to find the next relevant appointment
-  Queue? _getNextAppointment(List<Queue> queues) {
-    final now = DateTime.now();
-    final active = queues.where((q) => q.status == QueueStatus.booked || q.status == QueueStatus.ongoing).toList();
-    
-    // 1. Check for ongoing/upcoming today
-    final todayUpcoming = active.where((q) { 
-      final d = q.bookingTime.toDate(); 
-      return d.year == now.year && d.month == now.month && d.day == now.day && d.isAfter(now.subtract(const Duration(minutes: 30))); 
-    }).toList();
-    
-    todayUpcoming.sort((a, b) => a.bookingTime.toDate().compareTo(b.bookingTime.toDate()));
-    
-    if (todayUpcoming.isNotEmpty) return todayUpcoming.first;
-
-    // 2. Check future days
-    final futureUpcoming = active.where((q) => q.bookingTime.toDate().isAfter(now)).toList();
-    futureUpcoming.sort((a, b) => a.bookingTime.toDate().compareTo(b.bookingTime.toDate()));
-    
-    if (futureUpcoming.isNotEmpty) return futureUpcoming.first;
-
-    return null;
+  Widget _buildSectionHeader(String title, String subtitle) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(subtitle, style: TextStyle(color: kBrownAccent.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ],
+    );
   }
 
-  Map<String, int> _calculateStats(List<Queue> queues) {
-    final DateTime now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day);
-    final todayEnd = todayStart.add(const Duration(days: 1));
-    final todayQueues = queues.where((q) {
-      final d = q.bookingTime.toDate();
-      return d.isAfter(todayStart.subtract(const Duration(seconds: 1))) && d.isBefore(todayEnd);
-    }).toList();
-
-    return {
-      'pending_payment': queues.where((q) => q.status == QueueStatus.awaitingPayment && (q.paymentProofBase64 == null || q.paymentProofBase64!.isEmpty)).length,
-      'verify_payment': queues.where((q) => q.status == QueueStatus.awaitingPayment && q.paymentProofBase64 != null && q.paymentProofBase64!.isNotEmpty).length,
-      'cancellation_req': queues.where((q) => q.status == QueueStatus.cancellationRequested).length,
-      'today_booked': todayQueues.where((q) => q.status == QueueStatus.booked).length,
-      'today_ongoing': todayQueues.where((q) => q.status == QueueStatus.ongoing).length,
-      'today_served': todayQueues.where((q) => q.status == QueueStatus.served).length,
-      'today_cancelled': todayQueues.where((q) => q.status == QueueStatus.cancelled).length,
-    };
+  Widget _buildNoDataPrompt() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: kDarkSurface.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05))
+      ),
+      child: const Center(
+        child: Column(
+          children: [
+            Icon(Icons.event_busy, color: Colors.white24, size: 40),
+            SizedBox(height: 12),
+            Text('Tidak ada data antrean ditemukan', style: TextStyle(color: Colors.white54, fontSize: 14)),
+          ],
+        ),
+      ),
+    );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar({bool isLive = false}) {
     return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(_barbershopName.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
-        const Text('Admin Dashboard', style: TextStyle(color: Colors.white54, fontSize: 14)),
-      ]),
-      IconButton(onPressed: () => _logout(context), icon: const Icon(Icons.logout, color: Colors.white54)),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_barbershopName.toUpperCase(), 
+               style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+               maxLines: 1, overflow: TextOverflow.ellipsis),
+          Row(
+            children: [
+              const Text('Admin Control Panel', style: TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w400)),
+              if (isLive) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.green.withValues(alpha: 0.3))),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.sensors, color: Colors.green, size: 10),
+                      SizedBox(width: 4),
+                      Text('LIVE', style: TextStyle(color: Colors.green, fontSize: 8, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ]),
+      ),
+      _buildLogoutButton(),
     ]);
   }
 
+  Widget _buildLogoutButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.1), 
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.2))
+      ),
+      child: IconButton(
+        onPressed: () => _confirmLogout(), 
+        icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 24)
+      ),
+    );
+  }
+
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: kDarkSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Konfirmasi Keluar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text('Apakah Anda yakin ingin keluar dari akun admin?', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal', style: TextStyle(color: Colors.white38)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _logout(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+            ),
+            child: const Text('Keluar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildShopToggle() {
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), decoration: BoxDecoration(color: kDarkSurface, borderRadius: BorderRadius.circular(16)), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Row(children: [
-        Container(width: 12, height: 12, decoration: BoxDecoration(color: _isShopOpen ? Colors.green : Colors.red, shape: BoxShape.circle)),
-        const SizedBox(width: 12),
-        Text(_isShopOpen ? 'TOKO BUKA' : 'TOKO TUTUP', style: TextStyle(color: _isShopOpen ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
-      ]),
-      Switch(value: _isShopOpen, onChanged: _isTogglingStatus ? null : (_) => _toggleShopStatus(), activeThumbColor: Colors.green, activeTrackColor: Colors.green.withValues(alpha: 0.3), inactiveThumbColor: Colors.red, inactiveTrackColor: Colors.red.withValues(alpha: 0.3)),
-    ]));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8), 
+      decoration: BoxDecoration(
+        color: kDarkSurface, 
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _isShopOpen ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1))
+      ), 
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Row(children: [
+          Container(
+            width: 10, height: 10, 
+            decoration: BoxDecoration(
+              color: _isShopOpen ? Colors.green : Colors.red, 
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: (_isShopOpen ? Colors.green : Colors.red).withValues(alpha: 0.5), blurRadius: 8)]
+            )
+          ),
+          const SizedBox(width: 12),
+          Text(_isShopOpen ? 'OPERASIONAL BUKA' : 'OPERASIONAL TUTUP', 
+               style: TextStyle(color: _isShopOpen ? Colors.green : Colors.red, fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 0.5)),
+        ]),
+        Transform.scale(
+          scale: 0.8,
+          child: Switch(
+            value: _isShopOpen, 
+            onChanged: _isTogglingStatus ? null : (_) => _toggleShopStatus(), 
+            activeThumbColor: Colors.green, 
+            activeTrackColor: Colors.green.withValues(alpha: 0.2), 
+            inactiveThumbColor: Colors.red, 
+            inactiveTrackColor: Colors.red.withValues(alpha: 0.2)
+          ),
+        ),
+      ]));
   }
 
   Widget _buildRealtimeStatsRow(Map<String, int> stats) {
-    return SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
-      _statChip('Unpaid', stats['pending_payment']!, Colors.amber), const SizedBox(width: 12),
-      _statChip('Verify', stats['verify_payment']!, Colors.blueAccent), const SizedBox(width: 12),
-      _statChip('Booked', stats['today_booked']!, Colors.lightBlue), const SizedBox(width: 12),
-      _statChip('Active', stats['today_ongoing']!, Colors.greenAccent), const SizedBox(width: 12),
-      _statChip('Done', stats['today_served']!, Colors.grey), const SizedBox(width: 12),
-      _statChip('Cancel', stats['today_cancelled']!, Colors.redAccent),
-    ]));
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal, 
+      physics: const BouncingScrollPhysics(),
+      child: Row(children: [
+        _statChip('Verify', stats['verify_payment']!, Colors.blueAccent), const SizedBox(width: 12),
+        _statChip('Booked', stats['today_booked']!, kBrownAccent), const SizedBox(width: 12),
+        _statChip('Active', stats['today_ongoing']!, Colors.greenAccent), const SizedBox(width: 12),
+        _statChip('Unpaid', stats['pending_payment']!, Colors.amber), const SizedBox(width: 12),
+        _statChip('Done', stats['today_served']!, Colors.grey), const SizedBox(width: 12),
+        _statChip('Cancel', stats['today_cancelled']!, Colors.redAccent),
+      ])
+    );
   }
 
   Widget _statChip(String label, int count, Color color) {
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.3))), child: Column(children: [
-      Text(count.toString(), style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 4),
-      Text(label, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 12)),
-    ]));
+    return Container(
+      constraints: const BoxConstraints(minWidth: 90),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), 
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05), 
+        borderRadius: BorderRadius.circular(16), 
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1.5)
+      ), 
+      child: Column(children: [
+        Text(count.toString(), style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.3)),
+      ]));
   }
 
   Widget _buildGridMenu(Map<String, int> stats) {
@@ -252,13 +445,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Widget _menuItem(IconData icon, String title, String sub, VoidCallback onTap, {int badge = 0}) {
     return Stack(clipBehavior: Clip.none, children: [
-      InkWell(onTap: onTap, borderRadius: BorderRadius.circular(16), child: Container(width: double.infinity, padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: kDarkSurface, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withValues(alpha: 0.05))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      InkWell(onTap: onTap, borderRadius: BorderRadius.circular(16), child: Container(width: double.infinity, padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: kDarkSurface, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withValues(alpha: 0.05))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(icon, color: kBrownAccent, size: 28),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-          const SizedBox(height: 2),
-          Text(sub, style: const TextStyle(color: Colors.white38, fontSize: 10)),
-        ])
+        const Spacer(),
+        Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+        const SizedBox(height: 2),
+        Text(sub, style: const TextStyle(color: Colors.white38, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
       ]))),
       if (badge > 0) Positioned(top: -5, right: -5, child: Container(padding: const EdgeInsets.all(6), decoration: const BoxDecoration(color: kRedNotification, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 2))]), constraints: const BoxConstraints(minWidth: 24, minHeight: 24), child: Center(child: Text(badge > 99 ? '99+' : badge.toString(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold))))),
     ]);

@@ -245,7 +245,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       if (widget.tenantId != null && widget.tenantPaymentHandler != null) {
         await widget.tenantPaymentHandler!(tenantId: widget.tenantId!, base64: base64Img, userId: userId);
-        if (mounted) Navigator.pop(context);
+        if (mounted) {
+           setState(() {
+             _paymentStatus = 'success';
+             _isLoading = false; 
+           });
+        }
       } else if (_resolvedQueueId != null) {
         await _queueService.submitPaymentProofForQueue(queueId: _resolvedQueueId!, userId: userId, base64Proof: base64Img);
         _showSnack("Bukti terkirim! Mohon tunggu verifikasi admin.", success: true);
@@ -287,7 +292,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             }
           }
         ),
-        title: Text(l10n.paymentTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(l10n.paymentTitle, key: const Key('payment_screen_title'), style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: Column(
@@ -572,6 +577,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Widget _buildSuccessScreen() {
     final l10n = AppLocalizations.of(context)!;
+    final isTenant = widget.tenantId != null;
+
+    final title = isTenant ? "Pendaftaran Berhasil Dikirim" : l10n.paymentAccepted;
+    final desc = isTenant 
+        ? "Bukti pembayaran Anda telah kami terima. Tim kami akan memverifikasi data Anda (maks 1x24 jam). Anda dapat memantau status pendaftaran di menu Profil > Pesanan Saya."
+        : l10n.paymentSuccessDesc;
+    final btnText = isTenant ? "Ke Menu Profil" : l10n.backToHome;
+
     return Scaffold(
       backgroundColor: kSurface,
       body: Center(
@@ -582,9 +595,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
             children: [
               Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: kSuccess.withValues(alpha:0.1), shape: BoxShape.circle), child: const Icon(Icons.verified_rounded, size: 100, color: kSuccess)),
               const SizedBox(height: 32),
-              Text(l10n.paymentAccepted, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
+              Text(title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
               const SizedBox(height: 16),
-              Text(l10n.paymentSuccessDesc, textAlign: TextAlign.center, style: const TextStyle(color: kTextSecondary, fontSize: 16, height: 1.5)),
+              Text(desc, textAlign: TextAlign.center, style: const TextStyle(color: kTextSecondary, fontSize: 16, height: 1.5)),
               const SizedBox(height: 48),
               SizedBox(
                 width: double.infinity,
@@ -598,7 +611,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                  child: Text(l10n.backToHome, style: const TextStyle(fontWeight: FontWeight.w900)),
+                  child: Text(btnText, style: const TextStyle(fontWeight: FontWeight.w900)),
                 ),
               )
             ],

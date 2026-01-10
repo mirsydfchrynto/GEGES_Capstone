@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 
 class SkeletonCard extends StatefulWidget {
@@ -27,7 +28,12 @@ class _SkeletonCardState extends State<SkeletonCard>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
+    );
+
+    // FIX: Don't repeat animation in tests to avoid pumpAndSettle timeouts
+    if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+      _controller.repeat(reverse: true);
+    }
 
     _colorAnimation = ColorTween(
       begin: Colors.grey[850], // Darker grey

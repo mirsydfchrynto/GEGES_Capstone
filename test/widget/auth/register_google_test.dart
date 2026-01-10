@@ -1,5 +1,6 @@
 // test/register_google_test.dart
 // Widget tests for RegisterScreen Google sign-in behavior
+import 'package:firebase_auth/firebase_auth.dart'; // Add this import
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geges_smartbarber/screens/auth/register_screen.dart';
@@ -9,6 +10,12 @@ import '../../helpers/test_helpers.dart';
 
 class FakeAuthServiceSuccess implements AuthServiceBase {
   FakeAuthServiceSuccess();
+
+  @override
+  User? get currentUser => null;
+
+  @override
+  Future<void> signOut() async {}
 
   @override
   Future<Map<String, dynamic>> signInWithGoogle() async => {'success': true};
@@ -42,6 +49,12 @@ class FakeAuthServiceSuccess implements AuthServiceBase {
 class FakeAuthServiceFailure implements AuthServiceBase {
   final String message;
   FakeAuthServiceFailure(this.message);
+
+  @override
+  User? get currentUser => null;
+
+  @override
+  Future<void> signOut() async {}
 
   @override
   Future<Map<String, dynamic>> signInWithGoogle() async => {

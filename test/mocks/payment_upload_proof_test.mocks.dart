@@ -1069,6 +1069,8 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
     String? barbershopId, {
     List<String>? statusFilter,
     String? barbermanIdFilter,
+    DateTime? startDate,
+    DateTime? endDate,
     int? limit = 50,
     _i5.DocumentSnapshot<Object?>? startAfter,
   }) =>
@@ -1079,6 +1081,8 @@ class MockQueueService extends _i1.Mock implements _i8.QueueService {
           {
             #statusFilter: statusFilter,
             #barbermanIdFilter: barbermanIdFilter,
+            #startDate: startDate,
+            #endDate: endDate,
             #limit: limit,
             #startAfter: startAfter,
           },

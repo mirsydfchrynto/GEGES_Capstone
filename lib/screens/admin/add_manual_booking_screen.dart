@@ -144,20 +144,6 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
     }
   }
 
-  /// Validate booking time: not in the past and within open/close hours
-  String? _validateDateTime(DateTime dt) {
-    final now = DateTime.now();
-    if (dt.isBefore(now.subtract(const Duration(minutes: 1)))) {
-      return 'Waktu booking tidak boleh di masa lalu';
-    }
-    final open = widget.barbershop.openHour;
-    final close = widget.barbershop.closeHour;
-    if (dt.hour < open || dt.hour >= close) {
-      return 'Waktu harus antara $open:00 - $close:00';
-    }
-    return null;
-  }
-
   Future<void> _pickDateTime() async {
     final now = DateTime.now();
 
@@ -193,20 +179,94 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
       pickedDate.year,
       pickedDate.month,
       pickedDate.day,
-      pickedTime.hour,
-      pickedTime.minute,
+      now.hour,
+      now.minute,
     );
-
-    final err = _validateDateTime(dt);
-    if (err != null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
-      return;
-    }
 
     setState(() {
       _selectedDateTime = dt;
+      // Reset selected time part to allow picking from grid
+      _selectedDateTime = DateTime(pickedDate.year, pickedDate.month, pickedDate.day);
     });
+  }
+
+  Widget _buildTimeGrid() {
+    if (_selectedDateTime == null) return const SizedBox();
+    
+    final List<TimeOfDay> times = [];
+    for (int h = widget.barbershop.openHour; h < widget.barbershop.closeHour; h++) {
+      times.add(TimeOfDay(hour: h, minute: 0));
+      times.add(TimeOfDay(hour: h, minute: 30));
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        const Text('Pilih Jam', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 2.2,
+          ),
+          itemCount: times.length,
+          itemBuilder: (context, i) {
+            final t = times[i];
+            final slotDt = DateTime(
+              _selectedDateTime!.year, 
+              _selectedDateTime!.month, 
+              _selectedDateTime!.day, 
+              t.hour, 
+              t.minute
+            );
+            
+            bool isSelected = _selectedDateTime!.hour == t.hour && _selectedDateTime!.minute == t.minute;
+            
+            // LOGIKA WAKTU LAMPAU (REAL-TIME)
+            final now = DateTime.now();
+            bool isPast = false;
+            if (_selectedDateTime!.year == now.year && 
+                _selectedDateTime!.month == now.month && 
+                _selectedDateTime!.day == now.day) {
+              if (t.hour < now.hour || (t.hour == now.hour && t.minute < now.minute)) {
+                isPast = true;
+              }
+            }
+
+            return InkWell(
+              onTap: isPast ? null : () {
+                setState(() {
+                  _selectedDateTime = slotDt;
+                });
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected ? kBrownAccent : (isPast ? Colors.white.withValues(alpha: 0.05) : Colors.black26),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: isSelected ? kBrownAccent : Colors.white10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}",
+                  style: TextStyle(
+                    color: isSelected ? Colors.black : (isPast ? Colors.white24 : Colors.white),
+                    fontWeight: FontWeight.bold,
+                    decoration: isPast ? TextDecoration.lineThrough : null,
+                    decorationColor: Colors.white24,
+                    decorationThickness: 2,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
   }
 
   int get _totalPrice {
@@ -761,6 +821,7 @@ class _AddManualBookingScreenState extends State<AddManualBookingScreen> {
                                 ),
                               ),
                             ),
+                            _buildTimeGrid(), // Added the Time Grid here
                             const SizedBox(height: 8),
                             if (_totalDuration > 0)
                               Row(

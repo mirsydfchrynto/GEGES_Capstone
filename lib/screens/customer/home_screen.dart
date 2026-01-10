@@ -2,7 +2,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 import 'package:geges_smartbarber/models/barbershop.dart';
 import 'package:geges_smartbarber/models/promo_banner.dart';
@@ -507,13 +506,12 @@ class _PromoCarouselState extends State<PromoCarousel>
                         child: ClipRRect(
                             borderRadius: BorderRadius.circular(20),
                             child: Stack(fit: StackFit.expand, children: [
-                              CachedNetworkImage(
-                                  imageUrl: p.imageUrl,
-                                  fit: BoxFit.cover,
-                                  placeholder: (c, u) =>
-                                      Container(color: Colors.black12),
-                                  errorWidget: (c, u, e) =>
-                                      const Icon(Icons.broken_image)),
+                              AppImage(
+                                imageUrl: p.imageUrl,
+                                fit: BoxFit.cover,
+                                placeholder: Container(color: Colors.black12),
+                                errorWidget: const Icon(Icons.broken_image),
+                              ),
                               Container(color: Colors.black26),
                               Padding(
                                   padding: const EdgeInsets.all(20),

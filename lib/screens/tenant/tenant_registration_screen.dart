@@ -11,6 +11,8 @@ import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/services/location_service.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
+import 'package:geges_smartbarber/services/email_service.dart';
+import 'package:geges_smartbarber/utils/input_validators.dart';
 import 'package:geges_smartbarber/widgets/document_upload_widget.dart';
 import 'package:geges_smartbarber/screens/legal/terms_page.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
@@ -408,6 +410,16 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
         },
       });
 
+      // KIRIM EMAIL KONFIRMASI (Fire & Forget)
+      try {
+        EmailService().sendTenantRegistrationEmail(
+          _businessNameCtrl.text.trim(), 
+          _ownerEmailCtrl.text.trim()
+        );
+      } catch (e) {
+        debugPrint('Gagal mengirim email tenant: $e');
+      }
+
       if (!mounted) return;
       
       // Reset form before navigating away to ensure clean state if user comes back
@@ -478,9 +490,7 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Nama Bisnis (Barbershop)',
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Nama bisnis wajib diisi'
-                    : null,
+                validator: (v) => InputValidators.validateRequired(v, fieldName: 'Nama Bisnis'),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -493,9 +503,7 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
               TextFormField(
                 controller: _ownerNameCtrl,
                 decoration: const InputDecoration(labelText: 'Nama Pemilik'),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Nama pemilik wajib diisi'
-                    : null,
+                validator: InputValidators.validateName,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -505,9 +513,7 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                   helperText: 'Email ini akan menjadi Username Login Admin Barbershop Anda',
                   helperStyle: TextStyle(color: Colors.amber),
                 ),
-                validator: (v) => (v == null || !v.contains('@'))
-                    ? 'Email tidak valid'
-                    : null,
+                validator: InputValidators.validateEmail,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -515,6 +521,7 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Nomor Telepon Pemilik',
                 ),
+                validator: InputValidators.validatePhone,
               ),
               const SizedBox(height: 12),
               TextFormField(

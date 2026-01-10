@@ -40,12 +40,16 @@ class AppImage extends StatelessWidget {
 
     if (path.startsWith('http') || path.startsWith('https')) {
       image = CachedNetworkImage(
+        key: ValueKey(path),
         imageUrl: path,
         width: width,
         height: height,
+        memCacheWidth: width != null ? (width! * 2).toInt() : 700, 
         fit: fit,
         color: color,
         colorBlendMode: colorBlendMode,
+        fadeInDuration: const Duration(milliseconds: 100), // Shorter fade to reduce blink feel
+        fadeOutDuration: const Duration(milliseconds: 100),
         placeholder: (context, url) => placeholder ?? _buildPlaceholder(),
         errorWidget: (context, url, error) => errorWidget ?? _buildErrorWidget(),
       );
@@ -57,11 +61,13 @@ class AppImage extends StatelessWidget {
         }
         image = Image.memory(
           bytes,
+          key: ValueKey(path.hashCode), 
           width: width,
           height: height,
           fit: fit,
           color: color,
           colorBlendMode: colorBlendMode,
+          gaplessPlayback: true, // Prevents blink when base64 is re-decoded
           errorBuilder: (context, error, stackTrace) => errorWidget ?? _buildErrorWidget(),
         );
       } catch (e) {

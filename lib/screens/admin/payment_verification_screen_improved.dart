@@ -81,8 +81,8 @@ class _PaymentVerificationScreenImprovedState extends State<PaymentVerificationS
             if (time != null) Text(DateFormat('HH:mm').format(time), style: const TextStyle(color: Colors.white24, fontSize: 12)),
           ]),
           const SizedBox(height: 12),
-          Text(data['customer_name'] ?? 'Pelanggan', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-          Text('Total: Rp ${data['total_price']}', style: const TextStyle(color: Color(0xFFC3A47B), fontWeight: FontWeight.bold)),
+          Text(data['customer_name'] ?? 'Pelanggan', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text('Total: Rp ${data['total_price']}', style: const TextStyle(color: Color(0xFFC3A47B), fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 16),
           
           // Image Preview

@@ -140,7 +140,9 @@ class QueueService implements QueueServiceContract {
     String barbershopId, {
     List<String>? statusFilter,
     String? barbermanIdFilter,
-    int limit = 50,
+    DateTime? startDate,
+    DateTime? endDate,
+    int limit = 100,
     DocumentSnapshot? startAfter,
   }) {
     Query<Map<String, dynamic>> query = _firestore
@@ -155,6 +157,13 @@ class QueueService implements QueueServiceContract {
       query = query.where('status', whereIn: statusFilter);
     }
 
+    if (startDate != null) {
+      query = query.where('booking_time', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
+    }
+    if (endDate != null) {
+      query = query.where('booking_time', isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+    }
+
     query = query.orderBy('booking_time', descending: false).limit(limit);
 
     if (startAfter != null) query = query.startAfterDocument(startAfter);
@@ -165,7 +174,11 @@ class QueueService implements QueueServiceContract {
           toFirestore: (queue, _) => queue.toJson(),
         )
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((d) => d.data()).toList());
+        .map((snapshot) => snapshot.docs.map((d) => d.data()).toList())
+        .handleError((error) {
+          debugPrint("Firestore Stream Error: $error");
+          return <Queue>[];
+        });
   }
 
   Stream<List<Queue>> streamQueuesForCustomer(

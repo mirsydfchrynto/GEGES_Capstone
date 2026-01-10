@@ -36,12 +36,16 @@ class AdminDashboardSkeleton extends StatelessWidget {
               const SizedBox(height: 30),
 
               // Stats Row Skeleton
-              Row(
-                children: List.generate(4, (index) => 
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: const SkeletonCard(width: 80, height: 80, borderRadius: 12),
-                  )
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                child: Row(
+                  children: List.generate(6, (index) => 
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: const SkeletonCard(width: 80, height: 80, borderRadius: 12),
+                    )
+                  ),
                 ),
               ),
               const SizedBox(height: 30),
