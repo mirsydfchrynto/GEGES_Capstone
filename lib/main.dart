@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // Added for kReleaseMode
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
@@ -13,17 +14,16 @@ import 'package:geges_smartbarber/services/notification_service.dart';
 import 'package:geges_smartbarber/services/app_navigator.dart';
 import 'package:geges_smartbarber/screens/admin/barber_shops_list_screen.dart';
 import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
-// import 'package:geges_smartbarber/screens/admin/tenant_requests_screen.dart'; // Removed
 import 'package:geges_smartbarber/screens/legal/terms_page.dart';
 import 'package:geges_smartbarber/screens/legal/privacy_page.dart';
 import 'package:geges_smartbarber/screens/intro/splash_screen.dart';
-import 'package:geges_smartbarber/services/network_service.dart'; // Import NetworkService
-import 'package:geges_smartbarber/widgets/offline_screen.dart'; // Import OfflineScreen
+import 'package:geges_smartbarber/services/network_service.dart';
+import 'package:geges_smartbarber/widgets/offline_screen.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 // ==========================================
 
-const String sentryDsn = 'YOUR_DSN_HERE'; // GANTI DENGAN DSN DARI SENTRY.IO
+const String sentryDsn = 'https://6ae0b86bbd9b4371c7f7dbc599e5b419@o4510682370015232.ingest.us.sentry.io/4510682373554176';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -36,18 +36,19 @@ void main() async {
       options.dsn = sentryDsn;
       options.tracesSampleRate = 1.0; 
       options.profilesSampleRate = 1.0;
-      options.attachScreenshot = true; // Sangat membantu saat debug visual
-      options.addBreadcrumb(Breadcrumb(message: "Application Started"));
+      options.attachScreenshot = true;
+      options.environment = kReleaseMode ? 'production' : 'development';
     },
     appRunner: () async {
       try {
+        await Sentry.addBreadcrumb(Breadcrumb(message: "Application Started"));
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
         
-        // Initialize App Check (Debug provider for dev, Play Integrity for prod)
+        // Initialize App Check: Use Play Integrity for production
         await FirebaseAppCheck.instance.activate(
-          androidProvider: AndroidProvider.debug,
+          androidProvider: kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
           appleProvider: AppleProvider.deviceCheck,
         );
 
@@ -100,6 +101,7 @@ void main() async {
     },
   );
 }
+
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -175,6 +177,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     // - home = starting screen yang ditampilkan pertama kali
     return MaterialApp(
       navigatorKey: appNavigatorKey,
+      navigatorObservers: [SentryNavigatorObserver()], // Added for screen tracking
       title: 'GEGES SmartBarber',
       debugShowCheckedModeBanner: false,
       

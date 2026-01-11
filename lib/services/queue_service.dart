@@ -716,7 +716,7 @@ class QueueService implements QueueServiceContract {
               .get();
 
           if (existingQueues.docs.length >= availableBarbersCount) {
-            throw Exception('Maaf, semua slot barberman sudah penuh pada jam ini ($availableBarbersCount/${availableBarbersCount}).');
+            throw Exception('Maaf, semua slot barberman sudah penuh pada jam ini ($availableBarbersCount/$availableBarbersCount).');
           }
 
           // C. Validasi Harga (Anti-Tamper)

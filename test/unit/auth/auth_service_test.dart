@@ -289,7 +289,7 @@ void main() {
 
       // ASSERT
       expect(result['success'], false);
-      expect(result['message'], contains('telah disuspend'));
+      expect(result['message'], contains('telah ditangguhkan'));
       
       // Verify automatic signOut was called to clear session
       verify(mockAuth.signOut()).called(1);

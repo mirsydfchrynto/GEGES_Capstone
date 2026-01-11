@@ -1,4 +1,5 @@
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
@@ -13,7 +14,7 @@ void main() {
     
     // Inject fake dependencies to services
     final barbershopService = BarbershopService(firestore: firestore);
-    final queueService = QueueService(firestore: firestore);
+    final queueService = QueueService(firestore: firestore, auth: auth);
 
     test('STRESS TEST: Rapid Barbershop Data Mapping (100 docs)', () async {
       // 1. Setup 100 documents with large strings (simulating base64)
@@ -36,7 +37,7 @@ void main() {
       final results = await barbershopService.getAllBarbershops(forceRefresh: true);
       
       stopwatch.stop();
-      print('🚀 [PERF] Loaded and mapped 100 complex Barbershops in: ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint('🚀 [PERF] Loaded and mapped 100 complex Barbershops in: ${stopwatch.elapsedMilliseconds}ms');
       
       expect(results.length, 100);
       expect(stopwatch.elapsedMilliseconds, lessThan(500), reason: 'Mapping 100 docs should be under 500ms');
@@ -69,7 +70,7 @@ void main() {
       await Future.wait(bookings);
       stopwatch.stop();
 
-      print('🚀 [STRESS] Processed 50 concurrent booking requests in: ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint('🚀 [STRESS] Processed 50 concurrent booking requests in: ${stopwatch.elapsedMilliseconds}ms');
       
       final queueSnap = await firestore.collection('queues').get();
       expect(queueSnap.size, 50);

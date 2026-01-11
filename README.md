@@ -3,6 +3,14 @@
 
 > status: sedang dalam tahap pengembangan (work-in-progress)
 
+---
+
+## 🚀 PANDUAN SETUP CEPAT (100% BERHASIL)
+Bagi Anda yang ingin melakukan clone dan setup project ini dari nol dengan jaminan berhasil 100%, silakan ikuti panduan lengkap kami di sini:
+👉 **[SETUP_GUIDE.md](./SETUP_GUIDE.md)**
+
+---
+
 project ini masih dalam tahap pengembangan. beberapa konfigurasi backend
 (mis. file firebase / pengaturan cloud) mungkin tidak disertakan di repo.
 tim yang ingin clone untuk pengembangan lokal silakan ikuti bagian

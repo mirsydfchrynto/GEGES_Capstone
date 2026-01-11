@@ -12,14 +12,14 @@ class EmailService {
   // 3. Cari "App Passwords" (Sandi Aplikasi)
   // 4. Buat baru, namai "Geges App", copy password 16 digitnya.
   static const String _username = 'irsydfchrynto@gmail.com';
-  static const String _password = 'Muhammad180305@@'; 
+  static const String _password = 'tfge irpi vqaw snhd'; 
 
   // Singleton
   static final EmailService _instance = EmailService._internal();
   factory EmailService() => _instance;
   EmailService._internal();
 
-  /// Mengirim Email Sambutan + Pengingat Verifikasi
+  /// Mengirim Email Sambutan + Pengingat Verifikasi Akun
   Future<void> sendWelcomeEmail(String name, String email) async {
     final message = Message()
       ..from = Address(_username, 'Geges Smart Barber')
