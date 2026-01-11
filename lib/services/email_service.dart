@@ -11,8 +11,8 @@ class EmailService {
   // 2. Aktifkan Verifikasi 2 Langkah (2FA)
   // 3. Cari "App Passwords" (Sandi Aplikasi)
   // 4. Buat baru, namai "Geges App", copy password 16 digitnya.
-  static const String _username = 'GANTI_DENGAN_EMAIL_ANDA@gmail.com';
-  static const String _password = 'GANTI_DENGAN_APP_PASSWORD_16_DIGIT'; 
+  static const String _username = 'irsydfchrynto@gmail.com';
+  static const String _password = 'Muhammad180305@@'; 
 
   // Singleton
   static final EmailService _instance = EmailService._internal();

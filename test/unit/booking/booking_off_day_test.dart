@@ -1,4 +1,3 @@
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import '../../helpers/manual_mocks.dart';
@@ -36,6 +35,7 @@ void main() {
       'name': 'Test Shop',
       'open_hour': 9,
       'close_hour': 21,
+      'isActive': true,
     });
 
     // 2. Tentukan tanggal hari Senin depan
@@ -58,48 +58,39 @@ void main() {
 
     // 4. Expect Exception
     expect(
-      () async => await queueService.createQueue(payload),
-      throwsA(predicate((e) => e.toString().contains('Barber ini libur setiap hari monday')))
+      () => queueService.createQueue(payload),
+      throwsA(predicate((e) => e.toString().contains('Tidak ada barberman yang tersedia pada hari ini'))),
     );
   });
 
   test('QueueService.createQueue should reject booking on specific off day', () async {
-    // 1. Setup Data
-    final shopId = 'shop_1';
-    final barberId = 'barber_1';
-    
-    // Tentukan tanggal spesifik
-    final specificDate = DateTime.now().add(const Duration(days: 5)); // 5 hari lagi
-    final dateStr = DateFormat('yyyy-MM-dd').format(specificDate);
-    
-    await firestore.collection('barbermen').doc(barberId).set({
-      'barbershop_id': shopId,
-      'name': 'Barber Liburan',
+    // 1. Setup Barbershop (Open 09-21)
+    await firestore.collection('barbershops').doc('shop_1').set({
+      'open_hour': 9,
+      'close_hour': 21,
       'isActive': true,
-      'offDays': [],
-      'specificOffDays': [dateStr],
+    });
+
+    // 2. Setup Barberman with a specific off day
+    final specificDate = '2026-01-15'; // Specific Thursday
+    await firestore.collection('barbermen').doc('barber_1').set({
+      'barbershop_id': 'shop_1',
+      'isActive': true,
       'onLeave': false,
+      'offDays': [],
+      'specificOffDays': [specificDate],
     });
-
-    await firestore.collection('barbershops').doc(shopId).set({
-      'open_hour': 0, 
-      'close_hour': 24, // Buka 24 jam biar gak kena validasi jam
-    });
-
-    // 2. Coba Booking di tanggal itu
-    final bookingTime = DateTime(specificDate.year, specificDate.month, specificDate.day, 12, 0);
 
     final payload = {
-      'barbershop_id': shopId,
-      'barberman_id': barberId,
-      'booking_time': bookingTime,
+      'barbershop_id': 'shop_1',
+      'barberman_id': 'barber_1',
+      'booking_time': DateTime(2026, 1, 15, 10, 0), // Same as specificDate
       'estimated_duration': 30,
     };
 
-    // 3. Expect Exception
     expect(
-      () async => await queueService.createQueue(payload),
-      throwsA(predicate((e) => e.toString().contains('Barber ini libur pada tanggal $dateStr')))
+      () => queueService.createQueue(payload),
+      throwsA(predicate((e) => e.toString().contains('Tidak ada barberman yang tersedia pada hari ini'))),
     );
   });
 

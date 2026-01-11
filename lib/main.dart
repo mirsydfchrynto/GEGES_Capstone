@@ -34,8 +34,10 @@ void main() async {
   await SentryFlutter.init(
     (options) {
       options.dsn = sentryDsn;
-      options.tracesSampleRate = 1.0; // Tangkap 100% transaksi untuk debugging awal
-      options.profilesSampleRate = 1.0; // Tangkap profiling performa
+      options.tracesSampleRate = 1.0; 
+      options.profilesSampleRate = 1.0;
+      options.attachScreenshot = true; // Sangat membantu saat debug visual
+      options.addBreadcrumb(Breadcrumb(message: "Application Started"));
     },
     appRunner: () async {
       try {
