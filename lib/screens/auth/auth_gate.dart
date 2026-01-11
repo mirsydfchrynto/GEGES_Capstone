@@ -59,6 +59,24 @@ class _AuthGateState extends State<AuthGate> {
         return;
       }
 
+      // Check if user is suspended before routing
+      if (userData.isSuspended) {
+        await FirebaseAuth.instance.signOut();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const ScaffoldMessenger(
+            child: SnackBar(
+              content: Text('Akun ditangguhkan. Hubungi admin.'),
+              backgroundColor: Colors.red,
+            ),
+          ) as SnackBar,
+        );
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+        return;
+      }
+
       if (userData.role == 'customer') {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),

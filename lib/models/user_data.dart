@@ -10,6 +10,7 @@ class UserData {
   barbershopId; // ID Barbershop yang dikelola (jika role admin_owner)
   final List<String> favoriteBarbershops; // List ID Barbershop favorit
   final String? photoBase64; // Foto profil dalam format Base64 (untuk menghemat Storage)
+  final bool isSuspended; // Field Keamanan: apakah user sedang disuspend?
 
   UserData({
     required this.uid,
@@ -19,6 +20,7 @@ class UserData {
     this.barbershopId,
     this.favoriteBarbershops = const [],
     this.photoBase64,
+    this.isSuspended = false,
   });
 
   // Factory constructor untuk membuat objek UserData dari Firestore
@@ -28,7 +30,7 @@ class UserData {
     // Safety check untuk memastikan data adalah Map
     if (raw is! Map<String, dynamic>) {
       debugPrint('⚠️ Invalid Firestore data for user: ${doc.id}');
-      return UserData(uid: doc.id, name: 'Guest', role: 'customer');
+      return UserData(uid: doc.id, name: 'Guest', role: 'customer', isSuspended: false);
     }
 
     final data = raw;
@@ -53,6 +55,7 @@ class UserData {
       barbershopId: shopId,
       favoriteBarbershops: favs,
       photoBase64: data['photo_base64'] as String? ?? data['photoBase64'] as String?,
+      isSuspended: data['isSuspended'] as bool? ?? false,
     );
   }
 
@@ -61,6 +64,7 @@ class UserData {
       'name': name,
       'role': role,
       'favorite_barbershops': favoriteBarbershops,
+      'isSuspended': isSuspended,
       if (phoneNumber != null) 'phone_number': phoneNumber,
       if (barbershopId != null) 'barbershop_id': barbershopId,
       if (photoBase64 != null) 'photo_base64': photoBase64,
@@ -74,6 +78,7 @@ class UserData {
     String? barbershopId,
     List<String>? favoriteBarbershops,
     String? photoBase64,
+    bool? isSuspended,
   }) {
     return UserData(
       uid: uid,
@@ -83,6 +88,7 @@ class UserData {
       barbershopId: barbershopId ?? this.barbershopId,
       favoriteBarbershops: favoriteBarbershops ?? this.favoriteBarbershops,
       photoBase64: photoBase64 ?? this.photoBase64,
+      isSuspended: isSuspended ?? this.isSuspended,
     );
   }
 }

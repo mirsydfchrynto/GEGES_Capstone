@@ -2,16 +2,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- 1. CORE FUNCTIONS ---
-    
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isRootAdmin() {
-      return isAuthenticated() && request.auth.token.email == 'admin@geges.com'; // Hardcoded Emergency Key
-    }
-
+    function isAuthenticated() { return request.auth != null; }
+    function isRootAdmin() { return isAuthenticated() && request.auth.token.email == 'admin@geges.com'; }
     function isSuperAdmin() {
       return isRootAdmin() || (
         isAuthenticated() && 
@@ -20,80 +12,45 @@ service cloud.firestore {
       );
     }
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // --- 2. GOD MODE (SUPER ADMIN) ---
     match /{document=**} {
       allow read, write: if isSuperAdmin();
     }
 
-    // --- 3. PUBLIC CATALOG (READ-ONLY) ---
-    match /barbershops/{document=**} {
-      allow read: if true;
-      allow write: if false; // Strict
-    }
-    match /services/{document=**} {
-      allow read: if true;
-      allow write: if false; 
-    }
-    match /barbermen/{document=**} {
-      allow read: if true;
-      allow write: if false;
-    }
-    match /promo_banners/{document=**} {
-      allow read: if true;
-      allow write: if false;
-    }
-    match /app_ratings/{document=**} {
-      allow read: if true;
-      allow create: if isAuthenticated(); // User boleh review
-      allow update, delete: if false; // Review kekal
-    }
+    // --- ATURAN MOBILE ---
+    
+    match /barbershops/{doc=**} { allow read: if true; }
+    match /services/{doc=**} { allow read: if true; }
+    match /barbermen/{doc=**} { allow read: if true; }
+    match /promo_banners/{doc=**} { allow read: if true; }
+    match /app_ratings/{doc=**} { allow read: if true; allow create: if isAuthenticated(); }
 
-    // --- 4. USER DATA (PRIVATE) ---
     match /users/{userId} {
-      allow read: if isOwner(userId);
-      // Cegah User biasa menaikkan pangkatnya sendiri jadi 'super_admin'
-      allow write: if isOwner(userId) && 
-        (!request.resource.data.keys().hasAny(['role']) || request.resource.data.role == resource.data.role);
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && request.auth.uid == userId && 
+        !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['role', 'isSuspended', 'barbershop_id']);
     }
 
-    // --- 5. TRANSACTIONAL DATA ---
-    
-    // Antrean / Booking
-    match /queues/{queueId} {
-      allow read: if isAuthenticated(); // Perlu baca antrean publik untuk cek slot penuh
+    match /queues/{id} {
       allow create: if isAuthenticated();
-      // Update: User hanya boleh ubah antrean sendiri (misal: status -> cancellation_requested)
-      // Menggunakan field 'customer_id' sesuai kode aplikasi
-      allow update: if isAuthenticated() && (
-        resource.data.customer_id == request.auth.uid || 
-        request.resource.data.customer_id == request.auth.uid
+      allow read, update: if isAuthenticated();
+    }
+
+    match /tenants/{id} {
+      allow create: if isAuthenticated();
+      allow read, update: if isAuthenticated() && (
+        resource.data.owner_uid == request.auth.uid ||
+        resource.data.userId == request.auth.uid
       );
-      // Delete: DILARANG (Gunakan Soft Delete / Cancelled status)
-      allow delete: if false; 
     }
 
-    // Pendaftaran Tenant
-    match /tenants/{tenantId} {
-      allow create: if isAuthenticated();
-      // Read/Update: Hanya pemilik pendaftaran (owner_uid)
-      allow read, update: if isAuthenticated() && resource.data.owner_uid == request.auth.uid;
-    }
-
-    // Notifikasi
-    match /notifications/{notifId} {
-      allow read: if isAuthenticated() && resource.data.user_id == request.auth.uid;
-      // Write: Biasanya via Backend/Cloud Functions, tapi Client-side trigger diizinkan sementara
-      allow write: if isAuthenticated();
-    }
-    
-    // Login Audit
-    match /login_audit/{auditId} {
-      allow create: if isAuthenticated();
-      allow read, update, delete: if false;
+    match /notifications/{id} {
+      allow create: if isAuthenticated(); 
+      allow read, update, delete: if isAuthenticated() && (
+        resource.data.user_id == request.auth.uid || 
+        resource.data.userId == request.auth.uid
+      );
     }
   }
 }

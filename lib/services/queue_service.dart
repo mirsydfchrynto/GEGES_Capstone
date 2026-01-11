@@ -62,6 +62,7 @@ class QueueService implements QueueServiceContract {
     required List<String> serviceIds,
   }) async {
     try {
+      // 1. Dapatkan semua barberman aktif di toko ini
       final barbersDocs = await _firestore
           .collection('barbermen')
           .where('barbershop_id', isEqualTo: barbershopId)
@@ -71,40 +72,31 @@ class QueueService implements QueueServiceContract {
       if (barbersDocs.docs.isEmpty) return null;
 
       final List<Map<String, dynamic>> eligibleBarbers = [];
-      final List<Map<String, dynamic>> fallbackBarbers = [];
+      
+      final dayName = DateFormat('EEEE', 'en_US').format(bookingTime).toLowerCase();
+      final dateStr = DateFormat('yyyy-MM-dd').format(bookingTime);
 
+      // 2. Filter barber yang benar-benar masuk hari ini (tidak cuti/libur)
       for (var doc in barbersDocs.docs) {
         final barberData = doc.data();
         final barberId = doc.id;
-        final monthlyCount = (barberData['monthly_haircut_count'] as num?)?.toInt() ?? 0;
         
-        final barberInfo = {
-          'id': barberId,
-          'monthlyCount': monthlyCount,
-          'name': barberData['name'] ?? 'Unknown',
-        };
-
-        fallbackBarbers.add(barberInfo);
-
         bool isOnLeave = barberData['onLeave'] ?? false;
         if (isOnLeave) continue;
 
-        // Cek Libur Mingguan
-        final dayName = DateFormat('EEEE', 'en_US').format(bookingTime).toLowerCase();
         final rawOffDays = barberData['offDays'] ?? barberData['off_days'] ?? [];
         final List<String> offDays = (rawOffDays is List) 
             ? rawOffDays.map((e) => e.toString().toLowerCase().trim()).toList()
             : [];
         if (offDays.contains(dayName)) continue;
 
-        // Cek Libur Tanggal Khusus
-        final dateStr = DateFormat('yyyy-MM-dd').format(bookingTime);
         final rawSpecific = barberData['specificOffDays'] ?? barberData['specific_off_days'] ?? [];
         final List<String> specificOffDays = (rawSpecific is List) 
             ? rawSpecific.map((e) => e.toString().trim()).toList()
             : [];
         if (specificOffDays.contains(dateStr)) continue;
         
+        // 3. Cek ketersediaan slot untuk barber spesifik ini
         final isAvailable = await isSlotAvailable(
           barbershopId: barbershopId,
           barbermanId: barberId,
@@ -113,19 +105,20 @@ class QueueService implements QueueServiceContract {
         );
 
         if (isAvailable) {
-          eligibleBarbers.add(barberInfo);
+          eligibleBarbers.add({
+            'id': barberId,
+            'monthlyCount': (barberData['monthly_haircut_count'] as num?)?.toInt() ?? 0,
+          });
         }
       }
 
-      final List<Map<String, dynamic>> finalCandidates = 
-          eligibleBarbers.isNotEmpty ? eligibleBarbers : fallbackBarbers;
+      if (eligibleBarbers.isEmpty) return null;
 
-      if (finalCandidates.isEmpty) return null;
+      // 4. Pilih yang paling sedikit kerjaannya bulan ini (Fairness)
+      eligibleBarbers.shuffle(Random());
+      eligibleBarbers.sort((a, b) => (a['monthlyCount'] as int).compareTo(b['monthlyCount'] as int));
 
-      finalCandidates.shuffle(Random());
-      finalCandidates.sort((a, b) => (a['monthlyCount'] as int).compareTo(b['monthlyCount'] as int));
-
-      return finalCandidates.first['id'] as String;
+      return eligibleBarbers.first['id'] as String;
     } catch (e) {
       debugPrint("Error in getFairAvailableBarberman: $e");
       return null;
@@ -684,7 +677,49 @@ class QueueService implements QueueServiceContract {
             throw Exception('Booking time outside of operating hours ($open:00 - $close:00)');
           }
 
-          // B. Validasi Harga (Anti-Tamper)
+          // B. Validasi Kapasitas Total (Anti-Overbook)
+          // 1. Hitung berapa barber yang masuk hari ini
+          final dayName = DateFormat('EEEE', 'en_US').format(bookingDateTime).toLowerCase();
+          final dateStr = DateFormat('yyyy-MM-dd').format(bookingDateTime);
+          
+          final barbersSnapshot = await _firestore.collection('barbermen')
+              .where('barbershop_id', isEqualTo: shopId)
+              .where('isActive', isEqualTo: true)
+              .get(); // Note: Collection get inside transaction is limited, but here we use it for capacity check
+          
+          final availableBarbersCount = barbersSnapshot.docs.where((doc) {
+            final bData = doc.data();
+            if (bData['onLeave'] == true) return false;
+            final offDays = (bData['offDays'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? 
+                            (bData['off_days'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+            if (offDays.contains(dayName)) return false;
+            final specificOff = (bData['specificOffDays'] as List?)?.map((e) => e.toString()).toList() ?? 
+                                (bData['specific_off_days'] as List?)?.map((e) => e.toString()).toList() ?? [];
+            if (specificOff.contains(dateStr)) return false;
+            return true;
+          }).length;
+
+          if (availableBarbersCount == 0) {
+            throw Exception('Tidak ada barberman yang tersedia pada hari ini.');
+          }
+
+          // 2. Hitung berapa booking yang sudah ada di jam yang sama
+          // buffer +/- 30 menit untuk deteksi overlap sederhana
+          final startWindow = bookingDateTime.subtract(const Duration(minutes: 29));
+          final endWindow = bookingDateTime.add(const Duration(minutes: 29));
+          
+          final existingQueues = await _firestore.collection('queues')
+              .where('barbershop_id', isEqualTo: shopId)
+              .where('status', whereIn: ['booked', 'ongoing', 'awaiting_payment'])
+              .where('booking_time', isGreaterThanOrEqualTo: Timestamp.fromDate(startWindow))
+              .where('booking_time', isLessThanOrEqualTo: Timestamp.fromDate(endWindow))
+              .get();
+
+          if (existingQueues.docs.length >= availableBarbersCount) {
+            throw Exception('Maaf, semua slot barberman sudah penuh pada jam ini ($availableBarbersCount/${availableBarbersCount}).');
+          }
+
+          // C. Validasi Harga (Anti-Tamper)
           double serverCalculatedPrice = 0.0;
           final List<dynamic>? sIds = dataToSave['service_ids'];
           if (sIds != null && sIds.isNotEmpty) {
@@ -704,10 +739,7 @@ class QueueService implements QueueServiceContract {
           }
           dataToSave['total_price'] = serverCalculatedPrice;
 
-          // 2. Race Condition Check (Transact-Safe Overlap Check)
-          // We can't query a collection INSIDE a transaction easily in client-side Flutter SDK
-          // However, we can use a 'Slot Counter' or 'Capacity Doc' if we wanted perfect safety.
-          // BUT, we can make it MUCH SAFER by checking if the specific barber is busy.
+          // 2. Race Condition Check (Barber Spesifik)
           final String? targetBarberId = dataToSave['barberman_id'];
           if (targetBarberId != null && targetBarberId.isNotEmpty) {
             final barberRef = _firestore.collection('barbermen').doc(targetBarberId);

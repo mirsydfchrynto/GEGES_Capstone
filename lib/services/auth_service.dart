@@ -83,7 +83,7 @@ class AuthService implements AuthServiceBase {
         await _auth.signOut(); 
         return {
           'success': false, 
-          'message': 'Akun Anda telah disuspend oleh Admin. Hubungi dukungan untuk informasi lebih lanjut.'
+          'message': 'Akun Anda telah ditangguhkan (Suspended) oleh Admin karena pelanggaran kebijakan. Hubungi admin@geges.com untuk informasi lebih lanjut.'
         };
       }
       
