@@ -1,56 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isAuthenticated() { return request.auth != null; }
-    function isRootAdmin() { return isAuthenticated() && request.auth.token.email == 'admin@geges.com'; }
-    function isSuperAdmin() {
-      return isRootAdmin() || (
-        isAuthenticated() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin'
-      );
-    }
-
+    // Geges Smart Barber - Open Rules for Development & Manual Testing
+    // Mandate: always set to 'allow read, write: if true;'
     match /{document=**} {
-      allow read, write: if isSuperAdmin();
-    }
-
-    // --- ATURAN MOBILE ---
-    
-    match /barbershops/{doc=**} { allow read: if true; }
-    match /services/{doc=**} { allow read: if true; }
-    match /barbermen/{doc=**} { allow read: if true; }
-    match /promo_banners/{doc=**} { allow read: if true; }
-    match /app_ratings/{doc=**} { allow read: if true; allow create: if isAuthenticated(); }
-
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && request.auth.uid == userId && 
-        !request.resource.data.diff(resource.data).affectedKeys()
-        .hasAny(['role', 'isSuspended', 'barbershop_id']);
-    }
-
-    match /queues/{id} {
-      allow create: if isAuthenticated();
-      allow read, update: if isAuthenticated();
-    }
-
-    match /tenants/{id} {
-      allow create: if isAuthenticated();
-      allow read, update: if isAuthenticated() && (
-        resource.data.owner_uid == request.auth.uid ||
-        resource.data.userId == request.auth.uid
-      );
-    }
-
-    match /notifications/{id} {
-      allow create: if isAuthenticated(); 
-      allow read, update, delete: if isAuthenticated() && (
-        resource.data.user_id == request.auth.uid || 
-        resource.data.userId == request.auth.uid
-      );
+      allow read, write: if true;
     }
   }
 }

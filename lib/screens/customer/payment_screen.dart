@@ -6,10 +6,12 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart'; // Required for compute
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/services/queue_service_contract.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
+import 'package:geges_smartbarber/screens/customer/special_orders_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
@@ -271,7 +273,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (userId == null) throw Exception("User not logged in");
 
       final bytes = await _pickedImage!.readAsBytes();
-      final base64Img = base64Encode(bytes);
+      final base64Img = await compute(base64Encode, bytes);
 
       if (widget.tenantId != null && widget.tenantPaymentHandler != null) {
         await widget.tenantPaymentHandler!(tenantId: widget.tenantId!, base64: base64Img, userId: userId);
@@ -634,7 +636,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () {
-                    if (widget.onFinish != null) {
+                    if (isTenant) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SpecialOrdersScreen()),
+                        (route) => route.isFirst,
+                      );
+                    } else if (widget.onFinish != null) {
                       widget.onFinish!();
                     } else {
                       Navigator.popUntil(context, (route) => route.isFirst);

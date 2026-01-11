@@ -52,29 +52,33 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
         return AlertDialog(
           backgroundColor: kDarkGrey,
           title: Text(l10n.cancelRegistrationTitle, style: const TextStyle(color: Colors.white)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Updated warning text
-                const Text(
-                  'Peringatan: Dana refund akan dikembalikan dengan potongan biaya admin 10% sesuai ketentuan.',
-                  style: TextStyle(color: kWarning, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(l10n.cancelRegistrationWarning, style: const TextStyle(color: kTextGrey)),
-                const SizedBox(height: 16),
-                TextField(
-                  onChanged: (v) => input = v,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: l10n.reason,
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: kBrownAccent)),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Peringatan: Dana refund akan dikembalikan dengan potongan biaya admin 10% sesuai ketentuan.',
+                    style: TextStyle(color: kWarning, fontWeight: FontWeight.bold),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Text(l10n.cancelRegistrationWarning, style: const TextStyle(color: kTextGrey)),
+                  const SizedBox(height: 16),
+                  TextField(
+                    onChanged: (v) => input = v,
+                    autofocus: true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: l10n.reason,
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: kBrownAccent)),
+                      focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: kBrownAccent, width: 2)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -83,7 +87,7 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
               child: Text(l10n.btnBack, style: const TextStyle(color: kTextGrey)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: kDanger),
+              style: ElevatedButton.styleFrom(backgroundColor: kDanger, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
               onPressed: () {
                  if (input.trim().isEmpty) return;
                  Navigator.pop(ctx, input);

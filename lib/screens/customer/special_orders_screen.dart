@@ -95,29 +95,34 @@ class _SpecialOrdersScreenState extends State<SpecialOrdersScreen> {
           final docs = snapshot.data?.docs ?? [];
 
           if (docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: kDarkGrey,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white10),
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Container(
+                height: MediaQuery.of(context).size.height - 100, // Appbar height offset
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: kDarkGrey,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: const Icon(
+                        Icons.assignment_outlined,
+                        size: 64,
+                        color: kTextGrey,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.assignment_outlined,
-                      size: 64,
-                      color: kTextGrey,
+                    const SizedBox(height: 24),
+                    Text(
+                      l10n.noSpecialOrders,
+                      style: const TextStyle(color: kTextGrey, fontSize: 16, fontWeight: FontWeight.w500),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    l10n.noSpecialOrders,
-                    style: const TextStyle(color: kTextGrey, fontSize: 16, fontWeight: FontWeight.w500),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           }

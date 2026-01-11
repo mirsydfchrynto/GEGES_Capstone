@@ -140,6 +140,11 @@ class BookingAntiDuplicateService {
             payment['verificationStatus'] as String? ??
             data['payment_verification_status'] as String?;
 
+        if (verificationStatus == 'accepted') {
+          debugPrint('[BookingAntiDupService] Booking $bookingId is already accepted. Skipping.');
+          return; // Selesai dengan tenang tanpa melempar Exception
+        }
+
         if (verificationStatus != 'pending') {
           throw Exception(
             'Hanya booking dengan verificationStatus=pending yang dapat diverifikasi. '
@@ -196,6 +201,11 @@ class BookingAntiDuplicateService {
         final verificationStatus =
             payment['verificationStatus'] as String? ??
             data['payment_verification_status'] as String?;
+
+        if (verificationStatus == 'rejected') {
+          debugPrint('[BookingAntiDupService] Booking $bookingId is already rejected. Skipping.');
+          return;
+        }
 
         if (verificationStatus != 'pending') {
           throw Exception(

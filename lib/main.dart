@@ -47,16 +47,28 @@ void main() async {
         );
         
         // Initialize App Check: Use Play Integrity for production
-        await FirebaseAppCheck.instance.activate(
-          androidProvider: kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
-          appleProvider: AppleProvider.deviceCheck,
-        );
+        try {
+          await FirebaseAppCheck.instance.activate(
+            androidProvider: kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
+            appleProvider: AppleProvider.deviceCheck,
+          );
+        } catch (e) {
+          debugPrint("App Check initialization failed (non-fatal): $e");
+          await Sentry.addBreadcrumb(Breadcrumb(
+            message: "App Check initialization failed",
+            level: SentryLevel.error,
+            category: "auth.appcheck",
+            data: {"error": e.toString()},
+          ));
+          await Sentry.captureException(e);
+        }
 
         try {
           await NotificationService.instance.init();
         } catch (_) {}
         NetworkService().init();
         
+        // Remove splash after all services are ready
         FlutterNativeSplash.remove();
 
         runApp(
