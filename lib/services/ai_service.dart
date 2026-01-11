@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 import 'package:http/http.dart' as http;
 
@@ -50,43 +51,65 @@ class AIService {
     const String styleScanUrl = 'https://mirsydfchyrnto-stylescan-api.hf.space/predict';
 
     try {
+      debugPrint("AI Service: Reading image bytes...");
+      final imageBytes = await image.readAsBytes();
+      
+      debugPrint("AI Service: Sending ${imageBytes.length} bytes to $styleScanUrl");
       final request = http.MultipartRequest('POST', Uri.parse(styleScanUrl));
       
-      // Add file as multipart
-      request.files.add(await http.MultipartFile.fromPath(
+      request.headers['Accept'] = 'application/json';
+
+      // UPLOAD AS BYTES (Most robust method)
+      request.files.add(http.MultipartFile.fromBytes(
         'file', 
-        image.path,
+        imageBytes,
+        filename: 'scan.jpg', // Hardcoded valid extension
       ));
 
       // Send request
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 45));
       final response = await http.Response.fromStream(streamedResponse);
+
+      debugPrint("AI Service Response: ${response.statusCode}");
+      // debugPrint("AI Service Body: ${response.body}"); // Uncomment for deep debug
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
-        
-        // Handle "warning" status as success but with notes
-        // The API returns 200 even for warnings, so we parse it normally.
-        
         return {
           'success': true,
-          'status': body['status'], // 'success' or 'warning'
+          'status': body['status'], 
           'message': body['message'],
-          'data': body['data'], // Contains best_match, alternatives, note
+          'data': body['data'],
         };
       } else {
+        // Parse error detail
+        String errorMsg = 'Gagal memproses gambar (Error ${response.statusCode})';
+        try {
+          final errBody = jsonDecode(response.body);
+          if (errBody['detail'] != null) {
+             errorMsg += ': ${errBody['detail']}';
+          }
+        } catch (_) {
+          // Fallback if not JSON
+          errorMsg += ': ${response.body.substring(0, min(100, response.body.length))}';
+        }
+        
         return {
           'success': false,
-          'message': 'Gagal memproses gambar (Error ${response.statusCode}). Coba lagi.',
+          'message': errorMsg,
         };
       }
     } catch (e) {
+      debugPrint("AI Service Exception: $e");
       return {
         'success': false,
         'message': 'Terjadi kesalahan koneksi: $e',
       };
     }
   }
+
+  // Helper for min (if not available)
+  int min(int a, int b) => a < b ? a : b;
 
   /// (Legacy/Fallback) Provides a mock suggestion.
   Future<String> getStyleSuggestion(File image) async {
