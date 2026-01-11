@@ -159,6 +159,39 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen>
       stream: _barbershopStream,
       initialData: widget.barbershop,
       builder: (context, snapshot) {
+        // --- NULL SAFETY CHECK ---
+        // Jika data stream null (dokumen dihapus), tampilkan layar fallback
+        if (snapshot.connectionState == ConnectionState.active && snapshot.data == null) {
+           return Scaffold(
+             backgroundColor: kSurface,
+             appBar: AppBar(
+               backgroundColor: kDarkGrey,
+               leading: IconButton(
+                 icon: const Icon(Icons.arrow_back, color: Colors.white),
+                 onPressed: () => Navigator.of(context).pop(),
+               ),
+             ),
+             body: Center(
+               child: Column(
+                 mainAxisAlignment: MainAxisAlignment.center,
+                 children: const [
+                   Icon(Icons.store, size: 64, color: Colors.grey),
+                   SizedBox(height: 16),
+                   Text(
+                     'Barbershop Tidak Ditemukan',
+                     style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                   ),
+                   SizedBox(height: 8),
+                   Text(
+                     'Toko ini mungkin sudah tutup atau dihapus.',
+                     style: TextStyle(color: Colors.grey),
+                   ),
+                 ],
+               ),
+             ),
+           );
+        }
+
         final shop = snapshot.data ?? widget.barbershop;
 
         return Scaffold(

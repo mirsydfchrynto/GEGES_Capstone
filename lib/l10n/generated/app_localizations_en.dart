@@ -758,6 +758,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contactAdmin => 'Contact Admin';
 
   @override
+  String get changePassword => 'Change Password';
+
+  @override
   String get loginAsAdminTitle => 'Login as Admin?';
 
   @override

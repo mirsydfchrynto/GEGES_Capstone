@@ -1502,6 +1502,12 @@ abstract class AppLocalizations {
   /// **'Hubungi Admin'**
   String get contactAdmin;
 
+  /// No description provided for @changePassword.
+  ///
+  /// In id, this message translates to:
+  /// **'Ganti Password'**
+  String get changePassword;
+
   /// No description provided for @loginAsAdminTitle.
   ///
   /// In id, this message translates to:

@@ -338,6 +338,7 @@
   "adminAccountDesc": "Gunakan akun ini untuk login ke Aplikasi Admin:",
   "btnLogoutLoginAdmin": "LOGOUT & LOGIN SEBAGAI ADMIN",
   "contactAdmin": "Hubungi Admin",
+  "changePassword": "Ganti Password",
   "loginAsAdminTitle": "Login sebagai Admin?",
   "loginAsAdminMsg": "Anda akan keluar dari akun Customer ini.\n\nSilakan gunakan Email & Password yang tertera di atas untuk login kembali sebagai Owner Barbershop.",
   "btnYesLogout": "Ya, Logout",

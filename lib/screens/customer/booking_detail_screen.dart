@@ -113,9 +113,23 @@ class _BookingDetailView extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                Text(vm.barbershop?.name.toUpperCase() ?? 'SMART BARBER', style: const TextStyle(color: kBrownAccent, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 2)),
+                if (vm.barbershop == null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(color: kError, borderRadius: BorderRadius.circular(4)),
+                    child: const Text("TOKO TELAH DIHAPUS", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                Text(
+                  vm.barbershop?.name.toUpperCase() ?? '(DATA TOKO TIDAK TERSEDIA)', 
+                  style: TextStyle(
+                    color: vm.barbershop == null ? kTextGrey : kBrownAccent, 
+                    fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 2
+                  ),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 4),
-                Text(vm.barbershop?.addres ?? 'Detail Alamat...', textAlign: TextAlign.center, style: const TextStyle(color: kTextGrey, fontSize: 12)),
+                Text(vm.barbershop?.addres ?? '-', textAlign: TextAlign.center, style: const TextStyle(color: kTextGrey, fontSize: 12)),
                 const SizedBox(height: 16),
                 _statusBadge(queue, hasPaid, isVerified, isRequested),
               ],

@@ -158,7 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               // --- MENU GANTI PASSWORD ---
               _buildMenuCard(
-                title: 'Ganti Password', 
+                title: l10n.changePassword, 
                 icon: Icons.lock_outline,
                 onTap: () {
                   Navigator.push(

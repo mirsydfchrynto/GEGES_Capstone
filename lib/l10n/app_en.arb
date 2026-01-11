@@ -338,6 +338,7 @@
   "adminAccountDesc": "Use this account to log in to the Admin App:",
   "btnLogoutLoginAdmin": "LOGOUT & LOGIN AS ADMIN",
   "contactAdmin": "Contact Admin",
+  "changePassword": "Change Password",
   "loginAsAdminTitle": "Login as Admin?",
   "loginAsAdminMsg": "You will be logged out of this Customer account.\n\nPlease use the Email & Password listed above to log back in as a Barbershop Owner.",
   "btnYesLogout": "Yes, Logout",

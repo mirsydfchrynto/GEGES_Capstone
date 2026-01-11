@@ -763,6 +763,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get contactAdmin => 'Hubungi Admin';
 
   @override
+  String get changePassword => 'Ganti Password';
+
+  @override
   String get loginAsAdminTitle => 'Login sebagai Admin?';
 
   @override

@@ -57,8 +57,10 @@ class AuthService implements AuthServiceBase {
       );
       final uid = userCredential.user!.uid;
 
-      // Ambil data pengguna di Firestore
-      final doc = await _firestore.collection('users').doc(uid).get();
+      // FORCE SERVER FETCH: Bypass cache to ensure role is up-to-date
+      // This prevents the 'stale role' bug where a newly promoted admin is still seen as a customer
+      final doc = await _firestore.collection('users').doc(uid).get(const GetOptions(source: Source.server));
+      
       if (!doc.exists || doc.data() == null) {
         return {'success': false, 'message': 'Data pengguna tidak ditemukan.'};
       }
@@ -324,13 +326,20 @@ class AuthService implements AuthServiceBase {
   Future<UserData?> getUserById(String uid) async {
     try {
       if (uid.isEmpty) return null;
-      final doc = await _firestore.collection('users').doc(uid).get();
+      // Force server fetch to ensure role/profile is fresh
+      final doc = await _firestore.collection('users').doc(uid).get(const GetOptions(source: Source.server));
 
       // Gunakan Model UserData.fromFirestore
       return doc.exists ? UserData.fromFirestore(doc) : null;
     } catch (e) {
-      debugPrint('Error getUserById: $e');
-      return null;
+      debugPrint('Error getUserById (Server Fetch Failed, trying Cache): $e');
+      // Fallback to cache if server is unreachable (offline mode support)
+      try {
+         final docCache = await _firestore.collection('users').doc(uid).get(const GetOptions(source: Source.cache));
+         return docCache.exists ? UserData.fromFirestore(docCache) : null;
+      } catch (_) {
+         return null;
+      }
     }
   }
   // --- AKHIR PERBAIKAN ---
