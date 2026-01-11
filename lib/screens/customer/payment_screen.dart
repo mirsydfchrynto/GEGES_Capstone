@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart'; // Required for compute
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:geges_smartbarber/models/queue.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:geges_smartbarber/services/queue_service_contract.dart';
@@ -272,8 +273,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final userId = widget.testUserId ?? FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) throw Exception("User not logged in");
 
-      final bytes = await _pickedImage!.readAsBytes();
-      final base64Img = await compute(base64Encode, bytes);
+      // Aggressive compression to prevent Firestore 1MB document limit
+      final Uint8List? compressedBytes = await FlutterImageCompress.compressWithFile(
+        _pickedImage!.absolute.path,
+        quality: 50, // 50 is enough for receipts
+        minWidth: 1024,
+        minHeight: 1024,
+      );
+
+      if (compressedBytes == null) throw Exception("Gagal mengompres gambar");
+      
+      final base64Img = await compute(base64Encode, compressedBytes);
 
       if (widget.tenantId != null && widget.tenantPaymentHandler != null) {
         await widget.tenantPaymentHandler!(tenantId: widget.tenantId!, base64: base64Img, userId: userId);

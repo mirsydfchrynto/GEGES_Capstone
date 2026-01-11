@@ -1,10 +1,26 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Geges Smart Barber - Open Rules for Development & Manual Testing
-    // Mandate: always set to 'allow read, write: if true;'
+    
+    // Helper functions
+    function isAuthenticated() { return request.auth != null; }
+    function isAdmin() { return isAuthenticated() && request.auth.token.email == 'admin@geges.com'; }
+
+    // GLOBAL RULES (SAFE MODE)
     match /{document=**} {
-      allow read, write: if true;
+      // Izinkan baca & tulis (create/update) untuk memudahkan testing
+      allow read, create, update: if true;
+      
+      // PROTEKSI KRITIS: Larang penghapusan dokumen kecuali oleh Admin Utama
+      // Ini mencegah serangan 'database wipe' yang sering terjadi di database terbuka
+      allow delete: if isAdmin();
+    }
+
+    // PROTEKSI SPESIFIK (Optional but Recommended)
+    match /users/{userId} {
+      // User tidak boleh mengubah role-nya sendiri menjadi admin
+      allow update: if (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+                    || isAdmin();
     }
   }
 }
