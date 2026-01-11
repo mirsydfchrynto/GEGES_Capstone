@@ -220,10 +220,35 @@ class _PaymentScreenState extends State<PaymentScreen> {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
       if (image != null) {
-        setState(() => _pickedImage = File(image.path));
+        final file = File(image.path);
+        if (await _isValidImageFile(file)) {
+          setState(() => _pickedImage = file);
+        } else {
+          _showSnack("File tidak valid. Harap unggah gambar JPG/PNG.", isError: true);
+        }
       }
     } catch (e) {
       _showSnack("Gagal mengambil gambar: $e", isError: true);
+    }
+  }
+
+  Future<bool> _isValidImageFile(File file) async {
+    try {
+      final length = await file.length();
+      if (length > 5 * 1024 * 1024) return false; // Max 5MB
+
+      final fileStream = file.openRead(0, 4); // Read first 4 bytes
+      final bytes = await fileStream.first;
+      
+      // Magic Numbers
+      // JPG: FF D8 FF
+      if (bytes.length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) return true;
+      // PNG: 89 50 4E 47
+      if (bytes.length >= 4 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) return true;
+      
+      return false;
+    } catch (e) {
+      return false;
     }
   }
 

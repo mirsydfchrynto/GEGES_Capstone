@@ -117,12 +117,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _calculateAllDistances(List<Barbershop> shops) async {
     if (_userPosition == null) return;
+    
+    Map<String, String> newDistances = {};
+    bool changed = false;
+
     for (var shop in shops) {
-      if (_shopDistances.containsKey(shop.id)) continue; // Skip if exists
+      if (_shopDistances.containsKey(shop.id)) continue; 
       final d = await _locationService.calculateDistanceToShop(_userPosition!, shop.addres);
-      if (d != null && mounted) {
-        setState(() => _shopDistances[shop.id] = d);
+      if (d != null) {
+        newDistances[shop.id] = d;
+        changed = true;
       }
+    }
+    
+    if (changed && mounted) {
+      setState(() {
+        _shopDistances.addAll(newDistances);
+      });
     }
   }
 

@@ -99,7 +99,7 @@ void main() {
         // pump appointment screen with injected services & test user id
         await tester.pumpWidget(
           MaterialApp(
-            localizationsDelegates: const [
+            localizationsDelegates: [
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
@@ -180,7 +180,7 @@ void main() {
         // This validates the specific PaymentScreen logic.
         await tester.pumpWidget(
           MaterialApp(
-            localizationsDelegates: const [
+            localizationsDelegates: [
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,

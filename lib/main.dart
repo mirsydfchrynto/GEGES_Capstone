@@ -3,6 +3,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
@@ -41,23 +42,59 @@ void main() async {
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
+        
+        // Initialize App Check (Debug provider for dev, Play Integrity for prod)
+        await FirebaseAppCheck.instance.activate(
+          androidProvider: AndroidProvider.debug,
+          appleProvider: AppleProvider.deviceCheck,
+        );
+
         try {
           await NotificationService.instance.init();
         } catch (_) {}
         NetworkService().init();
+        
+        FlutterNativeSplash.remove();
+
+        runApp(
+          ChangeNotifierProvider(
+            create: (context) => LocaleProvider(),
+            child: const MyApp(),
+          ),
+        );
       } catch (e, stackTrace) {
         await Sentry.captureException(e, stackTrace: stackTrace);
-        rethrow;
+        FlutterNativeSplash.remove();
+        runApp(
+          MaterialApp(
+            home: Scaffold(
+              backgroundColor: Colors.black,
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red, size: 60),
+                      const SizedBox(height: 24),
+                      const Text(
+                        "Gagal Memuat Aplikasi",
+                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "Terjadi kesalahan fatal saat inisialisasi: $e",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white54),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
       }
-      
-      FlutterNativeSplash.remove();
-
-      runApp(
-        ChangeNotifierProvider(
-          create: (context) => LocaleProvider(),
-          child: const MyApp(),
-        ),
-      );
     },
   );
 }

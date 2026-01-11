@@ -46,6 +46,7 @@ dependencies:
   connectivity_plus: ^7.0.0
   internet_connection_checker_plus: ^2.9.1+2
   flutter_native_splash: ^2.4.0
+  firebase_app_check: ^0.3.1+1
   sentry_flutter: ^9.9.2
   mailer: ^6.6.0
   http_parser: ^4.1.2

@@ -264,5 +264,35 @@ void main() {
         );
       },
     );
+
+    // ==========================================
+    // TC-07: Akun Suspended
+    // ==========================================
+    test('TC-07: Harus gagal login jika akun isSuspended: true', () async {
+      // ARRANGE
+      when(
+        mockAuth.signInWithEmailAndPassword(email: email, password: password),
+      ).thenAnswer((_) async => mockUserCredential);
+      when(mockUserCredential.user).thenReturn(mockUser);
+      when(mockUser.uid).thenReturn(uid);
+
+      // Firestore data has isSuspended: true
+      when(mockDocRef.get(any)).thenAnswer((_) async => mockDocSnapshot);
+      when(mockDocSnapshot.exists).thenReturn(true);
+      when(mockDocSnapshot.data()).thenReturn({
+        'role': 'admin_owner',
+        'isSuspended': true
+      });
+
+      // ACT
+      final result = await authService.signIn(email: email, password: password);
+
+      // ASSERT
+      expect(result['success'], false);
+      expect(result['message'], contains('telah disuspend'));
+      
+      // Verify automatic signOut was called to clear session
+      verify(mockAuth.signOut()).called(1);
+    });
   });
 }

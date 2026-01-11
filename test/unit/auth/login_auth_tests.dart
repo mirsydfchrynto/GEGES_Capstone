@@ -10,7 +10,7 @@ import '../../utils/fakes.dart';
 void main() {
   Widget createTestWidget(Widget child) {
     return MaterialApp(
-      localizationsDelegates: const [
+      localizationsDelegates: [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

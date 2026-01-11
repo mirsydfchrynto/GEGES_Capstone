@@ -76,6 +76,16 @@ class AuthService implements AuthServiceBase {
       if (role == null) {
         return {'success': false, 'message': 'Role pengguna belum siap. Silakan coba sesaat lagi.'};
       }
+
+      // Check if account is suspended
+      if (data['isSuspended'] == true) {
+        // Force signOut to ensure clean state
+        await _auth.signOut(); 
+        return {
+          'success': false, 
+          'message': 'Akun Anda telah disuspend oleh Admin. Hubungi dukungan untuk informasi lebih lanjut.'
+        };
+      }
       
       // LOG SUCCESS: Tampilkan di konsol saat berhasil login
       debugPrint('AUTH SUCCESS: User logged in!');
