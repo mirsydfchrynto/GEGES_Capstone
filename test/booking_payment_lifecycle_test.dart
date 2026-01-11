@@ -72,7 +72,9 @@ void main() {
 
     when(mockFs.collection('queues')).thenReturn(mockQueuesColl);
     when(mockFs.collection('barbermen')).thenReturn(mockBarbermenColl);
-    when(mockQueuesColl.add(any)).thenAnswer((_) async => mockQueueRef);
+    final mockNotifyColl = MockCollectionRef();
+    when(mockFs.collection('notifications')).thenReturn(mockNotifyColl);
+    when(mockNotifyColl.add(any)).thenAnswer((_) async => MockDocRef());
     when(mockQueuesColl.doc(any)).thenReturn(mockQueueRef);
     
     // Barbermen query mocks

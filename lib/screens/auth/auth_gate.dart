@@ -1,8 +1,10 @@
 // lib/screens/auth/auth_gate.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/screens/intro/onboarding_screen.dart';
+import 'package:geges_smartbarber/screens/auth/login_screen.dart';
 import 'package:geges_smartbarber/screens/customer/home_screen.dart';
 import 'package:geges_smartbarber/screens/admin/admin_dashboard.dart';
 
@@ -28,9 +30,21 @@ class _AuthGateState extends State<AuthGate> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-        );
+        
+        // Check if user has seen onboarding
+        final prefs = await SharedPreferences.getInstance();
+        if (!mounted) return; // Safety check
+        final seenOnboarding = prefs.getBool('seen_onboarding') ?? false;
+
+        if (seenOnboarding) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          );
+        }
         return;
       }
 

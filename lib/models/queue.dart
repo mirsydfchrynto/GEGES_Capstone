@@ -100,6 +100,7 @@ class Queue {
   final String? refundProofBase64;
   final String? customerName; // New: For manual booking display
   final String? orderId; // New: For order tracking
+  final Map<String, String>? serviceNotes; // New: Notes per service
 
   Queue({
     required this.id,
@@ -134,6 +135,7 @@ class Queue {
     this.refundProofBase64,
     this.customerName,
     this.orderId,
+    this.serviceNotes,
   });
 
   String? get firstServiceId {
@@ -183,6 +185,7 @@ class Queue {
       refundProofBase64: readString(data['refund_proof_base64'] ?? data['refundProofBase64']),
       customerName: readString(data['customer_name'] ?? data['customerName']),
       orderId: data['order_id'] ?? data['orderId'],
+      serviceNotes: (data['service_notes'] as Map<String, dynamic>?)?.map((key, value) => MapEntry(key, value.toString())),
     );
   }
 
@@ -218,6 +221,7 @@ class Queue {
       'refund_proof_base64': refundProofBase64,
       'customer_name': customerName,
       'order_id': orderId,
+      'service_notes': serviceNotes,
     };
     data.removeWhere((_, v) => v == null);
     return data;
@@ -256,6 +260,7 @@ class Queue {
     String? refundProofBase64,
     String? customerName,
     String? orderId,
+    Map<String, String>? serviceNotes,
   }) {
     return Queue(
       id: id ?? this.id,
@@ -290,6 +295,7 @@ class Queue {
       refundProofBase64: refundProofBase64 ?? this.refundProofBase64,
       customerName: customerName ?? this.customerName,
       orderId: orderId ?? this.orderId,
+      serviceNotes: serviceNotes ?? this.serviceNotes,
     );
   }
 }

@@ -1,12 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geges_smartbarber/services/tenant_service.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
-import 'package:geges_smartbarber/screens/auth/auth_gate.dart';
 import 'package:geges_smartbarber/l10n/generated/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -428,22 +426,6 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
           _buildCredentialBox(l10n.email, email),
           const SizedBox(height: 12),
           _buildCredentialBox(l10n.password, pass),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kBrownAccent,
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 0,
-              ),
-              icon: const Icon(Icons.logout_rounded),
-              label: Text(l10n.btnLogoutLoginAdmin, style: const TextStyle(fontWeight: FontWeight.w800)),
-              onPressed: _showLogoutConfirm,
-            ),
-          ),
         ],
       ),
     );
@@ -479,35 +461,6 @@ class _TenantOrderDetailScreenState extends State<TenantOrderDetailScreen> {
         ],
       ),
     );
-  }
-
-  void _showLogoutConfirm() async {
-    final l10n = AppLocalizations.of(context)!;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: kDarkGrey,
-        title: Text(l10n.loginAsAdminTitle, style: const TextStyle(color: Colors.white)),
-        content: Text(l10n.loginAsAdminMsg, style: const TextStyle(color: kTextGrey)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.cancel, style: const TextStyle(color: kTextGrey))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.btnYesLogout),
-          ),
-        ],
-      ),
-    );
-    
-    if (confirm == true) {
-      await FirebaseAuth.instance.signOut();
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const AuthGate()),
-        (route) => false,
-      );
-    }
   }
 
   Widget _buildCancellationCard(AppLocalizations l10n, Map<String, dynamic>? invoice, Map<String, dynamic> data) {

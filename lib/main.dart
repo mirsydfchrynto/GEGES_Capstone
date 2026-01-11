@@ -12,7 +12,7 @@ import 'package:geges_smartbarber/services/notification_service.dart';
 import 'package:geges_smartbarber/services/app_navigator.dart';
 import 'package:geges_smartbarber/screens/admin/barber_shops_list_screen.dart';
 import 'package:geges_smartbarber/screens/tenant/tenant_registration_screen.dart';
-import 'package:geges_smartbarber/screens/admin/tenant_requests_screen.dart';
+// import 'package:geges_smartbarber/screens/admin/tenant_requests_screen.dart'; // Removed
 import 'package:geges_smartbarber/screens/legal/terms_page.dart';
 import 'package:geges_smartbarber/screens/legal/privacy_page.dart';
 import 'package:geges_smartbarber/screens/intro/splash_screen.dart';
@@ -162,7 +162,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       routes: {
         '/admin/barber-management': (_) => const BarberShopsListScreen(),
         '/tenant/register': (_) => const TenantRegistrationScreen(),
-        '/admin/tenant-requests': (_) => const TenantRequestsScreen(),
+// '/admin/tenant-requests' route removed
+
         '/legal/terms': (_) => const TermsPage(),
         '/legal/privacy': (_) => const PrivacyPage(),
       },

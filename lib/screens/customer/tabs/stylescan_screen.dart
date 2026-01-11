@@ -72,12 +72,21 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
     try {
       final XFile? f = await _picker.pickImage(
         source: source,
-        imageQuality: 85,
-        maxWidth: 1080, // Resize agar upload lebih cepat
+        imageQuality: 80, // Balanced quality for Enterprise backend
+        maxWidth: 1920, 
       );
+      
       if (f != null) {
+        final file = File(f.path);
+        final sizeInMb = await file.length() / (1024 * 1024);
+        
+        if (sizeInMb > 5.0) {
+          _showSnack("Ukuran file terlalu besar ($sizeInMb MB). Maksimal 5MB.");
+          return;
+        }
+
         setState(() {
-          _pickedImage = File(f.path);
+          _pickedImage = file;
           _scanResult = null;
           _errorMessage = null;
         });
@@ -306,22 +315,28 @@ class _StyleScanScreenState extends State<StyleScanScreen> {
 
     // B. Handle Success or Warning
     final bestMatch = data?['best_match'] as Map<String, dynamic>?;
+    final alternatives = (data?['alternatives'] as List?) ?? [];
     
     // Prioritize 'label' (new API) over 'class' (old API)
-    final detectedName = bestMatch?['label'] ?? bestMatch?['class'] ?? 'Unknown Style';
-    final rawConfidence = bestMatch?['confidence'] ?? bestMatch?['score'] ?? 0.0;
+    final detectedName = bestMatch?['label'] ?? bestMatch?['class'] ?? (alternatives.isNotEmpty ? alternatives.first['label'] : 'Unknown Style');
+    final rawConfidence = bestMatch?['confidence'] ?? bestMatch?['score'] ?? (alternatives.isNotEmpty ? alternatives.first['confidence'] : 0.0);
     final detectedConfidence = '${((rawConfidence is num ? rawConfidence : 0) * 100).toStringAsFixed(0)}%';
     
     final faceShape = data?['face_shape']?.toString() ?? 'Universal';
     
     // Description logic
-    String description = bestMatch != null
-        ? 'Gaya ini terdeteksi sebagai $detectedName dengan tingkat kecocokan $detectedConfidence. Cocok untuk bentuk wajah $faceShape.'
-        : 'Silakan ambil foto untuk memulai analisis.';
+    String description = '';
+    if (bestMatch != null) {
+      description = 'Gaya ini terdeteksi sebagai $detectedName dengan tingkat kecocokan $detectedConfidence. Cocok untuk bentuk wajah $faceShape.';
+    } else if (alternatives.isNotEmpty) {
+      description = 'Kami menemukan beberapa kemiripan gaya, yang terdekat adalah $detectedName ($detectedConfidence).';
+    } else {
+      description = 'AI mendeteksi objek namun tidak dapat mengklasifikasikan gaya rambut dengan pasti.';
+    }
     
     // If status is warning, prepend/append note or make description cautious
     if (status == 'warning') {
-      description = "⚠️ $note\n\n$description";
+      description = "⚠️ Perhatian: $note\n\n$description";
     }
 
     return ListView(

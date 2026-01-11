@@ -196,16 +196,32 @@ class _BookingDetailView extends StatelessWidget {
               children: [
                 const Text('DETAIL LAYANAN', style: TextStyle(color: kTextGrey, fontSize: 10, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
-                ...vm.services.map((s) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(s.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
-                      Text('Rp ${NumberFormat('#,###').format(s.price)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                )),
+                ...vm.services.map((s) {
+                  final note = queue.serviceNotes?[s.id];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(s.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                            Text('Rp ${NumberFormat('#,###').format(s.price)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        if (note != null && note.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Note: $note',
+                              style: const TextStyle(color: kBrownAccent, fontSize: 12, fontStyle: FontStyle.italic),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
                 if (queue.paidBarberSelection == true)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),

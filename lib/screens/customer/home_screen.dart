@@ -326,30 +326,59 @@ class _HomeScreenState extends State<HomeScreen> {
             style: const TextStyle(color: Colors.white, fontSize: 12)));
   }
 
+  Future<void> _handleRefresh() async {
+    // Triggers all data re-fetching
+    await Future.wait([
+      _updateLocation(),
+      _fetchServiceNames(),
+      Future.delayed(const Duration(milliseconds: 500)), // Smooth transition
+    ]);
+    
+    if (mounted) {
+      setState(() {
+        // Refresh the stream/future by re-assigning them
+        _barbershopStream = _barbershopService.streamAllBarbershops();
+        _barbershopFuture = _barbershopService.getAllBarbershops().then((shops) {
+          if (_userPosition != null) _calculateAllDistances(shops);
+          return shops;
+        });
+      });
+    }
+  }
+
   Widget _buildHomePageBody() {
     final l10n = AppLocalizations.of(context)!;
     return SafeArea(
         bottom: false,
-        child: ListView(padding: EdgeInsets.zero, children: [
-          _buildHeader(),
-          const SizedBox(height: 5),
-          _buildSearchBar(),
-          const SizedBox(height: 24),
-          ValueListenableBuilder<TextEditingValue>(
-              valueListenable: _searchController,
-              builder: (context, value, _) => value.text.isEmpty
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                          PromoCarousel(barbershopService: _barbershopService),
-                          const SizedBox(height: 21),
-                          _buildTitle(l10n.barbershopsNearYou),
-                          const SizedBox(height: 18),
-                          _buildRecommendedList()
-                        ])
-                  : _buildSearch(value.text)),
-          const SizedBox(height: 30),
-        ]));
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: kBrownAccent,
+          backgroundColor: kDarkGrey,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(), // Essential for pull-to-refresh
+            padding: EdgeInsets.zero, 
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 5),
+              _buildSearchBar(),
+              const SizedBox(height: 24),
+              ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _searchController,
+                  builder: (context, value, _) => value.text.isEmpty
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                              PromoCarousel(barbershopService: _barbershopService),
+                              const SizedBox(height: 21),
+                              _buildTitle(l10n.barbershopsNearYou),
+                              const SizedBox(height: 18),
+                              _buildRecommendedList()
+                            ])
+                      : _buildSearch(value.text)),
+              const SizedBox(height: 30),
+            ]
+          ),
+        ));
   }
 
   Widget _buildSearch(String q) {

@@ -71,7 +71,11 @@ class AuthService implements AuthServiceBase {
       }
 
       final data = doc.data() as Map<String, dynamic>;
-      final role = (data['role'] as String?) ?? 'customer';
+      final role = data['role'] as String?;
+      
+      if (role == null) {
+        return {'success': false, 'message': 'Role pengguna belum siap. Silakan coba sesaat lagi.'};
+      }
       
       // LOG SUCCESS: Tampilkan di konsol saat berhasil login
       debugPrint('AUTH SUCCESS: User logged in!');

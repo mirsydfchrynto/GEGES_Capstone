@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:geges_smartbarber/utils/image_helper.dart';
 
 import 'package:geges_smartbarber/services/tenant_service.dart';
 
@@ -37,32 +39,98 @@ class _DocumentUploadWidgetState extends State<DocumentUploadWidget> {
   String? _uploadedUrl;
 
   Future<void> _pickAndUpload() async {
-    String? path;
+    // If test filePicker provided, use it directly (bypass UI)
     if (widget.filePicker != null) {
-      path = await widget.filePicker!.call();
-      if (path == null) {
-        return;
-      }
-    } else {
-      final res = await FilePicker.platform.pickFiles(allowMultiple: false);
-      if (res == null) {
-        return; // cancelled
-      }
-
-      path = res.files.single.path;
-      if (path == null) {
-        return;
-      }
+      final path = await widget.filePicker!.call();
+      if (path != null) _processFile(File(path));
+      return;
     }
 
-    final file = File(path);
+    // Show selection sheet
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: widget.darkStyle ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Color(0xFFC3A47B)),
+              title: Text(
+                'Ambil Foto (Kamera)', 
+                style: TextStyle(color: widget.darkStyle ? Colors.white : Colors.black)
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Color(0xFFC3A47B)),
+              title: Text(
+                'Pilih dari Galeri',
+                style: TextStyle(color: widget.darkStyle ? Colors.white : Colors.black)
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.attach_file, color: Color(0xFFC3A47B)),
+              title: Text(
+                'Pilih Dokumen (PDF)',
+                style: TextStyle(color: widget.darkStyle ? Colors.white : Colors.black)
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickFile();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
+  Future<void> _pickImage(ImageSource source) async {
+    final file = await ImageHelper().pickAndCompress(
+      source: source,
+      quality: 70, // Optimize quality for docs
+      maxWidth: 1200, // Slightly larger for docs readability
+    );
+    if (file != null) _processFile(file);
+  }
+
+  Future<void> _pickFile() async {
+    final res = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'png', 'jpeg'],
+    );
+    if (res != null && res.files.single.path != null) {
+      _processFile(File(res.files.single.path!));
+    }
+  }
+
+  Future<void> _processFile(File file) async {
     setState(() {
       _isUploading = true;
     });
 
     try {
-      // upload using TenantService; TenantService.uploadTenantDocument returns Firestore document path (e.g. 'tenants/{tenantId}/documents/{docId}')
+      // Check file size (Hard limit 1MB for Firestore Base64 safety)
+      final size = await file.length();
+      if (size > 1000000) { // 1MB
+         if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('Ukuran file terlalu besar (>1MB). Gunakan opsi Kamera/Galeri untuk kompresi otomatis.')),
+           );
+         }
+         return;
+      }
+
       final ref = await widget.tenantService.uploadTenantDocument(
         widget.tenantId,
         file,

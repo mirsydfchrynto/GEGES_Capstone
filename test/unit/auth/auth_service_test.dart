@@ -18,6 +18,8 @@ import 'package:geges_smartbarber/services/auth_service.dart';
 import '../../mocks/auth_service_test.mocks.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  
   late AuthService authService;
   late MockFirebaseAuth mockAuth;
   late MockFirebaseFirestore mockFirestore;
@@ -57,6 +59,10 @@ void main() {
 
     // 3. Inject Mock ke dalam AuthService
     authService = AuthService(auth: mockAuth, firestore: mockFirestore);
+    
+    // Stub global currentUser for logging
+    when(mockAuth.currentUser).thenReturn(mockUser);
+    when(mockUser.getIdToken()).thenAnswer((_) async => 'mock-jwt-token');
   });
 
   group('AuthService - White Box Testing Login', () {

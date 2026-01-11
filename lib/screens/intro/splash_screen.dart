@@ -10,31 +10,63 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
+    with TickerProviderStateMixin {
+  late AnimationController _mainController;
+  late AnimationController _glowController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _taglineAnimation;
+  late Animation<double> _glowAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Setup Animasi Fade-In
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
+    // 1. Setup Main Animation (Scale & Fade)
+    _mainController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
 
-    _controller.forward();
+    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(parent: _mainController, curve: Curves.easeOutBack),
+    );
 
-    // Timer untuk navigasi ke halaman berikutnya
-    Timer(const Duration(seconds: 3), () {
+    _fadeAnimation = CurvedAnimation(
+      parent: _mainController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
+    );
+
+    _taglineAnimation = CurvedAnimation(
+      parent: _mainController,
+      curve: const Interval(0.6, 1.0, curve: Curves.easeOut),
+    );
+
+    // 2. Setup Subtle Glow Pulse
+    _glowController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _glowAnimation = Tween<double>(begin: 10.0, end: 25.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    );
+
+    _mainController.forward();
+
+    // 3. Navigation Timer
+    Timer(const Duration(milliseconds: 3500), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => const AuthGate(),
-            transitionDuration: const Duration(milliseconds: 800),
-            transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
+            transitionDuration: const Duration(milliseconds: 1000),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
           ),
         );
       }
@@ -43,32 +75,124 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _controller.dispose();
+    _mainController.dispose();
+    _glowController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    const Color kBrownAccent = Color(0xFFC3A47B);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1E1E1E), // Latar belakang abu gelap sesuai tema native
-      body: Center(
-        child: FadeTransition(
-          opacity: _animation,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo
-              Image.asset(
-                'assets/images/ivon_high.png',
-                width: 65, // Ukuran lebih kecil & profesional (seperti Shopee/Top Apps)
-                height: 65,
+      backgroundColor: Colors.black, // Pure black for enterprise feel
+      body: Stack(
+        children: [
+          // Subtle radial background to center focus
+          Center(
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    kBrownAccent.withValues(alpha: 0.08),
+                    Colors.transparent,
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              // Opsional: Nama App atau Loading Indicator jika diinginkan
-              // Tapi user minta simpel dan elegan, jadi logo saja sudah cukup.
-            ],
+            ),
           ),
-        ),
+          
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo with Scale, Fade and Glow
+                AnimatedBuilder(
+                  animation: _glowAnimation,
+                  builder: (context, child) {
+                    return FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: ScaleTransition(
+                        scale: _scaleAnimation,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: kBrownAccent.withValues(alpha: 0.2),
+                                blurRadius: _glowAnimation.value,
+                                spreadRadius: _glowAnimation.value / 4,
+                              ),
+                            ],
+                          ),
+                          child: child,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Image.asset(
+                    'assets/images/ivon_high.png',
+                    width: 90, 
+                    height: 90,
+                  ),
+                ),
+                
+                const SizedBox(height: 40),
+                
+                // Animated Tagline
+                FadeTransition(
+                  opacity: _taglineAnimation,
+                  child: Column(
+                    children: [
+                      Text(
+                        "GEGES".toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 8,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Premium Grooming Experience",
+                        style: TextStyle(
+                          color: kBrownAccent.withValues(alpha: 0.7),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Bottom Indicator (Minimalist)
+          Positioned(
+            bottom: 50,
+            left: 0,
+            right: 0,
+            child: FadeTransition(
+              opacity: _taglineAnimation,
+              child: const Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white24),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

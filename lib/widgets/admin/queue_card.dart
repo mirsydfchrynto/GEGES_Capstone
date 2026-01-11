@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:geges_smartbarber/models/queue.dart';
+import 'package:geges_smartbarber/models/service.dart'; // Import Service
 import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/services/barbershop_service.dart';
 import 'package:geges_smartbarber/widgets/app_image.dart';
@@ -39,7 +40,7 @@ class _QueueCardState extends State<QueueCard> {
   String _customerName = 'Loading...'; 
   String _barberName = 'Loading...'; 
   String? _customerPhoto;
-  List<String> _serviceNames = [];
+  List<Service> _services = []; // Changed from List<String>
   bool _isProcessing = false;
 
   @override
@@ -80,7 +81,7 @@ class _QueueCardState extends State<QueueCard> {
     if (widget.queue.serviceIds != null && widget.queue.serviceIds!.isNotEmpty) {
       final services = await _barbershopService.getServicesByIds(widget.queue.serviceIds!);
       if (mounted) {
-        setState(() => _serviceNames = services.map((s) => s.name).toList());
+        setState(() => _services = services);
       }
     }
   }
@@ -179,17 +180,30 @@ class _QueueCardState extends State<QueueCard> {
           const SizedBox(height: 16),
 
           // Services List
-          if (_serviceNames.isNotEmpty) ...[
-            const Text('LAYANAN:', style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+          if (_services.isNotEmpty) ...[
+            const Text('LAYANAN & CATATAN:', style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _serviceNames.map((name) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(6)),
-                child: Text(name, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              )).toList(),
+              children: _services.map((s) {
+                final note = widget.queue.serviceNotes?[s.id];
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(6)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(s.name, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                      if (note != null && note.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text('"$note"', style: const TextStyle(color: kBrownAccent, fontSize: 11, fontStyle: FontStyle.italic)),
+                      ]
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
             const SizedBox(height: 16),
           ],

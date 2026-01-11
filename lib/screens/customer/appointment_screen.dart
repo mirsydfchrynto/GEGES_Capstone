@@ -39,6 +39,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
   int _currentStep = 0; 
   final List<Service> _selectedServices = [];
+  final Map<String, String> _serviceNotes = {}; // New: Store notes per service
+  bool _hasAutoSelected = false; // New: Ensure auto-selection runs once
   bool _isPremiumChoice = false; 
   Barberman? _selectedBarberman; 
   Barberman? _autoBarberman; 
@@ -179,8 +181,22 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     } else {
       Navigator.pop(context);
     } },
-      child: Scaffold(backgroundColor: kSurface, appBar: AppBar(backgroundColor: kSurface, title: Text(widget.barbershop.name, style: const TextStyle(fontWeight: FontWeight.bold)), elevation: 0, leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new, size: 20), onPressed: () => _currentStep > 0 ? _prevStep() : Navigator.pop(context))),
-        body: Column(children: [_buildProgressHeader(), Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: _buildCurrentStepView())), _buildBottomSummary()])));
+      child: Scaffold(
+        resizeToAvoidBottomInset: false, // Fix laggy keyboard animation (Layout Thrashing)
+        backgroundColor: kSurface, 
+        appBar: AppBar(backgroundColor: kSurface, title: Text(widget.barbershop.name, style: const TextStyle(fontWeight: FontWeight.bold)), elevation: 0, leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new, size: 20), onPressed: () => _currentStep > 0 ? _prevStep() : Navigator.pop(context))),
+        body: Column(children: [
+          _buildProgressHeader(), 
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(context).viewInsets.bottom), // Add dynamic padding for keyboard
+              child: _buildCurrentStepView()
+            )
+          ), 
+          _buildBottomSummary()
+        ])
+      )
+    );
   }
 
   Widget _buildProgressHeader() {
@@ -196,13 +212,114 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     return FutureBuilder<List<Service>>(future: _barbershopService.getAllServices(), builder: (context, snap) {
       if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: kBrownAccent));
       final shopServices = snap.data!.where((s) => widget.barbershop.services.contains(s.id)).toList();
+      
+      // Auto-select Haircut if style note exists
+      if (widget.initialStyleNote != null && !_hasAutoSelected && shopServices.isNotEmpty) {
+        // Find service with "haircut" or "potong" (case insensitive)
+        try {
+          final haircutService = shopServices.firstWhere(
+            (s) => s.name.toLowerCase().contains('haircut') || s.name.toLowerCase().contains('potong'),
+            orElse: () => shopServices.first, // Fallback to first service if not found
+          );
+          
+          // Add to selection if not already added
+          if (!_selectedServices.any((s) => s.id == haircutService.id)) {
+            // We need to schedule this state change to avoid build errors
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _selectedServices.add(haircutService);
+                  _serviceNotes[haircutService.id] = widget.initialStyleNote!;
+                  _hasAutoSelected = true;
+                });
+              }
+            });
+          }
+        } catch (_) {}
+      }
+
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(l10n.selectServiceTitle, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)), const SizedBox(height: 8), Text(l10n.selectServiceSubtitle, style: const TextStyle(color: Colors.white54)), const SizedBox(height: 24), ...shopServices.map((s) => _serviceCard(s))]);
     });
   }
 
   Widget _serviceCard(Service s) {
     bool isSelected = _selectedServices.any((item) => item.id == s.id);
-    return Padding(padding: const EdgeInsets.only(bottom: 12), child: InkWell(onTap: () { setState(() { isSelected ? _selectedServices.removeWhere((i) => i.id == s.id) : _selectedServices.add(s); }); }, child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: isSelected ? kBrownAccent.withValues(alpha: 0.1) : kCardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: isSelected ? kBrownAccent : Colors.transparent)), child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(s.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text("${s.defaultDuration} mnt • Rp ${s.price.toInt()}", style: const TextStyle(color: Colors.white54, fontSize: 13))])), Checkbox(value: isSelected, onChanged: (_) { setState(() { isSelected ? _selectedServices.removeWhere((i) => i.id == s.id) : _selectedServices.add(s); }); }, activeColor: kBrownAccent, checkColor: Colors.black)]))));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: () { 
+          setState(() { 
+            isSelected ? _selectedServices.removeWhere((i) => i.id == s.id) : _selectedServices.add(s); 
+            if (!isSelected) {
+               // If re-selecting, keep note if exists, or clear? Let's keep it.
+            } else {
+               _serviceNotes.remove(s.id);
+            }
+          }); 
+        },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isSelected ? kBrownAccent.withValues(alpha: 0.1) : kCardBg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isSelected ? kBrownAccent : Colors.transparent)
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(s.name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text("${s.defaultDuration} mnt • Rp ${s.price.toInt()}", style: const TextStyle(color: Colors.white54, fontSize: 13))
+                      ]
+                    )
+                  ),
+                  Checkbox(
+                    value: isSelected,
+                    onChanged: (_) { 
+                      setState(() { 
+                        isSelected ? _selectedServices.removeWhere((i) => i.id == s.id) : _selectedServices.add(s);
+                         if (isSelected) _serviceNotes.remove(s.id);
+                      }); 
+                    },
+                    activeColor: kBrownAccent,
+                    checkColor: Colors.black
+                  )
+                ]
+              ),
+              // Optional Note Field (Enterprise UI)
+              if (isSelected) ...[
+                const SizedBox(height: 12),
+                const Divider(color: Colors.white10),
+                const SizedBox(height: 8),
+                TextFormField(
+                  initialValue: _serviceNotes[s.id],
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: "Catatan khusus (opsional)...",
+                    hintStyle: const TextStyle(color: Colors.white24),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    filled: true,
+                    fillColor: Colors.black.withValues(alpha: 0.3),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    prefixIcon: const Icon(Icons.edit_note, color: kBrownAccent, size: 18),
+                  ),
+                  onChanged: (val) {
+                    _serviceNotes[s.id] = val;
+                  },
+                ),
+              ]
+            ],
+          )
+        )
+      )
+    );
   }
 
   Widget _buildBarberStep() {
@@ -531,7 +648,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       'request_status': 'approved',
       'payment_deadline': Timestamp.fromDate(DateTime.now().add(const Duration(minutes: 15))),
       'order_id': orderId,
-      if (widget.initialStyleNote != null) 'notes': widget.initialStyleNote,
+      'service_notes': _serviceNotes, // New: Pass notes to backend
     };
     try { 
       await _queueService.createQueue(payload); 

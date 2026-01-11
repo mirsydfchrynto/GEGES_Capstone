@@ -41,6 +41,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   String? _adminBarbershopId;
   String _barbershopName = "Loading...";
   String _loadingError = '';
+  bool _isLoading = true;
   bool _isShopOpen = false;
   bool _isTogglingStatus = false;
   Timer? _autoCancelTimer;
@@ -61,9 +62,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (_adminUid == null) { _logout(context); return; }
     try {
       final adminData = await _authService.getUserById(_adminUid);
-      if (adminData == null) { if (mounted) setState(() => _loadingError = 'ERROR: Admin tidak ditemukan.'); return; }
+      if (adminData == null) { 
+        if (mounted) setState(() { _loadingError = 'ERROR: Admin tidak ditemukan.'; _isLoading = false; }); 
+        return; 
+      }
       final barbershopId = adminData.barbershopId;
-      if (barbershopId == null || barbershopId.isEmpty) { if (mounted) setState(() => _loadingError = 'ERROR: Admin tidak terikat Barbershop.'); return; }
+      if (barbershopId == null || barbershopId.isEmpty) { 
+        if (mounted) setState(() { _adminBarbershopId = null; _isLoading = false; }); 
+        return; 
+      }
       final barbershop = await _barbershopService.getBarbershopById(barbershopId);
       if (mounted) {
         setState(() {
@@ -71,9 +78,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _barbershopName = barbershop?.name ?? 'Barbershop Unknown';
           _isShopOpen = barbershop?.isOpen ?? false;
           _loadingError = '';
+          _isLoading = false;
         });
       }
-    } catch (e) { if (mounted) setState(() => _loadingError = 'FATAL ERROR: $e'); }
+    } catch (e) { if (mounted) setState(() { _loadingError = 'FATAL ERROR: $e'; _isLoading = false; }); }
   }
 
   void _logout(BuildContext context) async {
@@ -182,6 +190,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
     }
     
+    // 1. Show skeleton while fetching user data
+    if (_isLoading) return const AdminDashboardSkeleton();
+
+    // 2. Only show error screen if we ARE NOT loading AND still have no barbershopId
     if (_adminBarbershopId == null) {
        return Scaffold(
          backgroundColor: kBlack,

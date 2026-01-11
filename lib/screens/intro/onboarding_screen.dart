@@ -10,6 +10,7 @@
 // ==========================================
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geges_smartbarber/screens/auth/login_screen.dart';
 
 // penjelasan statefulwidget:
@@ -69,12 +70,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // ========================================
   // navigasi ke login screen
   // ========================================
-  void _navigateToLogin() {
+  void _navigateToLogin() async {
     // penjelasan:
     // - fungsi ini dipanggil saat user tekan skip atau get started di halaman terakhir
+    // - set preference 'seen_onboarding' = true agar tidak muncul lagi saat logout
     // - navigasi ke loginscreen dengan pushreplacement
-    // - pushreplacement = ganti halaman ini dengan login screen (jangan push ke stack)
-    // - mounted check untuk memastikan widget masih ada di memory sebelum navigate
+
+    if (!mounted) return;
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('seen_onboarding', true);
 
     if (mounted) {
       Navigator.of(context).pushReplacement(

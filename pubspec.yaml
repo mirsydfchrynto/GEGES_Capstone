@@ -48,6 +48,10 @@ dependencies:
   flutter_native_splash: ^2.4.0
   sentry_flutter: ^9.9.2
   mailer: ^6.6.0
+  http_parser: ^4.1.2
+  dio: ^5.9.0
+  flutter_image_compress: ^2.4.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
@@ -64,13 +68,13 @@ dev_dependencies:
   network_image_mock: ^2.1.1
 
 flutter_native_splash:
-  color: "#1E1E1E"
+  color: "#000000"
   image: assets/images/empty.png
   android_gravity: center
   ios_content_mode: center
   android_12:
     image: assets/images/empty.png
-    icon_background_color: "#1E1E1E"
+    icon_background_color: "#000000"
 
 flutter:
   uses-material-design: true
