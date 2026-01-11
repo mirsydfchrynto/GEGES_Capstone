@@ -55,7 +55,12 @@ class AuthService implements AuthServiceBase {
         email: email,
         password: password,
       );
-      final uid = userCredential.user!.uid;
+      
+      final user = userCredential.user;
+      if (user == null) {
+        return {'success': false, 'message': 'Gagal login: User data tidak ditemukan.'};
+      }
+      final uid = user.uid;
 
       // FORCE SERVER FETCH: Bypass cache to ensure role is up-to-date
       // This prevents the 'stale role' bug where a newly promoted admin is still seen as a customer

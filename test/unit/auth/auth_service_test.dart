@@ -149,7 +149,8 @@ void main() {
       when(mockUser.uid).thenReturn(uid);
 
       // 2. Firestore Document Ada & Role Customer
-      when(mockDocRef.get()).thenAnswer((_) async => mockDocSnapshot);
+      // Accept any argument (e.g. GetOptions) for .get()
+      when(mockDocRef.get(any)).thenAnswer((_) async => mockDocSnapshot);
       when(mockDocSnapshot.exists).thenReturn(true);
       when(mockDocSnapshot.data()).thenReturn({'role': 'customer'});
 
@@ -185,7 +186,7 @@ void main() {
       when(mockUser.uid).thenReturn(uid);
 
       // Firestore Role Admin
-      when(mockDocRef.get()).thenAnswer((_) async => mockDocSnapshot);
+      when(mockDocRef.get(any)).thenAnswer((_) async => mockDocSnapshot);
       when(mockDocSnapshot.exists).thenReturn(true);
       when(mockDocSnapshot.data()).thenReturn({'role': 'admin_owner'});
 
@@ -215,7 +216,7 @@ void main() {
         when(mockUser.uid).thenReturn(uid);
 
         // 2. Firestore Document TIDAK ADA (!exists)
-        when(mockDocRef.get()).thenAnswer((_) async => mockDocSnapshot);
+        when(mockDocRef.get(any)).thenAnswer((_) async => mockDocSnapshot);
         when(
           mockDocSnapshot.exists,
         ).thenReturn(false); // <--- Kunci pengujian ini

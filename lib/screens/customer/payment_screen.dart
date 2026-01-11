@@ -126,6 +126,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
           } else {
             timer.cancel();
             _paymentStatus = 'expired';
+            
+            // AUTO CANCEL: Ensure DB reflects expiration
+            if (_resolvedQueueId != null) {
+               _queueService.cancelQueue(_resolvedQueueId!, reason: 'Payment timeout (In-app timer)');
+            }
           }
         });
       });

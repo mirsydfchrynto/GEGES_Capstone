@@ -45,24 +45,58 @@ class AIService {
     return 'Terima kasih sudah bertanya. Saat ini saya adalah bot sederhana. Untuk pertanyaan lebih lanjut, silakan hubungi admin kami.';
   }
 
-  /// Provides a mock suggestion for the AI Style Scan. Uses remote endpoint if configured, else local fallback.
-  Future<String> getStyleSuggestion(File image) async {
-    if (_endpoint.isNotEmpty) {
-      try {
-        final bytes = await image.readAsBytes();
-        final resp = await http
-            .post(Uri.parse('$_endpoint/style-scan'), body: bytes)
-            .timeout(const Duration(seconds: 8));
-        if (resp.statusCode == 200) {
-          final body = jsonDecode(resp.body);
-          return body['suggestion']?.toString() ?? _localStyleSuggestion();
-        }
-      } catch (_) {
-        // ignore and fallback
-      }
-    }
+  /// Sends the image to the AI StyleScan API and returns the structured result.
+  Future<Map<String, dynamic>> scanImage(File image) async {
+    const String styleScanUrl = 'https://mirsydfchyrnto-stylescan-api.hf.space/predict';
 
-    await Future.delayed(const Duration(seconds: 3));
+    try {
+      final request = http.MultipartRequest('POST', Uri.parse(styleScanUrl));
+      
+      // Add file as multipart
+      request.files.add(await http.MultipartFile.fromPath(
+        'file', 
+        image.path,
+      ));
+
+      // Send request
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        
+        // Handle "warning" status as success but with notes
+        // The API returns 200 even for warnings, so we parse it normally.
+        
+        return {
+          'success': true,
+          'status': body['status'], // 'success' or 'warning'
+          'message': body['message'],
+          'data': body['data'], // Contains best_match, alternatives, note
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Gagal memproses gambar (Error ${response.statusCode}). Coba lagi.',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan koneksi: $e',
+      };
+    }
+  }
+
+  /// (Legacy/Fallback) Provides a mock suggestion.
+  Future<String> getStyleSuggestion(File image) async {
+    // Redirect to new method if needed, or keep for backward compatibility
+    final result = await scanImage(image);
+    if (result['success'] == true) {
+      final data = result['data'];
+      final best = data['best_match'];
+      return "Gaya Rambut: ${best['label']} (${(best['confidence'] * 100).toStringAsFixed(0)}%)\n\n${data['note'] ?? ''}";
+    }
     return _localStyleSuggestion();
   }
 

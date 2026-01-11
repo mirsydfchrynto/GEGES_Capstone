@@ -37,8 +37,10 @@ class BarbershopService {
 
       // Filter hanya yang aktif secara sistem (isActive == true)
       // isOpen (buka/tutup harian) tetap diambil untuk ditampilkan statusnya
+      // Optimization: Limit to 100 recent shops to prevent memory bloat on large datasets
       final snapshot = await _firestore.collection('barbershops')
           .where('isActive', isEqualTo: true)
+          .limit(100) 
           .get();
       
       // Log teknis untuk pemantauan data Firestore

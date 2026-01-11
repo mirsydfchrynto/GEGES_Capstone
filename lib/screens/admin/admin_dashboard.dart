@@ -182,7 +182,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
     }
     
-    if (_adminBarbershopId == null) return const AdminDashboardSkeleton();
+    if (_adminBarbershopId == null) {
+       return Scaffold(
+         backgroundColor: kBlack,
+         appBar: AppBar(title: const Text("Admin Dashboard"), backgroundColor: kBlack),
+         body: Center(
+           child: Padding(
+             padding: const EdgeInsets.all(24.0),
+             child: Column(
+               mainAxisAlignment: MainAxisAlignment.center,
+               children: [
+                 const Icon(Icons.store_mall_directory_outlined, size: 64, color: kBrownAccent),
+                 const SizedBox(height: 24),
+                 const Text(
+                   "Akun Anda adalah Admin, namun belum memiliki Barbershop.",
+                   textAlign: TextAlign.center,
+                   style: TextStyle(color: Colors.white, fontSize: 16),
+                 ),
+                 const SizedBox(height: 12),
+                 const Text(
+                   "Silakan hubungi Super Admin untuk menghubungkan akun Anda dengan Barbershop.",
+                   textAlign: TextAlign.center,
+                   style: TextStyle(color: Colors.white54, fontSize: 14),
+                 ),
+                 const SizedBox(height: 32),
+                 ElevatedButton(
+                   onPressed: () => _logout(context),
+                   style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                   child: const Text("Logout", style: TextStyle(color: Colors.white)),
+                 )
+               ],
+             ),
+           ),
+         ),
+       );
+    }
 
     // Accuracy: Fetch ALL data for this barbershop to track all-time status
     final stream = _queueService.streamQueuesForBarbershop(

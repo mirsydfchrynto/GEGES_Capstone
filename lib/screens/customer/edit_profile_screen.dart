@@ -122,31 +122,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     final newName = _nameController.text.trim();
-    final newEmail = _emailController.text.trim();
     final newPhone = _phoneController.text.trim();
-    final oldEmail = _authService.currentUser?.email ?? '';
+    // Email tidak bisa diedit di sini
+    // final newEmail = _emailController.text.trim(); 
 
     try {
+      // Optimasi: Hanya kirim foto jika berubah
+      String? photoToUpdate;
+      if (_newPhotoBase64 != widget.currentUser.photoBase64) {
+        photoToUpdate = _newPhotoBase64;
+      }
+
       final result = await _authService.updateProfile(
         uid: widget.currentUser.uid,
         newName: newName,
-        newEmail: newEmail,
+        // newEmail: newEmail, // Disabled
         newPhoneNumber: newPhone,
-        newPhotoBase64: _newPhotoBase64,
+        newPhotoBase64: photoToUpdate,
       );
 
       if (result['success']) {
-        if (newEmail != oldEmail) {
-          _showEmailVerificationDialog(newEmail);
-        } else {
-          final updatedData = widget.currentUser.copyWith(
-            name: newName,
-            phoneNumber: newPhone,
-            photoBase64: _newPhotoBase64,
-          );
-          _showSnackbar(result['message'] ?? '', const Color(0xFF4CAF50));
-          if (mounted) Navigator.pop(context, updatedData);
-        }
+        final updatedData = widget.currentUser.copyWith(
+          name: newName,
+          phoneNumber: newPhone,
+          photoBase64: _newPhotoBase64,
+        );
+        _showSnackbar(result['message'] ?? '', const Color(0xFF4CAF50));
+        if (mounted) Navigator.pop(context, updatedData);
       } else {
         if (result['code'] == 'requires-recent-login') {
           final password = await _askForPassword();
@@ -154,7 +156,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             final retry = await _authService.reauthAndUpdateProfile(
               uid: widget.currentUser.uid,
               newName: newName,
-              newEmail: newEmail,
+              // newEmail: newEmail, // Disabled
               currentPassword: password,
             );
 
@@ -164,20 +166,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 uid: widget.currentUser.uid,
                 newName: newName,
                 newPhoneNumber: newPhone,
-                newPhotoBase64: _newPhotoBase64,
+                newPhotoBase64: photoToUpdate,
               );
 
-              if (newEmail != oldEmail) {
-                _showEmailVerificationDialog(newEmail);
-              } else {
-                final updatedData = widget.currentUser.copyWith(
-                  name: newName,
-                  phoneNumber: newPhone,
-                  photoBase64: _newPhotoBase64,
-                );
-                _showSnackbar(retry['message'] ?? '', const Color(0xFF4CAF50));
-                if (mounted) Navigator.pop(context, updatedData);
-              }
+              final updatedData = widget.currentUser.copyWith(
+                name: newName,
+                phoneNumber: newPhone,
+                photoBase64: _newPhotoBase64,
+              );
+              _showSnackbar(retry['message'] ?? '', const Color(0xFF4CAF50));
+              if (mounted) Navigator.pop(context, updatedData);
             } else {
               _showSnackbar(retry['message'] ?? l10n.errReauthFailed, const Color(0xFFD32F2F));
             }
@@ -191,31 +189,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _showEmailVerificationDialog(String newEmail) {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: kDarkGrey,
-        title: Text(l10n.verifyNewEmailTitle, style: const TextStyle(color: Colors.white)),
-        content: Text(
-          l10n.verifyNewEmailMsg(newEmail),
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: kBrownAccent, foregroundColor: Colors.black),
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.pop(context);
-            },
-            child: Text(l10n.ok),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showSnackbar(String message, Color color) {
@@ -253,7 +226,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 label: l10n.email,
                 icon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
-                validator: (v) => v == null || !v.contains('@') ? l10n.invalidEmail : null,
+                readOnly: true, // Non-editable
+                // No validator needed
               ),
               const SizedBox(height: 20),
               _buildTextField(
@@ -330,21 +304,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     required IconData icon,
     String? Function(String?)? validator,
     TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
   }) {
     return TextFormField(
       controller: controller,
       validator: validator,
       keyboardType: keyboardType,
-      style: const TextStyle(color: Colors.white),
+      readOnly: readOnly,
+      style: TextStyle(color: readOnly ? Colors.white54 : Colors.white), // Dim text if readOnly
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: kTextGrey),
-        prefixIcon: Icon(icon, color: kBrownAccent),
+        prefixIcon: Icon(icon, color: readOnly ? kTextGrey : kBrownAccent),
         filled: true,
-        fillColor: kDarkGrey,
+        fillColor: readOnly ? Colors.white10 : kDarkGrey, // Dim background
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Colors.white10)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: kBrownAccent)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: readOnly ? Colors.transparent : kBrownAccent)),
       ),
     );
   }
