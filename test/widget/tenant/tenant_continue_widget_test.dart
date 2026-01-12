@@ -47,10 +47,11 @@ class FakeTenantService2 extends TenantService {
   @override
   Future<String> uploadTenantDocument(
     String tenantId,
-    File file, {
+    File? file, {
+    List<int>? bytes,
     String? filename,
   }) async {
-    final path = file.path;
+    final path = file?.path ?? 'fake_path';
     return onUpload(tenantId, path);
   }
 

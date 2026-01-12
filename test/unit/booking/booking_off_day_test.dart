@@ -38,8 +38,8 @@ void main() {
       'isActive': true,
     });
 
-    // 2. Tentukan tanggal hari Senin depan
-    DateTime targetDate = DateTime.now();
+    // 2. Tentukan tanggal hari Senin depan (pastikan di masa depan)
+    DateTime targetDate = DateTime.now().add(const Duration(days: 1));
     while (DateFormat('EEEE').format(targetDate) != 'Monday') {
       targetDate = targetDate.add(const Duration(days: 1));
     }

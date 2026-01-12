@@ -23,6 +23,7 @@ abstract class AuthServiceBase {
   Future<Map<String, dynamic>> signInWithGoogle();
   Future<Map<String, dynamic>> sendPasswordResetEmail({required String email});
   Future<UserData?> getUserById(String uid);
+  Future<bool> isEmailRegistered(String email);
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
@@ -42,6 +43,22 @@ class AuthService implements AuthServiceBase {
   // ============================ 
   // AUTH: SIGN IN / REGISTER
   // ============================ 
+
+  /// Check if email is already registered in 'users' collection.
+  @override
+  Future<bool> isEmailRegistered(String email) async {
+    try {
+      final q = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: email.trim().toLowerCase())
+          .limit(1)
+          .get();
+      return q.docs.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking email: $e');
+      return false; // Fallback to safe
+    }
+  }
 
   /// Sign in with email & password.
   /// Returns map: { 'success': bool, 'role': 'customer'|'admin_owner', 'message': ... }

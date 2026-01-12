@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:geges_smartbarber/utils/image_helper.dart';
 
 class AppImage extends StatelessWidget {
@@ -61,13 +62,14 @@ class AppImage extends StatelessWidget {
         }
         image = Image.memory(
           bytes,
-          key: ValueKey(path.hashCode), 
+          key: ValueKey(path.substring(0, path.length > 50 ? 50 : path.length)), 
           width: width,
           height: height,
           fit: fit,
           color: color,
           colorBlendMode: colorBlendMode,
           gaplessPlayback: true, // Prevents blink when base64 is re-decoded
+          filterQuality: FilterQuality.medium, // Better performance/quality balance
           errorBuilder: (context, error, stackTrace) => errorWidget ?? _buildErrorWidget(),
         );
       } catch (e) {
@@ -86,12 +88,16 @@ class AppImage extends StatelessWidget {
   }
 
   Widget _buildPlaceholder() {
-    return Container(
-      width: width,
-      height: height,
-      color: Colors.grey[900],
-      child: const Center(
-        child: CircularProgressIndicator(strokeWidth: 2),
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[900]!,
+      highlightColor: Colors.grey[800]!,
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: borderRadius,
+        ),
       ),
     );
   }

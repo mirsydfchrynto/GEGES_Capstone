@@ -14,6 +14,7 @@ import 'package:geges_smartbarber/services/auth_service.dart';
 import 'package:geges_smartbarber/services/email_service.dart';
 import 'package:geges_smartbarber/utils/input_validators.dart';
 import 'package:geges_smartbarber/widgets/document_upload_widget.dart';
+import 'package:geges_smartbarber/widgets/tenant_guide_dialog.dart';
 import 'package:geges_smartbarber/screens/legal/terms_page.dart';
 import 'package:geges_smartbarber/screens/customer/payment_screen.dart';
 import 'package:geges_smartbarber/screens/customer/home_screen.dart';
@@ -29,6 +30,7 @@ class TenantRegistrationScreen extends StatefulWidget {
   final bool initialAcceptedTerms;
   final String? initialCompanyDocPath;
   final String? initialTaxDocPath;
+  final bool skipGuide;
 
   final Future<void> Function(String tenantId)? testSubmitProofHandler;
 
@@ -44,6 +46,7 @@ class TenantRegistrationScreen extends StatefulWidget {
     this.initialAcceptedTerms = false,
     this.initialCompanyDocPath,
     this.initialTaxDocPath,
+    this.skipGuide = false,
     this.testSubmitProofHandler,
   });
 
@@ -69,6 +72,8 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
   bool _acceptedTerms = false;
   File? _companyDocFile;
   File? _taxDocFile;
+  List<int>? _companyDocBytes;
+  List<int>? _taxDocBytes;
 
   @override
   void initState() {
@@ -76,12 +81,31 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
     _acceptedTerms = widget.initialAcceptedTerms;
     if (widget.initialCompanyDocPath != null) {
       _companyDocFile = File(widget.initialCompanyDocPath!);
+      try {
+        _companyDocBytes = _companyDocFile!.readAsBytesSync();
+      } catch (_) {}
     }
     if (widget.initialTaxDocPath != null) {
       _taxDocFile = File(widget.initialTaxDocPath!);
+      try {
+        _taxDocBytes = _taxDocFile!.readAsBytesSync();
+      } catch (_) {}
     }
     // Auto-check for existing pending registration
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkPendingRegistration());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!widget.skipGuide) {
+        _showGuide();
+      }
+      _checkPendingRegistration();
+    });
+  }
+
+  void _showGuide() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => const TenantGuideDialog(),
+    );
   }
 
   void _resetForm() {
@@ -96,6 +120,8 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
       setState(() {
         _companyDocFile = null;
         _taxDocFile = null;
+        _companyDocBytes = null;
+        _taxDocBytes = null;
         _acceptedTerms = false;
         _plan = 'monthly';
       });
@@ -342,6 +368,30 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
     setState(() => _submitting = true);
 
     try {
+      // VALIDASI EMAIL: Cek apakah email sudah terdaftar sebagai user/pelanggan
+      final emailToCheck = _ownerEmailCtrl.text.trim();
+      final authService = widget.authService ?? AuthService();
+      final isTaken = await authService.isEmailRegistered(emailToCheck);
+      
+      if (isTaken && mounted) {
+        setState(() => _submitting = false);
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Email Sudah Terdaftar'),
+            content: const Text(
+              'Email yang Anda masukkan sudah digunakan oleh akun lain (pelanggan). '
+              'Untuk mendaftar sebagai Tenant/Mitra, Anda WAJIB menggunakan email BARU '
+              'yang belum pernah terdaftar di sistem Geges.',
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Ganti Email')),
+            ],
+          ),
+        );
+        return;
+      }
+
       final fs = _tenantService.firestore;
       final existingQ = await fs
           .collection('tenants')
@@ -376,20 +426,22 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
         tenantId = await _tenantService.createTenantApplication(baseData);
       }
 
-      if (_companyDocFile != null) {
+      if (_companyDocFile != null || _companyDocBytes != null) {
         final ref = await _tenantService.uploadTenantDocument(
           tenantId,
-          _companyDocFile!,
+          _companyDocFile,
+          bytes: _companyDocBytes,
           filename: 'company_doc_${DateTime.now().millisecondsSinceEpoch}',
         );
         await _tenantService.updateTenantApplication(tenantId, {
           'company_doc_ref': ref,
         });
       }
-      if (_taxDocFile != null) {
+      if (_taxDocFile != null || _taxDocBytes != null) {
         final ref = await _tenantService.uploadTenantDocument(
           tenantId,
-          _taxDocFile!,
+          _taxDocFile,
+          bytes: _taxDocBytes,
           filename: 'tax_doc_${DateTime.now().millisecondsSinceEpoch}',
         );
         await _tenantService.updateTenantApplication(tenantId, {
@@ -502,37 +554,62 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _ownerNameCtrl,
-                decoration: const InputDecoration(labelText: 'Nama Pemilik'),
+                decoration: const InputDecoration(
+                  labelText: 'Nama Lengkap Pemilik',
+                  hintText: 'Masukkan nama sesuai KTP',
+                ),
                 validator: InputValidators.validateName,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _ownerEmailCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Email Pemilik (Google account)',
-                  helperText: 'Email ini akan menjadi Username Login Admin Barbershop Anda',
-                  helperStyle: TextStyle(color: Colors.amber),
+                  labelText: 'Email Baru Khusus Bisnis',
+                  hintText: 'contoh: barbersaya@gmail.com',
+                  helperText: 'WAJIB email baru yang BELUM terdaftar sebagai pelanggan.',
+                  helperStyle: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 11),
+                  prefixIcon: Icon(Icons.email_outlined),
                 ),
+                keyboardType: TextInputType.emailAddress,
                 validator: InputValidators.validateEmail,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _ownerPhoneCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Nomor Telepon Pemilik',
+                  labelText: 'Nomor WhatsApp Pemilik',
+                  prefixIcon: Icon(Icons.phone),
+                  hintText: '0812xxxxxxxx',
                 ),
+                keyboardType: TextInputType.phone,
                 validator: InputValidators.validatePhone,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _addressCtrl,
-                decoration: const InputDecoration(labelText: 'Alamat Lengkap'),
+                decoration: const InputDecoration(
+                  labelText: 'Alamat Lengkap Operasional',
+                  prefixIcon: Icon(Icons.map),
+                ),
+                maxLines: 2,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _taxIdCtrl,
                 decoration: const InputDecoration(
                   labelText: 'NPWP / Tax ID (opsional)',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: _showGuide,
+                icon: const Icon(Icons.help_outline, size: 18),
+                label: const Text('Lihat Panduan Pendaftaran & Alur Mitra'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFC3A47B),
+                  alignment: Alignment.centerLeft,
                 ),
               ),
 
@@ -610,7 +687,12 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                                 }
                                 if (pickedPath == null) return;
                                 final p = pickedPath;
-                                setState(() => _companyDocFile = File(p));
+                                final file = File(p);
+                                final bytes = await file.readAsBytes();
+                                setState(() {
+                                  _companyDocFile = file;
+                                  _companyDocBytes = bytes;
+                                });
                               },
                             ),
                           ),
@@ -641,7 +723,12 @@ class _TenantRegistrationScreenState extends State<TenantRegistrationScreen> {
                                 }
                                 if (pickedPath == null) return;
                                 final p = pickedPath;
-                                setState(() => _taxDocFile = File(p));
+                                final file = File(p);
+                                final bytes = await file.readAsBytes();
+                                setState(() {
+                                  _taxDocFile = file;
+                                  _taxDocBytes = bytes;
+                                });
                               },
                             ),
                           ),

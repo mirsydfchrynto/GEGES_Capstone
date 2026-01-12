@@ -106,6 +106,11 @@ class FakeAuthService implements AuthService {
   Future<void> changePassword({required String currentPassword, required String newPassword}) async {
     throw UnimplementedError();
   }
+
+  @override
+  Future<bool> isEmailRegistered(String email) async {
+    return false;
+  }
 }
 
 void main() {

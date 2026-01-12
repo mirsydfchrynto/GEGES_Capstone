@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'; // Added for kReleaseMode
+// import 'package:flutter/foundation.dart'; // Removed: Unnecessary
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geges_smartbarber/services/queue_service.dart';
@@ -18,7 +18,10 @@ import 'package:geges_smartbarber/screens/legal/terms_page.dart';
 import 'package:geges_smartbarber/screens/legal/privacy_page.dart';
 import 'package:geges_smartbarber/screens/intro/splash_screen.dart';
 import 'package:geges_smartbarber/services/network_service.dart';
+import 'package:geges_smartbarber/services/system_optimization_service.dart';
 import 'package:geges_smartbarber/widgets/offline_screen.dart';
+import 'package:geges_smartbarber/widgets/enterprise_error_widget.dart';
+import 'package:geges_smartbarber/config/app_config.dart'; // Import Config
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 // ==========================================
@@ -29,6 +32,11 @@ void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
+  // Custom Error Widget for Enterprise look
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return EnterpriseErrorWidget(details: details);
+  };
+
   await initializeDateFormatting('id_ID', null);
 
   await SentryFlutter.init(
@@ -37,7 +45,7 @@ void main() async {
       options.tracesSampleRate = 1.0; 
       options.profilesSampleRate = 1.0;
       options.attachScreenshot = true;
-      options.environment = kReleaseMode ? 'production' : 'development';
+      options.environment = AppConfig.environment == Environment.prod ? 'production' : 'development';
     },
     appRunner: () async {
       try {
@@ -49,7 +57,9 @@ void main() async {
         // Initialize App Check: Use Play Integrity for production
         try {
           await FirebaseAppCheck.instance.activate(
-            androidProvider: kReleaseMode ? AndroidProvider.playIntegrity : AndroidProvider.debug,
+            androidProvider: AppConfig.environment == Environment.prod 
+                ? AndroidProvider.playIntegrity 
+                : AndroidProvider.debug,
             appleProvider: AppleProvider.deviceCheck,
           );
         } catch (e) {
@@ -60,7 +70,7 @@ void main() async {
             category: "auth.appcheck",
             data: {"error": e.toString()},
           ));
-          await Sentry.captureException(e);
+          // Do NOT crash the app if App Check fails
         }
 
         try {
@@ -81,31 +91,11 @@ void main() async {
         await Sentry.captureException(e, stackTrace: stackTrace);
         FlutterNativeSplash.remove();
         runApp(
-          MaterialApp(
-            home: Scaffold(
-              backgroundColor: Colors.black,
-              body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 60),
-                      const SizedBox(height: 24),
-                      const Text(
-                        "Gagal Memuat Aplikasi",
-                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        "Terjadi kesalahan fatal saat inisialisasi: $e",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white54),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+          EnterpriseErrorWidget(
+            details: FlutterErrorDetails(
+              exception: e,
+              stack: stackTrace,
+              library: 'Main Initialization',
             ),
           ),
         );
@@ -149,6 +139,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       // On resume, run expiry checks for current user
       _checkAndCancelExpiredForCurrentUser();
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      // Clear cache when app is backgrounded or killed to keep it "Smart" and fresh
+      SystemOptimizationService.instance.clearAppCache();
     }
   }
 

@@ -32,9 +32,9 @@ class ImageHelper {
   /// Returns null if user cancels.
   Future<File?> pickAndCompress({
     required ImageSource source,
-    int quality = 70,
-    int maxWidth = 1024,
-    int maxHeight = 1024,
+    int quality = 60, // Reduced for Firestore optimization
+    int maxWidth = 800, // Reduced for Firestore optimization
+    int maxHeight = 800,
   }) async {
     try {
       // 1. Pick Image
@@ -73,6 +73,19 @@ class ImageHelper {
       return result;
     } catch (e) {
       debugPrint('Error picking/compressing image: $e');
+      return null;
+    }
+  }
+
+  /// Converts file to a Firestore-friendly Base64 string with header
+  Future<String?> fileToBase64(File file) async {
+    try {
+      final bytes = await file.readAsBytes();
+      final base64 = base64Encode(bytes);
+      // Add standard header for compatibility
+      return 'data:image/jpeg;base64,$base64'; 
+    } catch (e) {
+      debugPrint('Error converting file to base64: $e');
       return null;
     }
   }

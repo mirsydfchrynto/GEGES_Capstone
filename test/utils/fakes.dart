@@ -69,5 +69,8 @@ class FakeAuthServiceSpy implements AuthServiceBase {
   Future<UserData?> getUserById(String uid) async => null;
 
   @override
+  Future<bool> isEmailRegistered(String email) async => false;
+
+  @override
   Future<void> changePassword({required String currentPassword, required String newPassword}) async {}
 }

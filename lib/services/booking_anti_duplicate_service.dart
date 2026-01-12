@@ -320,30 +320,23 @@ class BookingAntiDuplicateService {
 
   /// Stream admin verifikasi pembayaran (hanya pending)
   ///
-  /// Admin melihat hanya booking yang payment.verificationStatus == 'pending'
-  /// Deduplicate by bookingId untuk extra safety
+  /// Admin melihat hanya booking yang status == 'awaiting_payment'
   Stream<List<DocumentSnapshot>> streamPaymentVerificationQueue({String? barbershopId}) {
-    Query<Map<String, dynamic>> query = _firestore.collection('queues');
+    Query<Map<String, dynamic>> query = _firestore.collection('queues')
+        .where('status', isEqualTo: 'awaiting_payment');
     
     if (barbershopId != null && barbershopId.isNotEmpty) {
       query = query.where('barbershop_id', isEqualTo: barbershopId);
     }
 
-    // Use Broad Query (No status filter on server) to avoid missing index issues.
-    // We filter strictly in memory to ensure no booking is hidden due to index lag or filter mismatch.
     return query
         .snapshots()
         .map((snapshot) {
           final List<DocumentSnapshot> allDocs = snapshot.docs;
-          final Map<String, DocumentSnapshot> unique = {};
           
           final filteredDocs = allDocs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            final status = data['status'] as String?;
             
-            // Critical: Ensure we catch 'awaiting_payment'
-            if (status != 'awaiting_payment') return false;
-
             // Filter Bukti: Harus ada bukti bayar (url or base64)
             final payment = Map<String, dynamic>.from(data['payment'] ?? {});
             final hasProof = (payment['proofUrl'] != null && payment['proofUrl'].toString().isNotEmpty) ||
@@ -367,13 +360,7 @@ class BookingAntiDuplicateService {
             return aTime.compareTo(bTime); 
           });
 
-          // Deduplication
-          for (var doc in filteredDocs) {
-            unique.putIfAbsent(doc.id, () => doc);
-          }
-
-          debugPrint('[BookingAntiDupService] Verified Pending: ${unique.length}');
-          return unique.values.toList();
+          return filteredDocs;
         });
   }
 

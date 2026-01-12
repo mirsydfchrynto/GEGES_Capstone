@@ -16,6 +16,10 @@ const Color kGreenSuccess = Color(0xFF4CAF50);
 
 class QueueCard extends StatefulWidget {
   final Queue queue;
+  final String? initialCustomerName;
+  final String? initialBarberName;
+  final String? initialCustomerPhoto;
+  final List<Service>? initialServices;
   final FutureOr<void> Function()? onStartService;
   final FutureOr<void> Function()? onFinishService;
   final FutureOr<void> Function()? onCancelQueue;
@@ -24,6 +28,10 @@ class QueueCard extends StatefulWidget {
   const QueueCard({
     super.key, 
     required this.queue, 
+    this.initialCustomerName,
+    this.initialBarberName,
+    this.initialCustomerPhoto,
+    this.initialServices,
     this.onStartService, 
     this.onFinishService, 
     this.onCancelQueue, 
@@ -46,14 +54,31 @@ class _QueueCardState extends State<QueueCard> {
   @override
   void initState() {
     super.initState();
-    _loadDetails();
+    _customerName = widget.initialCustomerName ?? 'Loading...';
+    _barberName = widget.initialBarberName ?? 'Loading...';
+    _customerPhoto = widget.initialCustomerPhoto;
+    _services = widget.initialServices ?? [];
+    
+    if (widget.initialCustomerName == null || widget.initialBarberName == null) {
+      _loadDetails();
+    }
   }
 
   @override
   void didUpdateWidget(QueueCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.queue.id != widget.queue.id) {
-      _loadDetails();
+    if (oldWidget.queue.id != widget.queue.id || 
+        oldWidget.initialCustomerName != widget.initialCustomerName) {
+      if (widget.initialCustomerName != null) {
+        setState(() {
+          _customerName = widget.initialCustomerName!;
+          _barberName = widget.initialBarberName ?? 'Loading...';
+          _customerPhoto = widget.initialCustomerPhoto;
+          _services = widget.initialServices ?? [];
+        });
+      } else {
+        _loadDetails();
+      }
     }
   }
 

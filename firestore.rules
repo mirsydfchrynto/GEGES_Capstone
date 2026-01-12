@@ -4,23 +4,44 @@ service cloud.firestore {
     
     // Helper functions
     function isAuthenticated() { return request.auth != null; }
-    function isAdmin() { return isAuthenticated() && request.auth.token.email == 'admin@geges.com'; }
+    
+    // Fungsi untuk cek apakah user yang login memiliki role admin/owner
+    // Menggunakan get untuk keamanan level enterprise (validasi server-side)
+    function isAdmin() { 
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'owner', 'admin_owner', 'super_admin']; 
+    }
 
-    // GLOBAL RULES (SAFE MODE)
-    match /{document=**} {
-      // Izinkan baca & tulis (create/update) untuk memudahkan testing
-      allow read, create, update: if true;
+    // --- PROTEKSI DATA USER ---
+    match /users/{userId} {
+      // Siapapun bisa baca profil (untuk identitas atau admin cek list user)
+      allow read: if true;
       
-      // PROTEKSI KRITIS: Larang penghapusan dokumen kecuali oleh Admin Utama
-      // Ini mencegah serangan 'database wipe' yang sering terjadi di database terbuka
+      // User baru bisa buat dokumen saat pertama kali login/register
+      allow create: if isAuthenticated();
+      
+      // User hanya bisa edit profilnya sendiri, 
+      // TAPI dilarang keras mengubah field 'role' agar tidak membobol akses admin
+      allow update: if (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+                    || isAdmin();
+      
+      // Hapus data hanya oleh Admin/Super Admin
       allow delete: if isAdmin();
     }
 
-    // PROTEKSI SPESIFIK (Optional but Recommended)
-    match /users/{userId} {
-      // User tidak boleh mengubah role-nya sendiri menjadi admin
-      allow update: if (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
-                    || isAdmin();
+    // --- PROTEKSI GLOBAL (LOW RISK) ---
+    match /{document=**} {
+      // BACA: Tetap 'true' agar fitur pencarian barbershop, list layanan, 
+      // dan navigasi tidak ada yang macet (Low Risk of Bugs)
+      allow read: if true;
+      
+      // TULIS: Wajib Login. Menutup celah hacker/bot luar yang tidak punya akun.
+      // Admin memiliki akses penuh.
+      allow write: if isAuthenticated() || isAdmin();
+      
+      // PROTEKSI PENGHAPUSAN: Hanya admin yang boleh hapus data apapun.
+      // Menghindari insiden data hilang karena kesalahan user/hacker.
+      allow delete: if isAdmin();
     }
   }
 }

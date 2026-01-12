@@ -723,9 +723,11 @@ class QueueService implements QueueServiceContract {
           double serverCalculatedPrice = 0.0;
           final List<dynamic>? sIds = dataToSave['service_ids'];
           if (sIds != null && sIds.isNotEmpty) {
-            for (var sId in sIds) {
-              final serviceRef = _firestore.collection('services').doc(sId.toString());
-              final serviceSnap = await transaction.get(serviceRef); // TRANSACT READ
+            // Parallelize transaction gets for services
+            final serviceSnaps = await Future.wait(
+              sIds.map((sId) => transaction.get(_firestore.collection('services').doc(sId.toString())))
+            );
+            for (var serviceSnap in serviceSnaps) {
               if (serviceSnap.exists) {
                 final sPrice = (serviceSnap.data()?['price'] as num?)?.toDouble() ?? 0.0;
                 serverCalculatedPrice += sPrice;
@@ -749,19 +751,20 @@ class QueueService implements QueueServiceContract {
               if (bData['isActive'] == false) throw Exception('Barber ini sedang tidak aktif.');
               if (bData['onLeave'] == true) throw Exception('Barber sedang cuti.');
               
-              final dayName = DateFormat('EEEE', 'en_US').format(bookingTs.toDate()).toLowerCase();
-              final offDays = (bData['offDays'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
-              final legacyOff = (bData['off_days'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+              final bookingDateTimeForBarber = bookingTs.toDate();
+              final dayName = DateFormat('EEEE', 'en_US').format(bookingDateTimeForBarber).toLowerCase();
+              final offDays = (bData['offDays'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? 
+                              (bData['off_days'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
               
-              if (offDays.contains(dayName) || legacyOff.contains(dayName)) {
+              if (offDays.contains(dayName)) {
                 throw Exception('Barber ini libur setiap hari $dayName.');
               }
 
-              final dateStr = DateFormat('yyyy-MM-dd').format(bookingTs.toDate());
-              final specificOff = (bData['specificOffDays'] as List?)?.map((e) => e.toString()).toList() ?? [];
-              final legacySpecific = (bData['specific_off_days'] as List?)?.map((e) => e.toString()).toList() ?? [];
+              final dateStr = DateFormat('yyyy-MM-dd').format(bookingDateTimeForBarber);
+              final specificOff = (bData['specificOffDays'] as List?)?.map((e) => e.toString()).toList() ?? 
+                                  (bData['specific_off_days'] as List?)?.map((e) => e.toString()).toList() ?? [];
 
-              if (specificOff.contains(dateStr) || legacySpecific.contains(dateStr)) {
+              if (specificOff.contains(dateStr)) {
                 throw Exception('Barber ini libur pada tanggal $dateStr.');
               }
             }

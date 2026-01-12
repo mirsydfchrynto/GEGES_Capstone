@@ -68,12 +68,14 @@ class TenantService implements TenantServiceContract {
   /// - Returns the document path (e.g. "tenants/{tenantId}/documents/{docId}") for reference.
   Future<String> uploadTenantDocument(
     String tenantId,
-    File file, {
+    File? file, {
+    List<int>? bytes,
     String? filename,
   }) async {
-    final fileName = filename ?? file.path.split('/').last;
-    final bytes = await file.readAsBytes();
-    final base64Content = base64Encode(bytes);
+    if (file == null && bytes == null) throw Exception('File or bytes must be provided');
+    final fileName = filename ?? (file != null ? file.path.split('/').last : 'document');
+    final contentBytes = bytes ?? await file!.readAsBytes();
+    final base64Content = base64Encode(contentBytes);
 
     // safety size limit: keep under ~950KB (payment flow uses 950000 limit)
     const int sizeLimit = 950000;
@@ -103,7 +105,7 @@ class TenantService implements TenantServiceContract {
     await docRef.set({
       'filename': fileName,
       'content_base64': base64Content,
-      'size': bytes.length,
+      'size': contentBytes.length,
       'content_type': fileName.split('.').last,
       'uploaded_by': userId,
       'created_at': FieldValue.serverTimestamp(),

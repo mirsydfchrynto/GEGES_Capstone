@@ -21,6 +21,14 @@ class NetworkService {
     _connectivity.onConnectivityChanged.listen((List<ConnectivityResult> results) {
       _checkInternetConnection(results);
     });
+    
+    // Initial check
+    checkCurrentStatus();
+  }
+
+  Future<void> checkCurrentStatus() async {
+    final results = await _connectivity.checkConnectivity();
+    await _checkInternetConnection(results);
   }
 
   Future<void> _checkInternetConnection(List<ConnectivityResult> results) async {

@@ -2,7 +2,7 @@ name: geges_smartbarber
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.2+3
 
 environment:
   sdk: ^3.6.0
@@ -53,6 +53,7 @@ dependencies:
   dio: ^5.9.0
   flutter_image_compress: ^2.4.0
   path_provider: ^2.1.5
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +74,7 @@ flutter_native_splash:
   android_gravity: center
   ios_content_mode: center
   android_12:
+    color: "#000000"
     icon_background_color: "#000000"
 
 flutter:
